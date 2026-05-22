@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/cadastro') || pathname.startsWith('/recuperar-senha')
-  const isDashboardRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/trabalhos') || pathname.startsWith('/novo-trabalho') || pathname.startsWith('/perfil') || pathname.startsWith('/configuracoes')
+  const isDashboardRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/trabalhos') || pathname.startsWith('/novo-trabalho') || pathname.startsWith('/perfil') || pathname.startsWith('/configuracoes') || pathname.startsWith('/admin')
 
   if (!user && isDashboardRoute) {
     const url = request.nextUrl.clone()

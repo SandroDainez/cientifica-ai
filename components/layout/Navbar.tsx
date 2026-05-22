@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { GraduationCap, LayoutDashboard, FolderOpen, PlusCircle, User, Settings, LogOut, Menu, X } from 'lucide-react'
+import { GraduationCap, LayoutDashboard, FolderOpen, PlusCircle, User, Settings, LogOut, Menu, X, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import {
   DropdownMenu,
@@ -18,6 +18,8 @@ const navLinks = [
   { href: '/trabalhos',     label: 'Meus Trabalhos', icon: FolderOpen },
   { href: '/novo-trabalho', label: 'Novo Trabalho',  icon: PlusCircle },
 ]
+
+const ADMIN_EMAIL = 'sandrodainez1@gmail.com'
 
 interface NavbarProps {
   userName?: string
@@ -74,6 +76,19 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
                 </Link>
               )
             })}
+            {userEmail === ADMIN_EMAIL && (
+              <Link
+                href="/admin"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  pathname.startsWith('/admin')
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-teal-400 hover:text-teal-300 hover:bg-teal-900/30'
+                }`}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Admin
+              </Link>
+            )}
           </nav>
 
           {/* Avatar + mobile toggle */}
