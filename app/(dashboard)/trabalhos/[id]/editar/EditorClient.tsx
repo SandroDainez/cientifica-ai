@@ -168,6 +168,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         fasesConcluidas={fasesConcluidas}
         onSelectFase={trocarFase}
         progressoGeral={progresso}
+        secoes={secoesIniciais.map(s => ({ ...s, conteudo: conteudos[s.chave_secao] ?? s.conteudo }))}
       />
 
       {/* Conteúdo principal */}

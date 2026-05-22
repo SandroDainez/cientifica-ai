@@ -2,7 +2,8 @@
 
 import { CheckCircle2, Circle, Loader2, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { FaseConfig } from '@/types'
+import { ProgressoTrabalho } from '@/components/trabalho/ProgressoTrabalho'
+import type { FaseConfig, SecaoTrabalho } from '@/types'
 
 interface SidebarProps {
   fases: FaseConfig[]
@@ -10,9 +11,10 @@ interface SidebarProps {
   fasesConcluidas: string[]
   onSelectFase?: (chave: string) => void
   progressoGeral: number
+  secoes?: SecaoTrabalho[]
 }
 
-export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progressoGeral }: SidebarProps) {
+export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progressoGeral, secoes }: SidebarProps) {
   return (
     <aside className="w-64 shrink-0 hidden lg:flex flex-col border-r bg-sidebar h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto scrollbar-thin">
       {/* Progresso geral */}
@@ -80,6 +82,13 @@ export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progr
           })}
         </ul>
       </nav>
+
+      {/* Detalhamento de progresso por seção */}
+      {secoes && secoes.length > 0 && (
+        <div className="p-4 border-t">
+          <ProgressoTrabalho fases={fases} secoes={secoes} />
+        </div>
+      )}
     </aside>
   )
 }

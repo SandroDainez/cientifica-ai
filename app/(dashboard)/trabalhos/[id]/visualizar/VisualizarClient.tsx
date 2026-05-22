@@ -2,12 +2,13 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List, Shield } from 'lucide-react'
+import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List, Shield, ClipboardCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
+import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
 
 export function VisualizarClient({ trabalho, secoes, referencias, autorNome, autorInstituicao }: Props) {
   const [tocAberto, setTocAberto] = useState(false)
+  const [checklistAberto, setChecklistAberto] = useState(false)
   const [relatorioAberto, setRelatorioAberto] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -53,10 +55,16 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setTocAberto(v => !v)}
+              onClick={() => { setTocAberto(v => !v); setChecklistAberto(false) }}
               className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}
             >
               <List className="h-4 w-4" /> Sumário
+            </button>
+            <button
+              onClick={() => { setChecklistAberto(v => !v); setTocAberto(false) }}
+              className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}
+            >
+              <ClipboardCheck className="h-4 w-4" /> Checklist
             </button>
             <Link href={`/trabalhos/${trabalho.id}/referencias`}
               className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}>
@@ -104,6 +112,19 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
           </div>
         )}
       </div>
+
+      {/* Checklist dropdown */}
+      {checklistAberto && (
+        <div className="no-print border-t bg-gray-50 shadow-md max-w-5xl mx-auto">
+          <div className="px-4 py-4 max-w-lg">
+            <ChecklistFinal
+              titulo={trabalho.titulo ?? undefined}
+              secoes={secoes}
+              referencias={referencias}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Documento */}
       <div ref={contentRef} className="max-w-4xl mx-auto py-8 px-4 space-y-0">
