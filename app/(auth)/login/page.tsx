@@ -60,7 +60,7 @@ export default function LoginPage() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Entrar na sua conta</h2>
+        <h2 className="text-2xl font-bold text-foreground">Entrar na sua conta</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Não tem conta?{' '}
           <Link href="/cadastro" className="text-primary font-medium hover:underline">

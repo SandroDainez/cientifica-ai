@@ -80,12 +80,12 @@ export default async function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl border p-5 flex items-center gap-4">
+          <div key={label} className="bg-card rounded-xl border p-5 flex items-center gap-4 glow-card">
             <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg shrink-0', bg)}>
               <Icon className={cn('h-5 w-5', color)} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
+              <p className="text-2xl font-bold text-foreground">{value}</p>
               <p className="text-xs text-muted-foreground leading-tight">{label}</p>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default async function DashboardPage() {
         {/* Trabalhos recentes */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Trabalhos recentes</h2>
+            <h2 className="text-lg font-semibold text-foreground">Trabalhos recentes</h2>
             {lista.length > 5 && (
               <Link href="/trabalhos" className="text-sm text-primary hover:underline flex items-center gap-1">
                 Ver todos <ArrowRight className="h-3.5 w-3.5" />
@@ -105,9 +105,9 @@ export default async function DashboardPage() {
           </div>
 
           {recentes.length === 0 ? (
-            <div className="bg-white border rounded-xl p-12 text-center">
+            <div className="bg-card border rounded-xl p-12 text-center">
               <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="font-semibold text-gray-900 mb-2">Nenhum trabalho ainda</h3>
+              <h3 className="font-semibold text-foreground mb-2">Nenhum trabalho ainda</h3>
               <p className="text-sm text-muted-foreground mb-6">
                 Crie seu primeiro trabalho científico e comece agora.
               </p>
@@ -138,24 +138,24 @@ export default async function DashboardPage() {
           <div className="gradient-brand rounded-xl p-6 text-white text-center space-y-3">
             <PlusCircle className="h-8 w-8 mx-auto opacity-90" />
             <h3 className="font-bold text-lg">Criar novo trabalho</h3>
-            <p className="text-sm text-blue-100">
+            <p className="text-sm text-teal-100">
               TCC, artigo, dissertação, tese e muito mais.
             </p>
             <Link
               href="/novo-trabalho"
-              className="block w-full bg-white text-primary font-semibold text-sm py-2.5 rounded-lg hover:bg-blue-50 transition-colors"
+              className="block w-full bg-white/15 backdrop-blur-sm text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-white/25 border border-white/30 transition-colors"
             >
               Começar agora
             </Link>
           </div>
 
           {/* Dica do dia */}
-          <div className="bg-white border rounded-xl p-5 space-y-3">
-            <div className="flex items-center gap-2 text-amber-600">
+          <div className="bg-card border rounded-xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-amber-400">
               <Lightbulb className="h-4 w-4" />
               <span className="text-xs font-semibold uppercase tracking-wide">Dica do dia</span>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed">{getDicaDoDia()}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{getDicaDoDia()}</p>
           </div>
         </div>
       </div>

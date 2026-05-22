@@ -107,7 +107,7 @@ export default function CadastroPage() {
   return (
     <div className="space-y-5">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Criar conta gratuita</h2>
+        <h2 className="text-2xl font-bold text-foreground">Criar conta gratuita</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Já tem conta?{' '}
           <Link href="/login" className="text-primary font-medium hover:underline">Entrar</Link>

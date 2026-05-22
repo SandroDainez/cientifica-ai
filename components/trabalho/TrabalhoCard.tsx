@@ -24,12 +24,12 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
   })
 
   return (
-    <div className="card-trabalho bg-white border rounded-xl p-5 flex flex-col gap-4">
+    <div className="card-trabalho bg-card border rounded-xl p-5 flex flex-col gap-4 glow-card">
       {/* Header */}
       <div className="flex items-start gap-3">
         <TipoTrabalhoIcon tipo={trabalho.tipo_trabalho} size="md" />
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate text-sm leading-snug">
+          <h3 className="font-semibold text-foreground truncate text-sm leading-snug">
             {trabalho.titulo || 'Trabalho sem título'}
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -57,7 +57,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
             <button
               onClick={() => onArquivar(trabalho.id)}
               title="Arquivar"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
             >
               <Archive className="h-3.5 w-3.5" />
             </button>
@@ -65,21 +65,21 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
           <Link
             href={`/trabalhos/${trabalho.id}/referencias`}
             title="Referências"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <BookMarked className="h-3.5 w-3.5" />
           </Link>
           <Link
             href={`/trabalhos/${trabalho.id}/visualizar`}
             title="Visualizar"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
           <Link
             href={`/trabalhos/${trabalho.id}/exportar`}
             title="Exportar"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
           </Link>

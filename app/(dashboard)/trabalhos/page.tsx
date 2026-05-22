@@ -99,9 +99,9 @@ export default async function TrabalhosPage({ searchParams }: PageProps) {
 
       {/* Lista */}
       {lista.length === 0 ? (
-        <div className="bg-white border rounded-xl p-16 text-center">
+        <div className="bg-card border rounded-xl p-16 text-center">
           <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-semibold text-gray-900 mb-2">
+          <h3 className="font-semibold text-foreground mb-2">
             {q || tipo || status ? 'Nenhum trabalho encontrado' : 'Nenhum trabalho ainda'}
           </h3>
           <p className="text-sm text-muted-foreground mb-6">

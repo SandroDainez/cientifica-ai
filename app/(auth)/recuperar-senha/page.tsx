@@ -51,7 +51,7 @@ export default function RecuperarSenhaPage() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Recuperar senha</h2>
+        <h2 className="text-2xl font-bold text-foreground">Recuperar senha</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Informe seu e-mail e enviaremos um link de recuperação.
         </p>

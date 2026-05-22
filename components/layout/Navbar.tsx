@@ -40,7 +40,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
     : '?'
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="sticky top-0 z-50 w-full border-b border-white/8 bg-[#0b1620]/90 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
 
@@ -50,7 +50,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-bold text-gray-900 text-base">Científica AI</span>
+              <span className="font-bold text-white text-base">Científica AI</span>
               <span className="text-[10px] text-muted-foreground hidden sm:block">Do tema à defesa</span>
             </div>
           </Link>
@@ -66,7 +66,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     active
                       ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
+                      : 'text-slate-400 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
 
             {/* Mobile toggle */}
             <button
-              className="md:hidden p-2 rounded-md text-muted-foreground hover:bg-gray-100"
+              className="md:hidden p-2 rounded-md text-slate-400 hover:bg-white/10"
               onClick={() => setMobileOpen(v => !v)}
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -127,7 +127,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium ${
                     active
                       ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
+                      : 'text-slate-400 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
