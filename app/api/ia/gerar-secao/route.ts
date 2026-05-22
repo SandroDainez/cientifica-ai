@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
+import { getSystemPromptEspecializado } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
 import type { Trabalho } from '@/types'
 
@@ -43,7 +44,11 @@ export async function POST(request: Request) {
     ?.map(s => `**${s.nome_secao}** (resumo):\n${(s.conteudo ?? '').substring(0, 500)}`)
     .join('\n\n') ?? ''
 
-  const systemPrompt = buildSystemPrompt(
+  const systemPromptEspecializado = getSystemPromptEspecializado(
+    trabalho.tipo_trabalho,
+    chaveSecao
+  )
+  const systemPrompt = systemPromptEspecializado ?? buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
     trabalho.formato_citacao
