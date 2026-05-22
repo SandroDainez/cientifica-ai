@@ -2,11 +2,12 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List } from 'lucide-react'
+import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { formatarReferencia } from '@/lib/referencias/formatar'
+import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 
 export function VisualizarClient({ trabalho, secoes, referencias, autorNome, autorInstituicao }: Props) {
   const [tocAberto, setTocAberto] = useState(false)
+  const [relatorioAberto, setRelatorioAberto] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   function imprimir() {
@@ -60,6 +62,12 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
               className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}>
               <BookMarked className="h-4 w-4" /> Refs
             </Link>
+            <button
+              onClick={() => setRelatorioAberto(true)}
+              className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}
+            >
+              <Shield className="h-4 w-4" /> Qualidade
+            </button>
             <Link href={`/trabalhos/${trabalho.id}/editar`}
               className={cn(buttonVariants({ variant: 'outline' }), 'gap-2 text-sm')}>
               <PencilLine className="h-4 w-4" /> Editar
@@ -227,6 +235,10 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
           </div>
         )}
       </div>
+
+      {relatorioAberto && (
+        <RelatorioQualidade trabalhoId={trabalho.id} onClose={() => setRelatorioAberto(false)} />
+      )}
     </div>
   )
 }
