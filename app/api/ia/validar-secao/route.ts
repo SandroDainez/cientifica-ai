@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildValidarSecaoPrompt } from '@/lib/ai/prompts'
+import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { callAI } from '@/lib/ai/stream'
 import type { Trabalho, ResultadoValidacao } from '@/types'
 
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   const fase = fluxo?.fases.find(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
   if (!fase) return NextResponse.json({ error: 'Seção não encontrada' }, { status: 404 })
 
-  const systemPrompt = buildSystemPrompt(
+  const systemPrompt = getTransversalPrompt('T6') ?? buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
     trabalho.formato_citacao

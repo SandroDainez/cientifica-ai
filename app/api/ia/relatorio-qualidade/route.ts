@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { callAI } from '@/lib/ai/stream'
 import type { Trabalho } from '@/types'
 
@@ -82,11 +83,9 @@ Para score_geral: pondere completude (40%), qualidade das seções (40%), coerê
 Seja objetivo e construtivo. Identifique problemas reais com base nos trechos fornecidos.`
 
   try {
-    const resposta = await callAI(
-      'Você é um especialista em avaliação de trabalhos científicos. Responda apenas com JSON válido.',
-      prompt,
-      true
-    )
+    const validadorSystem = getTransversalPrompt('T2')
+      ?? 'Você é um especialista em avaliação de trabalhos científicos. Responda apenas com JSON válido.'
+    const resposta = await callAI(validadorSystem, prompt, true)
 
     const jsonStr = resposta.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '')
     const relatorio = JSON.parse(jsonStr) as RelatorioQualidade

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildSugerirPalavrasChavePrompt } from '@/lib/ai/prompts'
+import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { callAI } from '@/lib/ai/stream'
 
 export async function POST(request: Request) {
@@ -12,11 +13,9 @@ export async function POST(request: Request) {
   if (!texto?.trim()) return NextResponse.json({ error: 'Texto obrigatório' }, { status: 400 })
 
   const prompt = buildSugerirPalavrasChavePrompt(texto, area)
-  const resposta = await callAI(
-    'Você é um especialista em indexação científica e descritores bibliográficos. Responda apenas com JSON válido.',
-    prompt,
-    true
-  )
+  const palavrasChaveSystem = getTransversalPrompt('T7')
+    ?? 'Você é um especialista em indexação científica e descritores bibliográficos. Responda apenas com JSON válido.'
+  const resposta = await callAI(palavrasChaveSystem, prompt, true)
 
   try {
     const json = JSON.parse(resposta.trim()) as { palavras: string[] }

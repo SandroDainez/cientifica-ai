@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
 
 export async function POST(request: Request) {
@@ -13,7 +14,8 @@ export async function POST(request: Request) {
       riscos?: string; beneficios?: string; pesquisador?: string; instituicao?: string
     }
 
-  const systemPrompt = `Você é um especialista em bioética e regulamentação de pesquisa com seres humanos no Brasil.
+  const systemPrompt = getTransversalPrompt('T5')
+    ?? `Você é um especialista em bioética e regulamentação de pesquisa com seres humanos no Brasil.
 Você conhece profundamente a Resolução CNS 466/2012 e suas complementares.
 Escreva documentos em português brasileiro formal e acessível.`
 

@@ -20,11 +20,13 @@ const PROMPTS_MAP: Record<string, string> = {
   'tcc_introducao':           'TCC_fase_1_12_introducao.md',
 
   // ── Artigo Científico Original ────────────────────────────────
-  'artigo_original_pergunta_pico':    'Artigo_Original_fase_2_1_pergunta_PICO.md',
-  'artigo_original_titulo':           'Artigo_Original_fase_2_2_titulo.md',
-  'artigo_original_introducao':       'Artigo_Original_fase_2_3_introducao.md',
-  'artigo_original_metodologia':      'Artigo_Original_fase_2_4_metodos_delineamento.md',
-  'artigo_original_metodos_coleta':   'Artigo_Original_fase_2_5_metodos_coleta_analise.md',
+  'artigo_original_pico':                  'Artigo_Original_fase_2_1_pergunta_PICO.md',
+  'artigo_original_pergunta_pico':         'Artigo_Original_fase_2_1_pergunta_PICO.md',
+  'artigo_original_titulo':                'Artigo_Original_fase_2_2_titulo.md',
+  'artigo_original_introducao':            'Artigo_Original_fase_2_3_introducao.md',
+  'artigo_original_metodos_delineamento':  'Artigo_Original_fase_2_4_metodos_delineamento.md',
+  'artigo_original_metodologia':           'Artigo_Original_fase_2_4_metodos_delineamento.md',
+  'artigo_original_metodos_coleta':        'Artigo_Original_fase_2_5_metodos_coleta_analise.md',
   'artigo_original_resultados':       'Artigo_Original_fase_2_6_resultados.md',
   'artigo_original_discussao':        'Artigo_Original_fase_2_7_discussao.md',
   'artigo_original_conclusao':        'Artigo_Original_fase_2_8_conclusao.md',
@@ -42,6 +44,7 @@ const PROMPTS_MAP: Record<string, string> = {
   'artigo_revisao_resumo':              'Revisao_Narrativa_fase_3_8_resumo_abstract.md',
   // aliases para chaves genéricas usadas no fluxo
   'artigo_revisao_titulo':              'Artigo_Original_fase_2_2_titulo.md',
+  'artigo_revisao_metodologia':         'Revisao_Narrativa_fase_3_2_estrategia_busca.md',
   'artigo_revisao_consideracoes_finais':'Revisao_Narrativa_fase_3_7_conclusao.md',
 
   // ── Revisão Sistemática ───────────────────────────────────────
@@ -49,7 +52,9 @@ const PROMPTS_MAP: Record<string, string> = {
   'revisao_sistematica_pergunta_pico':      'Revisao_Sistematica_fase_4_2_pergunta_PICO.md',
   'revisao_sistematica_estrategia_busca':   'Cientifica_AI_Revisao_Sistematica_4.3_Estrategia_Busca.md',
   'revisao_sistematica_criterios':          'Revisao_Sistematica_fase_4_4_criterios_elegibilidade.md',
+  'revisao_sistematica_triagem_prisma':      'Revisao_Sistematica_fase_4_5_triagem_PRISMA.md',
   'revisao_sistematica_triagem':            'Revisao_Sistematica_fase_4_5_triagem_PRISMA.md',
+  'revisao_sistematica_extracao_dados':     'Revisao_Sistematica_fase_4_6_extracao_dados.md',
   'revisao_sistematica_extracao':           'Revisao_Sistematica_fase_4_6_extracao_dados.md',
   'revisao_sistematica_risco_vies':         'Revisao_Sistematica_fase_4_7_risco_vies.md',
   'revisao_sistematica_sintese':            'Revisao_Sistematica_fase_4_8_sintese_qualitativa.md',
@@ -75,7 +80,7 @@ const PROMPTS_MAP: Record<string, string> = {
   'relato_caso_titulo':                     'Artigo_Original_fase_2_2_titulo.md',
 
   // ── Monografia ────────────────────────────────────────────────
-  'monografia_tema':                'Monografia_fase_5_1_tema.md',
+  'monografia_tema':                'Monografia_fase_5_1_tema_delimitacao.md',
   'monografia_problema_objetivos':  'Monografia_fase_5_2_problema_objetivos.md',
   'monografia_objetivos':           'Monografia_fase_5_2_problema_objetivos.md',
   'monografia_problema':            'Monografia_fase_5_2_problema_objetivos.md',
@@ -84,9 +89,10 @@ const PROMPTS_MAP: Record<string, string> = {
   'monografia_referencial_teorico': 'Monografia_fase_5_5_referencial_teorico.md',
   'monografia_metodologia':         'Monografia_fase_5_6_metodologia.md',
   'monografia_resultados':          'Monografia_fase_5_7_resultados_analise.md',
+  'monografia_desenvolvimento':     'Monografia_fase_5_7_resultados_analise.md',
   'monografia_discussao':           'Monografia_fase_5_8_discussao.md',
   'monografia_conclusao':           'Monografia_fase_5_9_conclusao.md',
-  'monografia_resumo':              'TCC_fase_1_11_resumo_abstract.md',
+  'monografia_resumo':              'Monografia_fase_5_10_resumo_abstract.md',
   'monografia_introducao':          'TCC_fase_1_12_introducao.md',
 
   // ── Dissertação de Mestrado ───────────────────────────────────
@@ -96,8 +102,9 @@ const PROMPTS_MAP: Record<string, string> = {
   'dissertacao_mestrado_justificativa':       'Dissertacao_fase_7_4_justificativa.md',
   'dissertacao_mestrado_revisao_literatura':  'Dissertacao_fase_7_5_revisao_literatura.md',
   'dissertacao_mestrado_referencial_teorico': 'Dissertacao_fase_7_6_referencial_teorico.md',
-  'dissertacao_mestrado_metodologia':         'TCC_fase_1_7_metodologia.md',
-  'dissertacao_mestrado_resultados':          'TCC_fase_1_8_resultados.md',
+  'dissertacao_mestrado_metodologia':         'Dissertacao_fase_7_7_metodologia.md',
+  'dissertacao_mestrado_aspectos_eticos':     'Dissertacao_fase_7_8_aspectos_eticos.md',
+  'dissertacao_mestrado_resultados':          'Dissertacao_fase_7_9_resultados.md',
   'dissertacao_mestrado_discussao':           'Dissertacao_fase_7_10_discussao.md',
   'dissertacao_mestrado_conclusao':           'Dissertacao_fase_7_11_conclusao.md',
   'dissertacao_mestrado_limitacoes':          'Dissertacao_fase_7_12_limitacoes.md',
@@ -121,6 +128,7 @@ const PROMPTS_MAP: Record<string, string> = {
   'tese_doutorado_introducao':          'Cientifica_AI_Tese_8.14_Introducao.md',
   // aliases para chaves genéricas do fluxo
   'tese_doutorado_tema_originalidade':  'Tese_fase_8_1_tema_lacuna_contribuicao.md',
+  'tese_doutorado_revisao_estado_arte': 'Tese_fase_8_5_revisao_literatura.md',
   'tese_doutorado_estado_arte':         'Tese_fase_8_5_revisao_literatura.md',
 
   // ── Projeto de Pesquisa ───────────────────────────────────────
@@ -143,9 +151,21 @@ const PROMPTS_MAP: Record<string, string> = {
   'relatorio_ic_metodologia':        'Cientifica_AI_Relatorio_IC_10.4_Metodologia_Utilizada.md',
   'relatorio_ic_resultados':         'Cientifica_AI_Relatorio_IC_10.5_Resultados_Obtidos.md',
   'relatorio_ic_dificuldades':       'Cientifica_AI_Relatorio_IC_10.6_Dificuldades_Solucoes.md',
+  'relatorio_ic_formacao':           'Cientifica_AI_Relatorio_IC_10.7_Atividades_Formacao.md',
   'relatorio_ic_atividades_formacao':'Cientifica_AI_Relatorio_IC_10.7_Atividades_Formacao.md',
   'relatorio_ic_perspectivas':       'Cientifica_AI_Relatorio_IC_10.8_Perspectivas_Proximas_Etapas.md',
   'relatorio_ic_resumo':             'TCC_fase_1_11_resumo_abstract.md',
+}
+
+const TRANSVERSAL_MAP: Record<string, string> = {
+  'T1': 'Cientifica_AI_T1_Gerador_Referencias_Reais.md',
+  'T2': 'Cientifica_AI_T2_Validador_Coerencia.md',
+  'T3': 'Cientifica_AI_T3_Gerador_Slides_Apresentacao.md',
+  'T4': 'Cientifica_AI_T4_Assistente_CEP.md',
+  'T5': 'Cientifica_AI_T5_Gerador_TCLE.md',
+  'T6': 'Cientifica_AI_T6_Corretor_por_Secao.md',
+  'T7': 'Cientifica_AI_T7_Gerador_Palavras_Chave.md',
+  'T8': 'Cientifica_AI_T8_Formatador_Referencias.md',
 }
 
 function cleanMarkdownEscapes(text: string): string {
@@ -167,6 +187,18 @@ function extractSystemPrompt(content: string): string {
   const textEnd = userStart === -1 ? content.length : userStart
 
   return cleanMarkdownEscapes(content.substring(textStart, textEnd))
+}
+
+export function getTransversalPrompt(codigo: string): string | null {
+  const filename = TRANSVERSAL_MAP[codigo]
+  if (!filename) return null
+  try {
+    const filePath = path.join(SECOES_DIR, filename)
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return cleanMarkdownEscapes(content) || null
+  } catch {
+    return null
+  }
 }
 
 export function getSystemPromptEspecializado(

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildSystemPrompt, buildGerarReferenciasPrompt } from '@/lib/ai/prompts'
+import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { callAI } from '@/lib/ai/stream'
 import type { Trabalho } from '@/types'
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
   const trabalho = trabalhoData as Trabalho
 
-  const systemPrompt = buildSystemPrompt(
+  const systemPrompt = getTransversalPrompt('T1') ?? buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
     trabalho.formato_citacao
