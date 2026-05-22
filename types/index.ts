@@ -69,6 +69,7 @@ export interface Trabalho {
   fases_concluidas: string[]
   dados_trabalho: Record<string, unknown>
   metadados: Record<string, unknown>
+  liberado: boolean
   created_at: string
   updated_at: string
 }

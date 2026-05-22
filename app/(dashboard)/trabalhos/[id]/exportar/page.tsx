@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { ExportarClient } from './ExportarClient'
+import { Paywall } from '@/components/pagamento/Paywall'
 import type { Trabalho, SecaoTrabalho } from '@/types'
 
 interface Props {
@@ -22,6 +23,12 @@ export default async function ExportarPage({ params }: Props) {
   if (!tData) redirect('/trabalhos')
 
   const trabalho = tData as Trabalho
+
+  // Paywall: trabalho não liberado → mostra tela de pagamento
+  if (!trabalho.liberado) {
+    return <Paywall trabalhoId={trabalho.id} tituloTrabalho={trabalho.titulo} />
+  }
+
   const secoes = (sData ?? []) as Pick<SecaoTrabalho, 'nome_secao' | 'chave_secao' | 'status' | 'conteudo'>[]
   const fluxo = getFluxo(trabalho.tipo_trabalho)
 

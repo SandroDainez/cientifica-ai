@@ -136,8 +136,8 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           const proximaFase = fases[faseIndex + 1]
           trocarFase(proximaFase.chave_secao)
         } else {
-          toast.success('Trabalho concluído! Parabéns!', { duration: 5000 })
-          router.push('/trabalhos')
+          toast.success('Trabalho concluído! Parabéns! 🎉', { duration: 4000 })
+          router.push(`/trabalhos/${trabalho.id}/exportar`)
         }
       }
     } catch (err) {
