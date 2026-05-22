@@ -1,10 +1,11 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import {
   Sparkles, CheckCircle2, Lightbulb, Save,
   Loader2, ChevronRight, AlignLeft,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ValidadorSecao } from './ValidadorSecao'
 import type { FaseConfig, ResultadoValidacao } from '@/types'
@@ -33,6 +34,7 @@ export function EditorArea({
   iaPanelOpen, isUltimaFase,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const palavras = conteudo.trim() ? conteudo.trim().split(/\s+/).length : 0
 
   // Auto-resize textarea
@@ -42,6 +44,39 @@ export function EditorArea({
     el.style.height = 'auto'
     el.style.height = `${Math.max(el.scrollHeight, 320)}px`
   }, [conteudo])
+
+  // Auto-save com debounce (3s após parar de digitar)
+  useEffect(() => {
+    if (!conteudo.trim() || statusIA !== 'idle') return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      onSalvar(false)
+    }, 3000)
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conteudo])
+
+  // Atalhos de teclado: Ctrl+S → salvar, Ctrl+G → gerar com IA
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 's') {
+        e.preventDefault()
+        if (conteudo.trim() && statusIA === 'idle') {
+          onSalvar(false)
+          toast.success('Rascunho salvo', { duration: 2000 })
+        }
+      }
+      if (e.key === 'g') {
+        e.preventDefault()
+        if (statusIA === 'idle') onGerar()
+      }
+    }
+  }, [conteudo, statusIA, onSalvar, onGerar])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
 
   const busy = statusIA !== 'idle'
 

@@ -3,13 +3,15 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Eye, BookMarked, Download } from 'lucide-react'
+import { toast } from 'sonner'
+import { ArrowLeft, Eye, BookMarked, Download, Presentation, Shield, Filter, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EditorArea, type StatusIA } from '@/components/editor/EditorArea'
 import { PainelIA } from '@/components/editor/PainelIA'
+import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
 
@@ -108,8 +110,9 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
   }
 
   // ── Salvar / Avançar ─────────────────────────────────────────
-  async function handleSalvar(avancar = false) {
-    if (!conteudoAtual.trim()) return
+  async function handleSalvar(avancar = false, conteudoOverride?: string) {
+    const conteudo = conteudoOverride ?? conteudoAtual
+    if (!conteudo.trim()) return
     setStatusIA('salvando')
     try {
       const status = avancar ? 'aprovado' : 'gerado'
@@ -119,7 +122,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         body: JSON.stringify({
           trabalhoId: trabalho.id,
           chaveSecao: faseAtualConfig.chave_secao,
-          conteudo: conteudoAtual,
+          conteudo,
           status,
         }),
       })
@@ -127,17 +130,19 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
       if (avancar) {
         const novasConcluidas = Array.from(new Set([...fasesConcluidas, faseAtualConfig.chave_secao]))
         setFasesConcluidas(novasConcluidas)
+        toast.success(`Seção "${faseAtualConfig.nome}" concluída!`)
 
         if (!isUltimaFase) {
           const proximaFase = fases[faseIndex + 1]
           trocarFase(proximaFase.chave_secao)
         } else {
-          // Trabalho concluído — volta para a lista
+          toast.success('Trabalho concluído! Parabéns!', { duration: 5000 })
           router.push('/trabalhos')
         }
       }
     } catch (err) {
       console.error('Erro ao salvar:', err)
+      toast.error('Erro ao salvar. Tente novamente.')
     } finally {
       setStatusIA('idle')
     }
@@ -178,18 +183,32 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
               { label: 'Editor' },
             ]}
             actions={
-              <div className="flex items-center gap-2">
-                <Link href={`/trabalhos/${trabalho.id}/referencias`} className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2')}>
-                  <BookMarked className="h-4 w-4" /> Refs
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Link href={`/trabalhos/${trabalho.id}/referencias`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                  <BookMarked className="h-3.5 w-3.5" /> Refs
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/visualizar`} className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2')}>
-                  <Eye className="h-4 w-4" /> Preview
+                {trabalho.tipo_trabalho === 'revisao_sistematica' && (
+                  <Link href={`/trabalhos/${trabalho.id}/prisma`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                    <Filter className="h-3.5 w-3.5" /> PRISMA
+                  </Link>
+                )}
+                <Link href={`/trabalhos/${trabalho.id}/etica`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                  <Shield className="h-3.5 w-3.5" /> Ética
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/exportar`} className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2')}>
-                  <Download className="h-4 w-4" /> Exportar
+                <Link href={`/trabalhos/${trabalho.id}/coleta-dados`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                  <ClipboardList className="h-3.5 w-3.5" /> Coleta
                 </Link>
-                <Link href="/trabalhos" className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}>
-                  <ArrowLeft className="h-4 w-4" /> Sair
+                <Link href={`/trabalhos/${trabalho.id}/visualizar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                  <Eye className="h-3.5 w-3.5" /> Preview
+                </Link>
+                <Link href={`/trabalhos/${trabalho.id}/apresentacao`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                  <Presentation className="h-3.5 w-3.5" /> Slides
+                </Link>
+                <Link href={`/trabalhos/${trabalho.id}/exportar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+                  <Download className="h-3.5 w-3.5" /> Exportar
+                </Link>
+                <Link href="/trabalhos" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
+                  <ArrowLeft className="h-3.5 w-3.5" /> Sair
                 </Link>
               </div>
             }
@@ -199,29 +218,45 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         {/* Editor + painel IA */}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            <EditorArea
-              fase={faseAtualConfig}
-              conteudo={conteudoAtual}
-              onConteudoChange={setConteudoAtual}
-              onGerar={handleGerar}
-              onValidar={handleValidar}
-              onSalvar={handleSalvar}
-              onAbrirIA={() => setIAPanelOpen(true)}
-              statusIA={statusIA}
-              validacao={validacao}
-              onAplicarSugestao={handleAplicarSugestao}
-              iaPanelOpen={iaPanelOpen}
-              isUltimaFase={isUltimaFase}
-            />
+            {faseAtualConfig.chave_secao === 'resumo' ? (
+              <ResumoEditor
+                trabalho={trabalho}
+                fase={faseAtualConfig}
+                conteudoInicial={conteudoAtual}
+                onSalvar={async (conteudo, avancar = false) => {
+                  setConteudoAtual(conteudo)
+                  await handleSalvar(avancar, conteudo)
+                }}
+                isUltimaFase={isUltimaFase}
+                statusExterno={statusIA === 'salvando' ? 'salvando' : 'idle'}
+              />
+            ) : (
+              <EditorArea
+                fase={faseAtualConfig}
+                conteudo={conteudoAtual}
+                onConteudoChange={setConteudoAtual}
+                onGerar={handleGerar}
+                onValidar={handleValidar}
+                onSalvar={handleSalvar}
+                onAbrirIA={() => setIAPanelOpen(true)}
+                statusIA={statusIA}
+                validacao={validacao}
+                onAplicarSugestao={handleAplicarSugestao}
+                iaPanelOpen={iaPanelOpen}
+                isUltimaFase={isUltimaFase}
+              />
+            )}
           </div>
 
-          {/* Painel IA lateral direito */}
-          <PainelIA
-            trabalhoId={trabalho.id}
-            fase={faseAtualConfig}
-            isOpen={iaPanelOpen}
-            onClose={() => setIAPanelOpen(false)}
-          />
+          {/* Painel IA lateral direito — oculto na fase de resumo (tem UI própria) */}
+          {faseAtualConfig.chave_secao !== 'resumo' && (
+            <PainelIA
+              trabalhoId={trabalho.id}
+              fase={faseAtualConfig}
+              isOpen={iaPanelOpen}
+              onClose={() => setIAPanelOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>

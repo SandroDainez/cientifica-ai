@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { buildSystemPrompt, buildGerarResumoPrompt } from '@/lib/ai/prompts'
+import { buildSystemPrompt, buildGerarResumoPrompt, buildGerarAbstractPrompt } from '@/lib/ai/prompts'
 import { streamText } from '@/lib/ai/stream'
 import type { Trabalho } from '@/types'
 
@@ -9,7 +9,12 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const { trabalhoId } = await request.json() as { trabalhoId: string }
+  const body = await request.json() as {
+    trabalhoId: string
+    modo?: 'resumo_pt' | 'abstract_en'
+    resumo_pt?: string
+  }
+  const { trabalhoId, modo = 'resumo_pt', resumo_pt } = body
 
   const { data: trabalhoData } = await supabase
     .from('trabalhos')
@@ -21,7 +26,22 @@ export async function POST(request: Request) {
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
   const trabalho = trabalhoData as Trabalho
 
-  // Carrega seções concluídas
+  const systemPrompt = buildSystemPrompt(
+    trabalho.tipo_trabalho,
+    trabalho.nivel_experiencia,
+    trabalho.formato_citacao
+  )
+
+  // Modo abstract: recebe o resumo PT já pronto
+  if (modo === 'abstract_en') {
+    if (!resumo_pt?.trim()) {
+      return NextResponse.json({ error: 'Resumo em português necessário para gerar abstract' }, { status: 400 })
+    }
+    const userPrompt = buildGerarAbstractPrompt(trabalho.tipo_trabalho, resumo_pt)
+    return streamText(systemPrompt, userPrompt, false)
+  }
+
+  // Modo resumo PT: usa as seções concluídas
   const { data: secoes } = await supabase
     .from('secoes_trabalho')
     .select('nome_secao, conteudo, status')
@@ -34,16 +54,11 @@ export async function POST(request: Request) {
   }
 
   const secoesConteudo = Object.fromEntries(
-    secoes.map(s => [s.nome_secao, s.conteudo ?? ''])
-  )
-
-  const systemPrompt = buildSystemPrompt(
-    trabalho.tipo_trabalho,
-    trabalho.nivel_experiencia,
-    trabalho.formato_citacao
+    secoes
+      .filter(s => s.conteudo && s.nome_secao !== 'resumo')
+      .map(s => [s.nome_secao, s.conteudo ?? ''])
   )
 
   const userPrompt = buildGerarResumoPrompt(trabalho.tipo_trabalho, secoesConteudo)
-
   return streamText(systemPrompt, userPrompt, false)
 }

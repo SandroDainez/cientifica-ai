@@ -192,20 +192,62 @@ export function buildGerarResumoPrompt(
   secoesConteudo: Record<string, string>
 ): string {
   const secoesTxt = Object.entries(secoesConteudo)
-    .map(([k, v]) => `### ${k}\n${v.substring(0, 800)}…`)
+    .map(([k, v]) => `### ${k}\n${v.substring(0, 800)}`)
     .join('\n\n')
 
-  return `Com base nas seções abaixo do trabalho, redija um resumo acadêmico completo.
+  return `Com base nas seções abaixo do trabalho, redija um resumo acadêmico estruturado.
 
 O resumo deve:
-- Ter entre 150 e 500 palavras (norma ABNT NBR 14724)
-- Incluir: contexto/introdução, objetivos, metodologia, resultados esperados/encontrados, conclusão
-- Não conter citações
-- Ser redigido em um único parágrafo
-- Terminar com 3-5 palavras-chave
+- Ter entre 150 e 500 palavras (ABNT NBR 6028)
+- Incluir: contextualização (1-2 frases), objetivo (1 frase), metodologia (2-3 frases), principais resultados (2-4 frases), conclusão (1-2 frases)
+- Não conter citações bibliográficas
+- Ser redigido em um único parágrafo contínuo em português brasileiro formal
+- NÃO incluir palavras-chave nem título — apenas o texto do resumo
 
 **Seções do trabalho:**
 ${secoesTxt}
 
-Escreva apenas o resumo e as palavras-chave, sem título nem metacomentários.`
+Escreva APENAS o texto do resumo, sem título, sem "Resumo:", sem palavras-chave, sem metacomentários.`
+}
+
+export function buildGerarAbstractPrompt(
+  tipoTrabalho: TipoTrabalho,
+  resumoPt: string
+): string {
+  return `Rewrite the following Brazilian Portuguese academic abstract into fluent academic English.
+
+IMPORTANT RULES:
+- Do NOT translate literally word-by-word — rewrite it as native academic English
+- Use past tense for methods and results ("was conducted", "were analyzed")
+- Use present tense for conclusions and general statements
+- Maintain the same structure: background, objective, methods, results, conclusion
+- Keep it between 150 and 350 words
+- Do NOT include keywords, title, or any labels — only the abstract text
+
+**Original abstract in Portuguese:**
+${resumoPt}
+
+Write ONLY the abstract text in English, no labels, no title, no keywords.`
+}
+
+export function buildSugerirPalavrasChavePrompt(
+  texto: string,
+  area: string
+): string {
+  return `Analise o texto acadêmico abaixo e sugira palavras-chave/descritores adequados.
+
+**Área do conhecimento:** ${area}
+
+**Texto:**
+${texto.substring(0, 2000)}
+
+Regras:
+- Sugira entre 5 e 10 termos
+- Para Ciências da Saúde: priorize descritores DeCS (Descritores em Ciências da Saúde) / MeSH
+- Para outras áreas: use termos técnicos consolidados na literatura
+- Os termos devem ser específicos (não genéricos como "saúde" ou "pesquisa")
+- Inclua termos em português
+
+Responda APENAS com JSON válido:
+{"palavras": ["termo1", "termo2", "termo3", "termo4", "termo5"]}`
 }
