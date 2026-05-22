@@ -129,6 +129,22 @@
     @apply mb-4 indent-7;
   }
 
+  /* Documento acadêmico (visualizador) */
+  .doc-content {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 12pt;
+    line-height: 1.8;
+    color: #1a1a1a;
+    text-align: justify;
+  }
+  .doc-content p {
+    margin-bottom: 0;
+    text-indent: 1.25cm;
+  }
+  .doc-content p + p {
+    margin-top: 0;
+  }
+
   /* Badges de fase */
   .badge-pendente   { @apply bg-gray-100 text-gray-600; }
   .badge-gerando    { @apply bg-blue-100 text-blue-700; }
@@ -165,4 +181,23 @@
   content: '|';
   @apply text-primary ml-0.5;
   animation: blink 1s step-end infinite;
+}
+
+/* ── Impressão ────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+
+  .doc-page {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 3cm 3cm 2cm 4cm !important;
+    page-break-after: always;
+  }
+  .doc-page:last-child { page-break-after: avoid; }
+
+  .doc-section-break {
+    page-break-before: always;
+  }
 }

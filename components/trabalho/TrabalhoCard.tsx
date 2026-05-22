@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowRight, Archive, Eye, Download } from 'lucide-react'
+import { ArrowRight, Archive, Eye, Download, BookMarked } from 'lucide-react'
 import { TipoTrabalhoIcon, getTipoLabel } from './TipoTrabalhoIcon'
 import { StatusBadge } from './StatusBadge'
 import { ProgressBar } from './ProgressBar'
@@ -62,6 +62,13 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
               <Archive className="h-3.5 w-3.5" />
             </button>
           )}
+          <Link
+            href={`/trabalhos/${trabalho.id}/referencias`}
+            title="Referências"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-colors"
+          >
+            <BookMarked className="h-3.5 w-3.5" />
+          </Link>
           <Link
             href={`/trabalhos/${trabalho.id}/visualizar`}
             title="Visualizar"
