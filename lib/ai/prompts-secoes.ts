@@ -180,13 +180,15 @@ function extractSystemPrompt(content: string): string {
   const userMarker = '### USER PROMPT'
 
   const systemStart = content.indexOf(systemMarker)
-  if (systemStart === -1) return ''
+  if (systemStart !== -1) {
+    const textStart = content.indexOf('\n', systemStart) + 1
+    const userStart = content.indexOf(userMarker)
+    const textEnd = userStart === -1 ? content.length : userStart
+    return cleanMarkdownEscapes(content.substring(textStart, textEnd))
+  }
 
-  const textStart = content.indexOf('\n', systemStart) + 1
-  const userStart = content.indexOf(userMarker)
-  const textEnd = userStart === -1 ? content.length : userStart
-
-  return cleanMarkdownEscapes(content.substring(textStart, textEnd))
+  // Formato alternativo (Cientifica_AI_*): usa o arquivo inteiro como system prompt
+  return cleanMarkdownEscapes(content)
 }
 
 export function getTransversalPrompt(codigo: string): string | null {
