@@ -62,7 +62,8 @@ export function BuscarReferencias({
       } else {
         setErro(json.error ?? 'Erro ao buscar referências')
       }
-    } catch {
+    } catch (err) {
+      console.error('[BuscarReferencias] Erro na busca:', err)
       setErro('Não foi possível conectar às bases acadêmicas. Verifique sua internet.')
     } finally {
       setBuscando(false)

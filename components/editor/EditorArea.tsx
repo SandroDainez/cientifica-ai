@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import {
   Sparkles, CheckCircle2, Lightbulb, Save,
   Loader2, ChevronRight, AlignLeft, MousePointerClick,
   PenLine, AlertTriangle, XCircle, Trophy, ArrowRight,
-  BookOpen, Target, ListChecks,
+  BookOpen, Target, ListChecks, BookMarked,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -30,11 +31,13 @@ interface EditorAreaProps {
   /** Opções de título extraídas da resposta da IA — mostra picker em vez de markdown bruto */
   tituloOpcoes?: string[]
   onSelecionarTituloOpcao?: (opcao: string) => void
+  /** Link para a página de referências — exibe aviso quando conteúdo tem placeholders (SOBRENOME, ANO) */
+  linkReferencias?: string
 }
 
 // ── Helpers de qualidade ──────────────────────────────────────────────────────
 
-function avaliarPalavas(palavras: number, min?: number, max?: number) {
+function avaliarPalavras(palavras: number, min?: number, max?: number) {
   if (!min && !max) return 'ok'
   if (max && palavras > max) return 'excedido'
   if (min && palavras >= min) return 'ok'
@@ -62,6 +65,7 @@ export function EditorArea({
   statusIA, validacao, onAplicarSugestao,
   iaPanelOpen, isUltimaFase,
   tituloOpcoes = [], onSelecionarTituloOpcao,
+  linkReferencias,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -71,7 +75,7 @@ export function EditorArea({
   const [confirmandoAvanco, setConfirmandoAvanco] = useState(false)
 
   const palavras = conteudo.trim() ? conteudo.trim().split(/\s+/).length : 0
-  const statusPalavras = avaliarPalavas(palavras, fase.min_palavras, fase.max_palavras)
+  const statusPalavras = avaliarPalavras(palavras, fase.min_palavras, fase.max_palavras)
   const temConteudo = conteudo.trim().length > 0
   const busy = statusIA !== 'idle'
 
@@ -198,12 +202,15 @@ export function EditorArea({
 
           {/* Toolbar ações IA */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <button onClick={onGerar} disabled={busy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {statusIA === 'gerando'
-                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando…</>
-                : <><Sparkles className="h-3.5 w-3.5" /> Gerar com IA</>}
-            </button>
+            {/* Esconde "Gerar com IA" quando o card de boas-vindas já está visível com o mesmo CTA */}
+            {(!mostraIntro || temConteudo || statusIA === 'gerando') && (
+              <button onClick={onGerar} disabled={busy}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {statusIA === 'gerando'
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando…</>
+                  : <><Sparkles className="h-3.5 w-3.5" /> Gerar com IA</>}
+              </button>
+            )}
 
             <button onClick={onValidar} disabled={busy || !temConteudo}
               className={cn(
@@ -343,6 +350,28 @@ export function EditorArea({
           style={{ minHeight: 280 }}
         />
       </div>
+
+      {/* ── Aviso de placeholders de citação ────────────────────────── */}
+      {temConteudo && /\(SOBRENOME,\s*ANO\)/i.test(conteudo) && linkReferencias && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <BookMarked className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-800">
+              Referências bibliográficas não cadastradas
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              O texto contém citações de marcador <strong>(SOBRENOME, ANO)</strong> porque ainda não há referências adicionadas a este trabalho.
+              Cadastre suas referências e <strong>regenere esta seção</strong> para que as citações reais sejam inseridas automaticamente.
+            </p>
+          </div>
+          <Link
+            href={linkReferencias}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 transition-colors"
+          >
+            <BookMarked className="h-3.5 w-3.5" /> Adicionar referências
+          </Link>
+        </div>
+      )}
 
       {/* ── Resultado de validação ───────────────────────────────────── */}
       {validacao && (

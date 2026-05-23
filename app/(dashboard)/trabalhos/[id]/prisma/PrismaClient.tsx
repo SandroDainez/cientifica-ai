@@ -12,8 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { DiagramaPRISMA } from '@/components/prisma/DiagramaPRISMA'
 import type { Trabalho } from '@/types'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface Props { trabalho: Trabalho; prismaInicial: any }
+interface Props { trabalho: Trabalho; prismaInicial: PrismaState | null }
 
 const BASES = [
   'PubMed/MEDLINE', 'EMBASE', 'Cochrane Library',
@@ -53,8 +52,8 @@ export function PrismaClient({ trabalho, prismaInicial }: Props) {
     criterios_exclusao: prismaInicial?.criterios_exclusao ?? '',
     estrategia_busca: prismaInicial?.estrategia_busca ?? '',
     data_busca: prismaInicial?.data_busca ?? '',
-    pergunta_pico: '',
-    numero_prospero: '',
+    pergunta_pico: prismaInicial?.pergunta_pico ?? '',
+    numero_prospero: prismaInicial?.numero_prospero ?? '',
     motivos_exclusao: prismaInicial?.motivos_exclusao ?? [{ motivo: '', n: 0 }],
   })
 
@@ -124,7 +123,8 @@ export function PrismaClient({ trabalho, prismaInicial }: Props) {
       if (!res.ok) throw new Error()
       setStatus('salvo')
       setTimeout(() => setStatus('idle'), 3000)
-    } catch {
+    } catch (err) {
+      console.error('[PrismaClient] Erro:', err)
       setStatus('erro')
       setTimeout(() => setStatus('idle'), 4000)
     }

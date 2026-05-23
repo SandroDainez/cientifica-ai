@@ -3,12 +3,21 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildSugerirMelhorasPrompt } from '@/lib/ai/prompts'
 import { callAI } from '@/lib/ai/stream'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, SugestaoIA } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const rl = await checkRateLimit(supabase, user.id, 'sugerir-melhorias')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Aguarde um momento.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
 
   const { trabalhoId, chaveSecao, conteudo } = await request.json() as {
     trabalhoId: string

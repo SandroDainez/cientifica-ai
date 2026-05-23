@@ -128,6 +128,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           respostas_usuario: respostas,
         }),
       })
+      if (!res.ok) throw new Error(`Erro na geração: ${res.status}`)
       if (!res.body) throw new Error('Sem stream')
 
       const reader = res.body.getReader()
@@ -143,6 +144,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
       }
     } catch (err) {
       console.error('Erro na geração:', err)
+      toast.error('Erro ao gerar seção. Tente novamente.')
     } finally {
       setStatusIA('idle')
     }
@@ -165,8 +167,10 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
       })
       const json = await res.json()
       if (res.ok) setValidacao(json)
+      else toast.error('Erro ao validar a seção. Tente novamente.')
     } catch (err) {
       console.error('Erro na validação:', err)
+      toast.error('Erro ao validar a seção. Tente novamente.')
     } finally {
       setStatusIA('idle')
     }
@@ -179,7 +183,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
     setStatusIA('salvando')
     try {
       const status = avancar ? 'aprovado' : 'gerado'
-      await fetch('/api/ia/salvar-secao', {
+      const res = await fetch('/api/ia/salvar-secao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -189,6 +193,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           status,
         }),
       })
+      if (!res.ok) throw new Error('Falha ao salvar')
 
       if (avancar) {
         const novasConcluidas = Array.from(new Set([...fasesConcluidas, faseAtualConfig.chave_secao]))
@@ -311,6 +316,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 isUltimaFase={isUltimaFase}
                 tituloOpcoes={faseAtualConfig.chave_secao?.includes('titulo') ? tituloOpcoes : []}
                 onSelecionarTituloOpcao={handleSelecionarTituloOpcao}
+                linkReferencias={`/trabalhos/${trabalho.id}/referencias`}
               />
             )}
           </div>

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { GraduationCap, LayoutDashboard, FolderOpen, PlusCircle, User, Settings, LogOut, Menu, X, ShieldCheck, Sun, Moon } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
@@ -20,19 +20,21 @@ const navLinks = [
   { href: '/novo-trabalho', label: 'Novo Trabalho',  icon: PlusCircle },
 ]
 
-const ADMIN_EMAIL = 'sandrodainez1@gmail.com'
-
 interface NavbarProps {
   userName?: string
   userEmail?: string
+  isAdmin?: boolean
 }
 
-export function Navbar({ userName, userEmail }: NavbarProps) {
+export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => setMounted(true), [])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -78,7 +80,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
                 </Link>
               )
             })}
-            {userEmail === ADMIN_EMAIL && (
+            {isAdmin && (
               <Link
                 href="/admin"
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -99,9 +101,10 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+              title={mounted ? (theme === 'dark' ? 'Modo claro' : 'Modo escuro') : 'Alternar tema'}
+              suppressHydrationWarning
             >
-              {theme === 'dark'
+              {!mounted || theme === 'dark'
                 ? <Sun className="h-4 w-4" />
                 : <Moon className="h-4 w-4" />
               }

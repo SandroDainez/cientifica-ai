@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import { extrairTextoSecao } from '@/lib/ai/utils'
+
+import { renderMarkdownInline } from '@/components/ui/MarkdownText'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
@@ -215,8 +218,8 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
               {i + 1} {secao.nome_secao.toUpperCase()}
             </h2>
             <div className="doc-content">
-              {(secao.conteudo ?? '').split('\n').filter(Boolean).map((paragrafo, pi) => (
-                <p key={pi}>{paragrafo}</p>
+              {extrairTextoSecao(secao.conteudo ?? '').split('\n').filter(Boolean).map((paragrafo, pi) => (
+                <p key={pi}>{renderMarkdownInline(paragrafo)}</p>
               ))}
             </div>
           </section>

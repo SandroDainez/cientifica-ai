@@ -31,6 +31,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     'registros_excluidos_titulo', 'textos_completos_avaliados', 'textos_excluidos',
     'estudos_incluidos', 'criterios_inclusao', 'criterios_exclusao',
     'estrategia_busca', 'data_busca', 'motivos_exclusao',
+    'pergunta_pico', 'numero_prospero',
   ]
   const dados = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)))
 

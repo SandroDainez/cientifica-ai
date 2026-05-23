@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   const fluxo = getFluxo(tipo_trabalho)
-  const primeiraFase = fluxo?.fases[0]?.id ?? 'tema'
+  const primeiraFase = fluxo?.fases[0]?.chave_secao ?? 'tema'
 
   const { data, error } = await supabase
     .from('trabalhos')

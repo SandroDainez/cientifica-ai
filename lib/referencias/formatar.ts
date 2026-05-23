@@ -289,7 +289,7 @@ export function formatarReferencia(r: Referencia, formato: FormatoCitacao, numer
 
   if (formato === 'vancouver') {
     if (r.tipo === 'artigo') return formatarArtigoVancouver(r, numero)
-    if (r.tipo === 'livro' || r.tipo === 'capitulo_livro' || r.tipo === 'monografia' as never)
+    if (r.tipo === 'livro' || r.tipo === 'capitulo_livro')
       return formatarLivroVancouver(r, numero)
     if (r.tipo === 'site') return formatarSiteVancouver(r, numero)
     if (r.tipo === 'tese' || r.tipo === 'dissertacao') return formatarTeseVancouver(r, numero)

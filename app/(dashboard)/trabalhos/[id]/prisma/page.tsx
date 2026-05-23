@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { PrismaClient } from './PrismaClient'
 import type { Trabalho } from '@/types'
 
@@ -17,6 +18,10 @@ export default async function PrismaPage({ params }: { params: Promise<{ id: str
     .single()
 
   if (!trabalhoData) redirect('/trabalhos')
+
+  // PRISMA só faz sentido para tipos que requerem revisão sistemática
+  const fluxo = getFluxo(trabalhoData.tipo_trabalho)
+  if (!fluxo?.requer_prisma) redirect(`/trabalhos/${id}/editar`)
 
   const { data: prismaData } = await supabase
     .from('prisma_dados')

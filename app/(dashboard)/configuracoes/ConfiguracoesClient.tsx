@@ -48,7 +48,8 @@ export function ConfiguracoesClient({ perfil }: Props) {
       if (!res.ok) throw new Error()
       setStatus('salvo')
       setTimeout(() => setStatus('idle'), 3000)
-    } catch {
+    } catch (err) {
+      console.error('[ConfiguracoesClient] Erro:', err)
       setStatus('erro')
       setTimeout(() => setStatus('idle'), 4000)
     }
@@ -61,7 +62,8 @@ export function ConfiguracoesClient({ perfil }: Props) {
       const supabase = createClient()
       await supabase.auth.signOut()
       router.push('/login')
-    } catch {
+    } catch (err) {
+      console.error('[ConfiguracoesClient] Erro:', err)
       setDeletando(false)
     }
   }

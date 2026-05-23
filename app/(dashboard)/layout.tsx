@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('nome, email')
+    .select('nome, email, is_admin')
     .eq('id', user.id)
     .single()
 
@@ -20,6 +20,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <Navbar
         userName={profile?.nome ?? user.email?.split('@')[0]}
         userEmail={profile?.email ?? user.email}
+        isAdmin={profile?.is_admin === true}
       />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
         {children}

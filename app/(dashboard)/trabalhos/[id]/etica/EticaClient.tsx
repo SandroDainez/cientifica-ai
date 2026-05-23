@@ -15,6 +15,7 @@ interface EticaData {
   envolve_seres_humanos: boolean
   envolve_animais: boolean
   tipo_pesquisa: string
+  area_tematica: string
   titulo_projeto: string
   pesquisador_responsavel: string
   instituicao_proponente: string
@@ -32,8 +33,7 @@ interface EticaData {
   numero_caae: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface Props { trabalho: Trabalho; eticaInicial: any }
+interface Props { trabalho: Trabalho; eticaInicial: EticaData | null }
 
 const TIPOS_PESQUISA = [
   'Observacional',
@@ -64,6 +64,7 @@ export function EticaClient({ trabalho, eticaInicial }: Props) {
     envolve_seres_humanos: eticaInicial?.envolve_seres_humanos ?? false,
     envolve_animais: eticaInicial?.envolve_animais ?? false,
     tipo_pesquisa: eticaInicial?.tipo_pesquisa ?? '',
+    area_tematica: eticaInicial?.area_tematica ?? '',
     titulo_projeto: eticaInicial?.titulo_projeto ?? trabalho.titulo ?? '',
     pesquisador_responsavel: eticaInicial?.pesquisador_responsavel ?? '',
     instituicao_proponente: eticaInicial?.instituicao_proponente ?? '',
@@ -100,7 +101,8 @@ export function EticaClient({ trabalho, eticaInicial }: Props) {
       if (!res.ok) throw new Error()
       setStatus('salvo')
       setTimeout(() => setStatus('idle'), 3000)
-    } catch {
+    } catch (err) {
+      console.error('[EticaClient] Erro:', err)
       setStatus('erro')
       setTimeout(() => setStatus('idle'), 4000)
     }
@@ -207,7 +209,7 @@ export function EticaClient({ trabalho, eticaInicial }: Props) {
           </Field>
 
           <Field label="Área temática (CNS)">
-            <select value="" onChange={e => { /* handled externally */ }} className={selectCls}>
+            <select value={dados.area_tematica} onChange={e => set('area_tematica', e.target.value)} className={selectCls}>
               <option value="">Selecione a área temática…</option>
               {AREAS_TEMATICAS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>

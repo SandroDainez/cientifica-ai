@@ -44,15 +44,8 @@ export function ApresentacaoClient({ trabalho }: Props) {
     setStatus('gerando')
     setProgresso('Analisando o trabalho…')
     try {
-      const res = await fetch('/api/exportar/pptx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trabalhoId: trabalho.id,
-          tempoPresentacao: tempo,
-          temaCor,
-          incluirNotas,
-        }),
+      const res = await fetch(`/api/exportar/pptx?id=${trabalho.id}`, {
+        method: 'GET',
       })
 
       if (!res.ok) {
@@ -71,7 +64,8 @@ export function ApresentacaoClient({ trabalho }: Props) {
 
       setStatus('pronto')
       setProgresso('')
-    } catch {
+    } catch (err) {
+      console.error('[ApresentacaoClient] Erro:', err)
       setStatus('erro')
       setProgresso('')
     }

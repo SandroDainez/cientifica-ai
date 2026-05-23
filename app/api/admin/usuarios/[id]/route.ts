@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const ADMIN_EMAIL = 'sandrodainez1@gmail.com'
+import { isAdmin } from '@/lib/auth/is-admin'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Verifica que quem chama é o admin
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user || !(await isAdmin(supabase, user.id))) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
   }
 

@@ -42,7 +42,8 @@ export function UsuariosClient({ usuarios: inicial }: { usuarios: Usuario[] }) {
         u.id === id ? { ...u, banned: !u.banned } : u
       ))
       toast.success(banido ? 'Usuário desbloqueado.' : 'Usuário bloqueado.')
-    } catch {
+    } catch (err) {
+      console.error('[UsuariosAdmin] Erro:', err)
       toast.error('Erro ao alterar status do usuário.')
     } finally {
       setLoadingId(null)

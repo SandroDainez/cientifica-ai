@@ -27,7 +27,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const body = await request.json()
   const allowed = [
-    'envolve_seres_humanos', 'envolve_animais', 'tipo_pesquisa', 'titulo_projeto',
+    'envolve_seres_humanos', 'envolve_animais', 'tipo_pesquisa', 'area_tematica', 'titulo_projeto',
     'pesquisador_responsavel', 'instituicao_proponente', 'resumo_projeto', 'objetivo_primario',
     'justificativa', 'metodologia', 'criterios_inclusao', 'criterios_exclusao',
     'tamanho_amostra', 'riscos', 'beneficios', 'termo_consentimento',

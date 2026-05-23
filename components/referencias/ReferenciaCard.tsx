@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, Trash2, CheckCheck, FileText, BookOpen, Globe, GraduationCap, Scale, FileBarChart, BookMarked } from 'lucide-react'
+import { Copy, Trash2, CheckCheck, FileText, BookOpen, Globe, GraduationCap, Scale, FileBarChart, BookMarked, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import type { Referencia, FormatoCitacao, TipoReferencia } from '@/types'
@@ -39,10 +39,11 @@ const CONF_COLORS = {
 interface ReferenciaCardProps {
   referencia: Referencia
   formato: FormatoCitacao
-  onDeletar: (id: string) => void
+  onDeletar?: (id: string) => void
+  deletando?: boolean
 }
 
-export function ReferenciaCard({ referencia: r, formato, onDeletar }: ReferenciaCardProps) {
+export function ReferenciaCard({ referencia: r, formato, onDeletar, deletando }: ReferenciaCardProps) {
   const [copiado, setCopiado] = useState(false)
   const Icon = TIPO_ICONS[r.tipo] ?? FileText
   const textoFormatado = formatarReferencia(r, formato)
@@ -111,13 +112,19 @@ export function ReferenciaCard({ referencia: r, formato, onDeletar }: Referencia
               : <><Copy className="h-3.5 w-3.5" /> Copiar</>
             }
           </button>
-          <button
-            onClick={() => onDeletar(r.id)}
-            title="Remover referência"
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {onDeletar && (
+            <button
+              onClick={() => onDeletar(r.id)}
+              disabled={deletando}
+              title="Remover referência"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deletando
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Trash2 className="h-3.5 w-3.5" />
+              }
+            </button>
+          )}
         </div>
       </div>
     </div>

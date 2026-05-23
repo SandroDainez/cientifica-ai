@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/auth/is-admin'
 import Link from 'next/link'
 import { LayoutDashboard, Users, FolderOpen, ShieldCheck } from 'lucide-react'
 import type { ReactNode } from 'react'
-
-const ADMIN_EMAIL = 'sandrodainez1@gmail.com'
 
 const adminNav = [
   { href: '/admin',          label: 'Métricas',   icon: LayoutDashboard },
@@ -16,7 +15,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || user.email !== ADMIN_EMAIL) redirect('/dashboard')
+  if (!user || !(await isAdmin(supabase, user.id))) redirect('/dashboard')
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8">

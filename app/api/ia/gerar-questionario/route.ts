@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { streamText } from '@/lib/ai/stream'
+import { extrairTextoSecao } from '@/lib/ai/utils'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const rl = await checkRateLimit(supabase, user.id, 'gerar-questionario')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Aguarde um momento.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
 
   const { trabalhoId, tipoInstrumento } = await request.json() as {
     trabalhoId: string; tipoInstrumento?: string
@@ -22,7 +32,7 @@ export async function POST(request: Request) {
     .from('secoes_trabalho').select('nome_secao, conteudo').eq('trabalho_id', trabalhoId)
     .in('status', ['gerado', 'editado', 'aprovado'])
 
-  const contexto = secoes?.map(s => `${s.nome_secao}: ${(s.conteudo ?? '').substring(0, 400)}`).join('\n') ?? ''
+  const contexto = secoes?.map(s => `${s.nome_secao}: ${extrairTextoSecao(s.conteudo ?? '').substring(0, 400)}`).join('\n') ?? ''
 
   const systemPrompt = `Você é um especialista em metodologia de pesquisa científica e construção de instrumentos de coleta de dados.
 Você conhece os padrões metodológicos para questionários, escalas e formulários de coleta em pesquisa científica.

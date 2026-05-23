@@ -4,12 +4,21 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildValidarSecaoPrompt } from '@/lib/ai/prompts'
 import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { callAI } from '@/lib/ai/stream'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, ResultadoValidacao } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const rl = await checkRateLimit(supabase, user.id, 'validar-secao')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Aguarde um momento.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
 
   const { trabalhoId, chaveSecao, conteudo } = await request.json() as {
     trabalhoId: string

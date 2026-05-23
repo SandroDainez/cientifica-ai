@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { aiClient, currentModel } from '@/lib/ai/client'
 import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, MensagemIA, Referencia } from '@/types'
 
 export async function POST(request: Request) {
@@ -10,10 +11,20 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const { trabalhoId, mensagens, chaveSecao } = await request.json() as {
+  // Rate limiting: 20 mensagens por minuto
+  const rl = await checkRateLimit(supabase, user.id, 'chat')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas mensagens em seguida. Aguarde um momento.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
+
+  const { trabalhoId, mensagens, chaveSecao, conteudoAtual } = await request.json() as {
     trabalhoId: string
     mensagens: MensagemIA[]
     chaveSecao?: string
+    conteudoAtual?: string
   }
 
   const { data: trabalhoData } = await supabase
@@ -44,8 +55,12 @@ export async function POST(request: Request) {
     ? `\n\n**Referências bibliográficas cadastradas neste trabalho:**\n${formatarRefsParaPrompt(referencias, trabalho.formato_citacao)}\nQuando o usuário perguntar sobre citações ou referências, use as acima.`
     : ''
 
+  const conteudoBloco = conteudoAtual?.trim()
+    ? `\n\n**Texto atual da seção (para contexto — não reproduza integralmente):**\n${conteudoAtual.substring(0, 3000)}`
+    : ''
+
   const contextSystem = chaveSecao
-    ? `${baseSystem}\n\nO usuário está trabalhando na seção "${chaveSecao}". Responda perguntas relacionadas a essa seção com foco no contexto do trabalho em elaboração.${refsBloco}`
+    ? `${baseSystem}\n\nO usuário está trabalhando na seção "${chaveSecao}". Responda perguntas relacionadas a essa seção com foco no contexto do trabalho em elaboração.${conteudoBloco}${refsBloco}`
     : `${baseSystem}\n\nResponda perguntas gerais sobre o trabalho e a escrita científica.${refsBloco}`
 
   const stream = new ReadableStream({

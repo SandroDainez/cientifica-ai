@@ -2,11 +2,20 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const rl = await checkRateLimit(supabase, user.id, 'gerar-tcle')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Aguarde um momento.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
 
   const { titulo, objetivo, metodologia, riscos, beneficios, pesquisador, instituicao } =
     await request.json() as {

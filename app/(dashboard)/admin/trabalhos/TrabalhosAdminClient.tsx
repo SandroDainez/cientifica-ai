@@ -50,7 +50,8 @@ export function TrabalhosAdminClient({ trabalhos: inicial, filtrosUrl }: {
       if (!res.ok) throw new Error()
       setTrabalhos(prev => prev.map(t => t.id === id ? { ...t, liberado: !t.liberado } : t))
       toast.success(liberadoAtual ? 'Exportação bloqueada.' : 'Trabalho liberado para exportar!')
-    } catch {
+    } catch (err) {
+      console.error('[TrabalhosAdmin] Erro:', err)
       toast.error('Erro ao alterar acesso.')
     } finally {
       setLoadingId(null)

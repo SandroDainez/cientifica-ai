@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Loader2, MessageSquare, Lightbulb, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MarkdownText } from '@/components/ui/MarkdownText'
 import type { MensagemIA, FaseConfig } from '@/types'
 
 // ── Sugestões de perguntas contextuais por tipo de seção ─────────────────
@@ -175,7 +176,8 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
           return copia
         })
       }
-    } catch {
+    } catch (err) {
+      console.error('[PainelIA] Erro no chat:', err)
       setMensagens(prev => [
         ...prev,
         { role: 'assistant', content: 'Erro ao conectar com a IA. Tente novamente.' },
@@ -361,7 +363,12 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-gray-100 text-gray-800'
                 )}>
-                  {m.content || <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {m.role === 'assistant'
+                    ? (m.content
+                        ? <MarkdownText content={m.content} className="space-y-1" />
+                        : <Loader2 className="h-3.5 w-3.5 animate-spin" />)
+                    : m.content
+                  }
                 </div>
                 {m.role === 'user' && (
                   <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">

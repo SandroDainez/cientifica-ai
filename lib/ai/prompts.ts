@@ -259,39 +259,6 @@ Responda APENAS com JSON:
 }
 
 // ============================================================
-// Prompt para geração de referências
-// ============================================================
-
-export function buildGerarReferenciasPrompt(
-  tema: string,
-  area: string,
-  tipoTrabalho: TipoTrabalho,
-  formato: FormatoCitacao
-): string {
-  return `Sugira 10 referências bibliográficas relevantes para um ${tipoTrabalho} sobre "${tema}" na área de ${area}.
-
-IMPORTANTE: Não invente referências reais. Crie exemplos ilustrativos com [PLACEHOLDER] onde os dados reais deveriam ser verificados.
-
-Formato de saída: JSON com array de referências:
-[
-  {
-    "tipo": "artigo" | "livro" | "site" | "tese" | "anais",
-    "titulo": "string",
-    "autores": [{"nome": "string", "sobrenome": "string"}],
-    "ano": number,
-    "journal": "string ou null",
-    "volume": "string ou null",
-    "numero": "string ou null",
-    "paginas": "string ou null",
-    "doi": "string ou null",
-    "editora": "string ou null",
-    "cidade": "string ou null",
-    "referencia_formatada_${formato}": "string formatada em ${formato.toUpperCase()}"
-  }
-]`
-}
-
-// ============================================================
 // Prompt para geração de resumo/abstract
 // ============================================================
 

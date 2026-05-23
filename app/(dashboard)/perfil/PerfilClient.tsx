@@ -64,7 +64,8 @@ export function PerfilClient({ perfil, email }: Props) {
       if (!res.ok) throw new Error()
       setStatus('salvo')
       setTimeout(() => setStatus('idle'), 3000)
-    } catch {
+    } catch (err) {
+      console.error('[PerfilClient] Erro:', err)
       setStatus('erro')
       setTimeout(() => setStatus('idle'), 4000)
     }

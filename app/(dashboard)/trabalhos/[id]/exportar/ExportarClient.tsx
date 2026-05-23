@@ -45,7 +45,8 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo }: Prop
       URL.revokeObjectURL(a.href)
       setStatus('done')
       setTimeout(() => setStatus('idle'), 3000)
-    } catch {
+    } catch (err) {
+      console.error('[ExportarClient] Erro:', err)
       setStatus('error')
       setTimeout(() => setStatus('idle'), 4000)
     }

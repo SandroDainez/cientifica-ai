@@ -3,10 +3,11 @@ import {
   GraduationCap, FileText, BookOpen, FlaskConical, Award,
   ArrowRight, CheckCircle2, Sparkles, Zap, Shield, Clock,
   ChevronDown, Star, Users, BookMarked, Presentation,
-  BarChart3, Search, ClipboardList,
+  BarChart3, Search, ClipboardList, LayoutDashboard,
 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/server'
 
 // ── Dados ──────────────────────────────────────────────────────
 
@@ -143,9 +144,9 @@ const FAQ = [
 
 // ── Componentes internos ──────────────────────────────────────
 
-function Badge({ children }: { children: React.ReactNode }) {
+function HeroBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-200">
+    <span className="inline-flex items-center gap-1.5 gradient-brand text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm">
       {children}
     </span>
   )
@@ -153,7 +154,11 @@ function Badge({ children }: { children: React.ReactNode }) {
 
 // ── Página ────────────────────────────────────────────────────
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const logado = !!user
+
   return (
     <div className="min-h-screen bg-white">
 
@@ -178,22 +183,31 @@ export default function HomePage() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link href="/login" className={cn(buttonVariants({ variant: 'ghost' }), 'hidden sm:flex')}>
-              Entrar
-            </Link>
-            <Link href="/cadastro" className={cn(buttonVariants(), 'gap-1.5')}>
-              Criar conta grátis <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            {logado ? (
+              <Link href="/dashboard" className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5')}>
+                <LayoutDashboard className="h-4 w-4" />
+                Ir ao painel
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className={cn(buttonVariants({ variant: 'ghost' }), 'hidden sm:flex')}>
+                  Entrar
+                </Link>
+                <Link href="/cadastro" className={cn(buttonVariants(), 'gap-1.5')}>
+                  Criar conta grátis <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       {/* ── Hero ───────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 pt-20 pb-16 text-center">
-        <Badge>
+        <HeroBadge>
           <Sparkles className="h-3.5 w-3.5" />
-          Powered by DeepSeek AI · Normas ABNT 2024
-        </Badge>
+          IA Generativa · ABNT · Vancouver · APA
+        </HeroBadge>
 
         <h1 className="mt-6 text-5xl sm:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
           Do tema à defesa,<br />
@@ -206,17 +220,28 @@ export default function HomePage() {
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/cadastro" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
-            Começar agora — é grátis <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href="/login" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'text-base px-8')}>
-            Já tenho conta
-          </Link>
+          {logado ? (
+            <Link href="/dashboard" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
+              <LayoutDashboard className="h-4 w-4" />
+              Ir ao painel <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              <Link href="/cadastro" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
+                Começar agora — é grátis <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/login" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'text-base px-8')}>
+                Já tenho conta
+              </Link>
+            </>
+          )}
         </div>
 
+        {!logado && (
         <p className="mt-4 text-xs text-muted-foreground">
           Sem cartão de crédito · Escreva grátis · Pague R$ 197 só para exportar
         </p>
+        )}
 
         {/* Tipos suportados */}
         <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto">
@@ -418,14 +443,24 @@ export default function HomePage() {
             Crie sua conta gratuita agora e comece o seu TCC, artigo ou dissertação em minutos. Sem assinatura.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/cadastro"
-              className="inline-flex items-center justify-center gap-2 bg-white text-primary font-semibold text-base px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors">
-              Criar conta gratuita <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href="/login"
-              className="inline-flex items-center justify-center gap-2 border-2 border-white/30 text-white font-semibold text-base px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">
-              Já tenho conta
-            </Link>
+            {logado ? (
+              <Link href="/dashboard"
+                className="inline-flex items-center justify-center gap-2 bg-white text-primary font-semibold text-base px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors">
+                <LayoutDashboard className="h-4 w-4" />
+                Ir ao painel <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <>
+                <Link href="/cadastro"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-primary font-semibold text-base px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors">
+                  Criar conta gratuita <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/login"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-white/30 text-white font-semibold text-base px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">
+                  Já tenho conta
+                </Link>
+              </>
+            )}
           </div>
           <p className="mt-5 text-xs text-teal-200">
             Sem cartão de crédito · Escreva grátis · Pague só para exportar

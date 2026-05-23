@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import { extrairTextoSecao } from '@/lib/ai/utils'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   HeadingLevel, PageBreak, convertInchesToTwip,
@@ -153,7 +154,8 @@ export async function GET(request: Request) {
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    const paragrafos = (secao.conteudo ?? '').split('\n').filter(Boolean)
+    const textoLimpo = extrairTextoSecao(secao.conteudo ?? '')
+    const paragrafos = textoLimpo.split('\n').filter(Boolean)
     paragrafos.forEach(p => {
       children.push(paragrafo(p))
     })

@@ -38,7 +38,8 @@ export function RelatorioQualidade({ trabalhoId, onClose }: Props) {
       if (!res.ok) throw new Error()
       const data = await res.json() as TRelatorio
       setRelatorio(data)
-    } catch {
+    } catch (err) {
+      console.error('[RelatorioQualidade] Erro ao carregar relatório:', err)
       setErro(true)
     } finally {
       setCarregando(false)

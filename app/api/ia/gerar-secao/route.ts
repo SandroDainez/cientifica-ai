@@ -4,12 +4,25 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { getSystemPromptEspecializado } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
-import type { Trabalho, Referencia } from '@/types'
+import { extrairTextoSecao } from '@/lib/ai/utils'
+import { formatarReferencia } from '@/lib/referencias/formatar'
+import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
+import type { Trabalho, Referencia, FormatoCitacao } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  // Rate limiting: 8 gerações por minuto por usuário
+  const rl = await checkRateLimit(supabase, user.id, 'gerar-secao')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas gerações em sequência. Aguarde um momento antes de tentar novamente.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
 
   const { trabalhoId, chaveSecao, instrucoes_usuario, respostas_usuario } = await request.json() as {
     trabalhoId: string
@@ -39,7 +52,122 @@ export async function POST(request: Request) {
     .select('*')
     .eq('trabalho_id', trabalhoId)
     .order('created_at')
-  const referencias = (referenciasData ?? []) as Referencia[]
+  let referencias = (referenciasData ?? []) as Referencia[]
+
+  // ── Auto-importação de referências ────────────────────────────────────────
+  // Quando o trabalho não tem referências, busca automaticamente em CrossRef
+  // + PubMed usando múltiplas queries paralelas (título, área, seção) para
+  // garantir cobertura abrangente. Objetivo: ≥ 12 refs reais antes de gerar.
+  if (referencias.length === 0) {
+    try {
+      // Monta queries diversificadas para cobrir diferentes ângulos do tema
+      const queries: string[] = []
+
+      if (trabalho.titulo?.trim())            queries.push(trabalho.titulo.trim())
+      if (trabalho.area_conhecimento?.trim()) queries.push(trabalho.area_conhecimento.trim())
+
+      // Query específica por seção para maior relevância
+      const sectionKeywords: Record<string, string> = {
+        introducao:          'introduction review',
+        revisao_literatura:  'literature review',
+        referencial_teorico: 'theoretical framework',
+        metodologia:         'research methods methodology',
+        resultados:          'results findings',
+        discussao:           'discussion analysis',
+        pergunta_pico:       'clinical research PICO',
+        estrategia_busca:    'systematic search strategy',
+      }
+      const secKw = sectionKeywords[chaveSecao] ?? ''
+      if (secKw && trabalho.area_conhecimento) {
+        queries.push(`${trabalho.area_conhecimento} ${secKw}`)
+      }
+
+      // Tipos de trabalho com palavras-chave metodológicas adicionais
+      const tipoKw: Record<string, string> = {
+        revisao_sistematica: 'systematic review meta-analysis',
+        artigo_original:     'original research clinical study',
+        relato_caso:         'case report clinical case',
+      }
+      const tkw = tipoKw[trabalho.tipo_trabalho]
+      if (tkw && trabalho.area_conhecimento) {
+        queries.push(`${trabalho.area_conhecimento} ${tkw}`)
+      }
+
+      const queriesValidas = queries.filter(q => q.trim().length > 5).slice(0, 3)
+
+      if (queriesValidas.length > 0) {
+        console.log('[gerar-secao] Buscando referências automáticas para:', queriesValidas)
+
+        // Busca paralela: cada query traz 6 candidatos → ~18 antes de deduplicar
+        const resultados = await Promise.all(
+          queriesValidas.map(q => buscarRefsExternas(q, 6))
+        )
+
+        // Achata e deduplica por DOI e título
+        const vistosDois  = new Set<string>()
+        const vistosTitulos = new Set<string>()
+        const refsUnicas = resultados.flat().filter(ref => {
+          const titleKey = ref.titulo.toLowerCase().slice(0, 60)
+          if (vistosTitulos.has(titleKey)) return false
+          vistosTitulos.add(titleKey)
+          if (ref.doi) {
+            if (vistosDois.has(ref.doi)) return false
+            vistosDois.add(ref.doi)
+          }
+          return true
+        }).slice(0, 15)
+
+        if (refsUnicas.length > 0) {
+          const formato = (trabalho.formato_citacao ?? 'abnt') as FormatoCitacao
+          const inserir = refsUnicas.map(ref => {
+            const parcial = {
+              id: '', trabalho_id: trabalhoId, dados_extras: {},
+              confiabilidade: 'alta' as const, created_at: '',
+              referencia_formatada_abnt: '',
+              referencia_formatada_vancouver: '',
+              referencia_formatada_apa: '',
+              ...ref,
+            } as Referencia
+
+            return {
+              trabalho_id:  trabalhoId,
+              tipo:         ref.tipo,
+              titulo:       ref.titulo,
+              autores:      ref.autores ?? [],
+              ano:          ref.ano,
+              journal:      ref.journal,
+              volume:       ref.volume,
+              numero:       ref.numero,
+              paginas:      ref.paginas,
+              doi:          ref.doi,
+              pmid:         ref.pmid,
+              editora:      ref.editora,
+              isbn:         ref.isbn,
+              dados_extras: {},
+              fonte_tipo:   ref.fonte_tipo,
+              confiabilidade: 'alta',
+              referencia_formatada_abnt:      formatarReferencia(parcial, 'abnt'),
+              referencia_formatada_vancouver: formatarReferencia(parcial, 'vancouver'),
+              referencia_formatada_apa:       formatarReferencia(parcial, 'apa'),
+            }
+          })
+
+          const { data: salvas } = await supabase
+            .from('referencias')
+            .insert(inserir)
+            .select()
+
+          if (salvas && salvas.length > 0) {
+            referencias = salvas as Referencia[]
+            console.log(`[gerar-secao] ${referencias.length} referências reais auto-importadas`)
+          }
+        }
+      }
+    } catch (err) {
+      // Falha silenciosa — gera a seção sem refs em vez de bloquear o usuário
+      console.error('[gerar-secao] Falha na auto-importação de referências:', err)
+    }
+  }
 
   // Carrega conteúdo das seções anteriores para contexto
   const { data: secoesAnteriores } = await supabase
@@ -48,25 +176,6 @@ export async function POST(request: Request) {
     .eq('trabalho_id', trabalhoId)
     .in('status', ['gerado', 'editado', 'aprovado'])
     .order('ordem')
-
-  // Extrai texto legível de conteúdo de seções (alguns campos são JSON — ex: resumo)
-  function extrairTextoSecao(conteudo: string): string {
-    if (!conteudo) return ''
-    try {
-      const parsed = JSON.parse(conteudo)
-      if (typeof parsed === 'object' && parsed !== null) {
-        // ResumoEditor serializa: { resumo, abstract, palavras_chave, keywords }
-        const partes: string[] = []
-        if (parsed.resumo) partes.push(`Resumo: ${parsed.resumo}`)
-        if (parsed.abstract) partes.push(`Abstract: ${parsed.abstract}`)
-        if (parsed.palavras_chave?.length) partes.push(`Palavras-chave: ${parsed.palavras_chave.join('; ')}`)
-        return partes.join('\n')
-      }
-    } catch {
-      // não é JSON — usa o texto puro
-    }
-    return conteudo
-  }
 
   const contexto_anterior = secoesAnteriores
     ?.map(s => {

@@ -4,6 +4,7 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import pptxgen from 'pptxgenjs'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import { extrairTextoSecao } from '@/lib/ai/utils'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 export async function GET(request: Request) {
@@ -116,7 +117,7 @@ export async function GET(request: Request) {
     })
 
     // Conteúdo — primeiros ~600 caracteres para o slide
-    const texto = (secao.conteudo ?? '').replace(/\n+/g, ' ').trim()
+    const texto = extrairTextoSecao(secao.conteudo ?? '').replace(/\n+/g, ' ').trim()
     const resumo = texto.length > 600 ? texto.substring(0, 600) + '…' : texto
 
     slide.addText(resumo, {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { callAI } from '@/lib/ai/stream'
+import { extrairTextoSecao } from '@/lib/ai/utils'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho } from '@/types'
 
 export interface RelatorioQualidade {
@@ -26,6 +28,14 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  const rl = await checkRateLimit(supabase, user.id, 'relatorio-qualidade')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Aguarde um momento.' },
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+    )
+  }
+
   const { trabalhoId } = await request.json() as { trabalhoId: string }
 
   const { data: trabalhoData } = await supabase
@@ -43,8 +53,8 @@ export async function POST(request: Request) {
     nome: s.nome_secao,
     chave: s.chave_secao ?? s.nome_secao,
     status: s.status,
-    palavras: s.conteudo ? s.conteudo.trim().split(/\s+/).length : 0,
-    primeiras_palavras: s.conteudo?.substring(0, 300) ?? '',
+    palavras: s.conteudo ? extrairTextoSecao(s.conteudo).trim().split(/\s+/).length : 0,
+    primeiras_palavras: extrairTextoSecao(s.conteudo ?? '').substring(0, 300),
   })) ?? []
 
   const prompt = `Analise o seguinte trabalho científico (${trabalho.tipo_trabalho}) e gere um relatório de qualidade.
@@ -90,7 +100,8 @@ Seja objetivo e construtivo. Identifique problemas reais com base nos trechos fo
     const jsonStr = resposta.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '')
     const relatorio = JSON.parse(jsonStr) as RelatorioQualidade
     return NextResponse.json(relatorio)
-  } catch {
+  } catch (err) {
+    console.error('[relatorio-qualidade] Erro:', err)
     return NextResponse.json({ error: 'Erro ao gerar relatório' }, { status: 500 })
   }
 }
