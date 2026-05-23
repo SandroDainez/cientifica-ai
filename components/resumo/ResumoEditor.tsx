@@ -110,10 +110,10 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
       </div>
 
       {/* ── RESUMO PT ─────────────────────────────────────── */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
           <FileText className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-gray-900">Resumo em Português</p>
+          <p className="text-sm font-semibold text-foreground">Resumo em Português</p>
           <span className="ml-auto text-xs text-muted-foreground">ABNT NBR 6028 — {minResumo}–{maxResumo} palavras</span>
         </div>
         <div className="p-5 space-y-3">
@@ -126,7 +126,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
             />
             {gerandoResumo && (
               <div className="absolute inset-0 flex items-start justify-end p-2 pointer-events-none">
-                <span className="text-xs text-primary flex items-center gap-1 bg-white/90 px-2 py-1 rounded-full border">
+                <span className="text-xs text-primary flex items-center gap-1 bg-card/90 px-2 py-1 rounded-full border">
                   <Loader2 className="h-3 w-3 animate-spin" /> Gerando…
                 </span>
               </div>
@@ -146,10 +146,10 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
       </div>
 
       {/* ── PALAVRAS-CHAVE ────────────────────────────────── */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
           <Tag className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-gray-900">Palavras-chave</p>
+          <p className="text-sm font-semibold text-foreground">Palavras-chave</p>
           <span className="ml-auto text-xs text-muted-foreground">3–6 termos (preferencialmente DeCS/MeSH)</span>
         </div>
         <div className="p-5">
@@ -170,10 +170,10 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
       </div>
 
       {/* ── ABSTRACT EN ──────────────────────────────────── */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
           <Globe className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-gray-900">Abstract (English)</p>
+          <p className="text-sm font-semibold text-foreground">Abstract (English)</p>
           <span className="ml-auto text-xs text-muted-foreground">Academic English — not a literal translation</span>
         </div>
         <div className="p-5 space-y-3">
@@ -186,7 +186,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
             />
             {gerandoAbstract && (
               <div className="absolute inset-0 flex items-start justify-end p-2 pointer-events-none">
-                <span className="text-xs text-primary flex items-center gap-1 bg-white/90 px-2 py-1 rounded-full border">
+                <span className="text-xs text-primary flex items-center gap-1 bg-card/90 px-2 py-1 rounded-full border">
                   <Loader2 className="h-3 w-3 animate-spin" /> Generating…
                 </span>
               </div>
@@ -209,10 +209,10 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
       </div>
 
       {/* ── KEYWORDS ─────────────────────────────────────── */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
           <Tag className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-gray-900">Keywords (English)</p>
+          <p className="text-sm font-semibold text-foreground">Keywords (English)</p>
           <span className="ml-auto text-xs text-muted-foreground">3–6 terms (MeSH preferred)</span>
         </div>
         <div className="p-5">

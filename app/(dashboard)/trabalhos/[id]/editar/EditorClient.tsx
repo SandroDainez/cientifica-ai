@@ -174,7 +174,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
       {/* Conteúdo principal */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b bg-white sticky top-16 z-10">
+        <div className="px-6 pt-6 pb-4 border-b bg-background sticky top-16 z-10">
           <PageHeader
             title={trabalho.titulo || 'Trabalho sem título'}
             description={getTipoLabel(trabalho.tipo_trabalho)}

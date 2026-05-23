@@ -77,12 +77,12 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
   if (!isOpen) return null
 
   return (
-    <aside className="w-80 shrink-0 flex flex-col border-l bg-white h-[calc(100vh-4rem)] sticky top-16 overflow-hidden">
+    <aside className="w-80 shrink-0 flex flex-col border-l bg-card h-[calc(100vh-4rem)] sticky top-16 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-gray-900">Assistente IA</span>
+          <span className="text-sm font-semibold text-foreground">Assistente IA</span>
         </div>
         <button onClick={onClose} className="p-1 rounded-md hover:bg-gray-100 text-muted-foreground">
           <X className="h-4 w-4" />
@@ -118,7 +118,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               Sobre esta seção
             </p>
-            <p className="text-xs text-gray-700 leading-relaxed">{fase.instrucoes}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{fase.instrucoes}</p>
           </div>
 
           {fase.dicas_ia.length > 0 && (
@@ -128,7 +128,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
               </p>
               <ul className="space-y-2">
                 {fase.dicas_ia.map(dica => (
-                  <li key={dica} className="flex items-start gap-2 text-xs text-gray-700">
+                  <li key={dica} className="flex items-start gap-2 text-xs text-muted-foreground">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                     {dica}
                   </li>

@@ -83,14 +83,14 @@ export function EditorArea({
   return (
     <div className="flex-1 min-w-0 space-y-4">
       {/* Cabeçalho da fase */}
-      <div className="bg-white border rounded-xl p-5">
+      <div className="bg-card border rounded-xl p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
               <AlignLeft className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900">{fase.nome}</h2>
+              <h2 className="font-semibold text-foreground">{fase.nome}</h2>
               <p className="text-sm text-muted-foreground mt-0.5">{fase.descricao}</p>
               {(fase.min_palavras || fase.max_palavras) && (
                 <p className={cn(
@@ -126,7 +126,7 @@ export function EditorArea({
             <button
               onClick={onValidar}
               disabled={busy || !conteudo.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {statusIA === 'validando'
                 ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Validando…</>
@@ -137,7 +137,7 @@ export function EditorArea({
             {!iaPanelOpen && (
               <button
                 onClick={onAbrirIA}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
               >
                 <Lightbulb className="h-3.5 w-3.5" /> Dicas IA
               </button>
@@ -147,7 +147,7 @@ export function EditorArea({
       </div>
 
       {/* Área de texto */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         <textarea
           ref={textareaRef}
           value={conteudo}
@@ -161,8 +161,8 @@ export function EditorArea({
 
       {/* Resultado de validação */}
       {validacao && (
-        <div className="bg-white border rounded-xl p-5">
-          <p className="text-sm font-semibold text-gray-900 mb-3">Resultado da validação</p>
+        <div className="bg-card border rounded-xl p-5">
+          <p className="text-sm font-semibold text-foreground mb-3">Resultado da validação</p>
           <ValidadorSecao resultado={validacao} onAplicarSugestao={onAplicarSugestao} />
         </div>
       )}
@@ -172,7 +172,7 @@ export function EditorArea({
         <button
           onClick={() => onSalvar(false)}
           disabled={busy || !conteudo.trim()}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {statusIA === 'salvando'
             ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando…</>
