@@ -1,4 +1,4 @@
-import type { TipoTrabalho, FormatoCitacao, NivelExperiencia, FaseConfig } from '@/types'
+import type { TipoTrabalho, FormatoCitacao, NivelExperiencia, FaseConfig, Referencia } from '@/types'
 
 // ============================================================
 // Sistema base — personaliza o tom conforme nível do usuário
@@ -28,14 +28,52 @@ export function buildSystemPrompt(
     relatorio_ic: 'relatório de iniciação científica',
   }
 
+  const instrucaoCitacao = formato === 'vancouver'
+    ? `Para citações numéricas Vancouver, use [1], [2], [3] etc. conforme a ordem de aparição.`
+    : formato === 'apa'
+    ? `Para citações APA, use (Sobrenome, Ano) no texto e liste as referências ao final.`
+    : `Para citações ABNT (NBR 10520), use a notação SOBRENOME (ANO) ou (SOBRENOME, ANO) no texto.
+Para 2 autores: SOBRENOME; SOBRENOME (ANO). Para 3 ou mais: SOBRENOME et al. (ANO).
+Se o trabalho tiver referências cadastradas, use-as diretamente com o sobrenome correto do autor.
+Se não houver referências cadastradas, use (SOBRENOME, ANO) como formato indicativo — nunca use colchetes [AUTOR, ANO].`
+
   return `Você é um assistente especializado em escrita científica acadêmica brasileira.
 Está ajudando um ${nivelDesc}
 O trabalho em elaboração é um ${tipoDesc[tipoTrabalho]}.
-O formato de citação usado é ${formato.toUpperCase()}.
+O formato de citação adotado é ${formato.toUpperCase()}.
 Sempre escreva em português brasileiro formal e acadêmico.
-Jamais invente dados, estatísticas, referências ou fatos — deixe espaço para o autor preencher com dados reais.
-Quando mencionar citações, use a notação [AUTOR, ANO] como placeholder.
+Jamais invente dados, estatísticas ou fatos — deixe espaço explícito para o autor preencher.
+${instrucaoCitacao}
 Siga rigorosamente as normas ABNT para trabalhos brasileiros quando aplicável.`
+}
+
+// ============================================================
+// Helper — formata referências para contexto do prompt
+// ============================================================
+
+export function formatarRefsParaPrompt(refs: Referencia[], formato: FormatoCitacao = 'abnt'): string {
+  if (!refs.length) return ''
+  return refs.map((ref, i) => {
+    const autores = ref.autores ?? []
+    const sobrenome1 = autores[0]?.sobrenome?.toUpperCase() ?? 'AUTOR'
+    const citacao = formato === 'vancouver'
+      ? `[${i + 1}]`
+      : autores.length === 0
+        ? `(AUTOR, ${ref.ano ?? 'ANO'})`
+        : autores.length === 1
+          ? `(${sobrenome1}, ${ref.ano ?? 'ANO'})`
+          : autores.length === 2
+            ? `(${sobrenome1}; ${autores[1].sobrenome?.toUpperCase()}, ${ref.ano ?? 'ANO'})`
+            : `(${sobrenome1} et al., ${ref.ano ?? 'ANO'})`
+
+    const refFormatada = formato === 'abnt'
+      ? ref.referencia_formatada_abnt
+      : formato === 'vancouver'
+        ? ref.referencia_formatada_vancouver
+        : ref.referencia_formatada_apa
+
+    return `  ${citacao} → "${ref.titulo}"${refFormatada ? ` | Ref completa: ${refFormatada}` : ''}`
+  }).join('\n')
 }
 
 // ============================================================
@@ -51,6 +89,8 @@ export function buildGerarSecaoPrompt(
     orientador?: string
     contexto_anterior?: string
     instrucoes_usuario?: string
+    referencias?: Referencia[]
+    formato_citacao?: FormatoCitacao
   }
 ): string {
   const partes: string[] = []
@@ -74,6 +114,14 @@ export function buildGerarSecaoPrompt(
 
   if (dadosTrabalho.instrucoes_usuario) {
     partes.push(`\n**Instruções específicas do autor:**\n${dadosTrabalho.instrucoes_usuario}`)
+  }
+
+  if (dadosTrabalho.referencias && dadosTrabalho.referencias.length > 0) {
+    const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt')
+    partes.push(`\n**Referências bibliográficas cadastradas para este trabalho (use-as nas citações do texto):**\n${refsFormatadas}`)
+    partes.push(`Use as citações acima no corpo do texto sempre que pertinente. Não invente referências fora dessa lista.`)
+  } else {
+    partes.push(`\n**Nota sobre citações:** O autor ainda não cadastrou referências. Use o formato (SOBRENOME, ANO) como indicativo nos locais onde deveriam aparecer citações, para o autor substituir pelas referências reais.`)
   }
 
   partes.push(`\n**Elementos obrigatórios nesta seção:**`)

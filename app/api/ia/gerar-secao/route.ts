@@ -4,7 +4,7 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { getSystemPromptEspecializado } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
-import type { Trabalho } from '@/types'
+import type { Trabalho, Referencia } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -31,6 +31,14 @@ export async function POST(request: Request) {
   const fluxo = getFluxo(trabalho.tipo_trabalho)
   const fase = fluxo?.fases.find(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
   if (!fase) return NextResponse.json({ error: 'Seção não encontrada' }, { status: 404 })
+
+  // Carrega referências bibliográficas do trabalho
+  const { data: referenciasData } = await supabase
+    .from('referencias')
+    .select('*')
+    .eq('trabalho_id', trabalhoId)
+    .order('created_at')
+  const referencias = (referenciasData ?? []) as Referencia[]
 
   // Carrega conteúdo das seções anteriores para contexto
   const { data: secoesAnteriores } = await supabase
@@ -60,6 +68,8 @@ export async function POST(request: Request) {
     orientador: trabalho.orientador ?? undefined,
     contexto_anterior: contexto_anterior || undefined,
     instrucoes_usuario,
+    referencias: referencias.length > 0 ? referencias : undefined,
+    formato_citacao: trabalho.formato_citacao,
   })
 
   // Garante que a seção existe na tabela (upsert)
