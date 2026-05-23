@@ -27,10 +27,8 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
     listaRef.current?.scrollTo({ top: listaRef.current.scrollHeight, behavior: 'smooth' })
   }, [mensagens])
 
-  async function enviar() {
-    if (!input.trim() || enviando) return
-    const texto = input.trim()
-    setInput('')
+  async function enviarTexto(texto: string) {
+    if (!texto.trim() || enviando) return
     setEnviando(true)
 
     const novaMensagem: MensagemIA = { role: 'user', content: texto }
@@ -74,6 +72,13 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
     }
   }
 
+  async function enviar() {
+    if (!input.trim() || enviando) return
+    const texto = input.trim()
+    setInput('')
+    await enviarTexto(texto)
+  }
+
   if (!isOpen) return null
 
   return (
@@ -114,17 +119,59 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
       {/* Aba Dicas */}
       {aba === 'dicas' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+          {/* Passo a passo para esta seção */}
+          <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-primary uppercase tracking-wide">
+              Como fazer esta seção
+            </p>
+            <ol className="space-y-1.5">
+              <li className="flex items-start gap-2 text-xs text-foreground">
+                <span className="shrink-0 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">1</span>
+                Clique em <strong>"Gerar com IA"</strong> para criar um rascunho automático
+              </li>
+              <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="shrink-0 h-4 w-4 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">2</span>
+                Revise e personalize o texto gerado com seus dados reais
+              </li>
+              <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="shrink-0 h-4 w-4 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">3</span>
+                Clique em <strong>"Validar"</strong> para checar a qualidade
+              </li>
+              <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="shrink-0 h-4 w-4 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">4</span>
+                Corrija os pontos indicados e <strong>avance</strong> para a próxima seção
+              </li>
+            </ol>
+          </div>
+
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              Sobre esta seção
+              Objetivo desta seção
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">{fase.instrucoes}</p>
           </div>
 
+          {fase.elementos_obrigatorios?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                O que deve conter
+              </p>
+              <ul className="space-y-1.5">
+                {fase.elementos_obrigatorios.map((el, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 mt-1.5 shrink-0" />
+                    {el}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {fase.dicas_ia.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Dicas da IA
+                Dicas importantes
               </p>
               <ul className="space-y-2">
                 {fase.dicas_ia.map(dica => (
@@ -140,11 +187,11 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
           {fase.erros_comuns.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Erros comuns
+                ⚠️ Erros comuns a evitar
               </p>
               <ul className="space-y-2">
                 {fase.erros_comuns.map(erro => (
-                  <li key={erro} className="flex items-start gap-2 text-xs text-gray-600">
+                  <li key={erro} className="flex items-start gap-2 text-xs text-muted-foreground">
                     <span className="h-1.5 w-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
                     {erro}
                   </li>
@@ -155,9 +202,9 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
 
           <button
             onClick={() => setAba('chat')}
-            className="w-full text-xs text-primary hover:underline text-left"
+            className="w-full text-xs text-primary hover:underline text-left mt-2"
           >
-            Tem dúvidas? Pergunte ao assistente →
+            Ficou com dúvida? Pergunte à IA →
           </button>
         </div>
       )}
@@ -167,11 +214,29 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
         <>
           <div ref={listaRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {mensagens.length === 0 && (
-              <div className="text-center py-8">
-                <Bot className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">
-                  Pergunte qualquer coisa sobre a seção "{fase.nome}"
-                </p>
+              <div className="space-y-3 py-2">
+                <div className="text-center">
+                  <Bot className="h-8 w-8 text-primary/30 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-foreground">Assistente de escrita</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Pergunte qualquer coisa sobre a seção "{fase.nome}"
+                  </p>
+                </div>
+                {/* Perguntas sugeridas */}
+                <div className="space-y-1.5">
+                  {[
+                    `Como deve ser a "${fase.nome}" de um trabalho científico?`,
+                    `Qual é a extensão ideal para esta seção?`,
+                    `Posso ver um exemplo de "${fase.nome}"?`,
+                  ].map(pergunta => (
+                    <button key={pergunta}
+                      onClick={() => enviarTexto(pergunta)}
+                      disabled={enviando}
+                      className="w-full text-left text-xs px-3 py-2 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
+                      {pergunta}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {mensagens.map((m, i) => (
