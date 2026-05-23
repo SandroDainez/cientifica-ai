@@ -11,10 +11,11 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const { trabalhoId, chaveSecao, instrucoes_usuario } = await request.json() as {
+  const { trabalhoId, chaveSecao, instrucoes_usuario, respostas_usuario } = await request.json() as {
     trabalhoId: string
     chaveSecao: string
     instrucoes_usuario?: string
+    respostas_usuario?: Record<string, string>
   }
 
   // Carrega trabalho e valida ownership
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     orientador: trabalho.orientador ?? undefined,
     contexto_anterior: contexto_anterior || undefined,
     instrucoes_usuario,
+    respostas_usuario,
     referencias: referencias.length > 0 ? referencias : undefined,
     formato_citacao: trabalho.formato_citacao,
   })

@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { EditorArea, type StatusIA } from '@/components/editor/EditorArea'
 import { PainelIA } from '@/components/editor/PainelIA'
 import { ResumoEditor } from '@/components/resumo/ResumoEditor'
+import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
 
@@ -49,6 +50,8 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
   const [iaPanelOpen, setIAPanelOpen] = useState(true)
   // Opções de título geradas pela IA (picker visual em vez de markdown bruto)
   const [tituloOpcoes, setTituloOpcoes] = useState<string[]>([])
+  // Questionário pré-geração
+  const [questionarioAberto, setQuestionarioAberto] = useState(false)
 
   // Detecta fim de geração para seções de título e extrai opções
   const prevStatusRef = useRef<StatusIA>('idle')
@@ -75,6 +78,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
     setFaseAtiva(chave)
     setValidacao(null)
     setTituloOpcoes([])
+    setQuestionarioAberto(false)
   }
 
   // Detecta fim de geração de seção de título → extrai opções e limpa textarea
@@ -103,8 +107,14 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
     setTituloOpcoes([])
   }
 
-  // ── Gerar seção com IA (streaming) ──────────────────────────
-  async function handleGerar() {
+  // ── Gerar seção com IA (com questionário pré-geração) ───────
+  function handleGerar() {
+    // Para seção de resumo tem UI própria; para outras, abre questionário
+    setQuestionarioAberto(true)
+  }
+
+  async function executarGeracao(respostas?: RespostasQuestionario) {
+    setQuestionarioAberto(false)
     setTituloOpcoes([])
     setStatusIA('gerando')
     setConteudoAtual('')
@@ -115,6 +125,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         body: JSON.stringify({
           trabalhoId: trabalho.id,
           chaveSecao: faseAtualConfig.chave_secao,
+          respostas_usuario: respostas,
         }),
       })
       if (!res.body) throw new Error('Sem stream')
@@ -315,6 +326,17 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           )}
         </div>
       </div>
+
+      {/* ── Modal de questionário pré-geração ────────────────── */}
+      {questionarioAberto && (
+        <QuestionarioGeracaoModal
+          chaveSecao={faseAtualConfig.chave_secao}
+          nomeSecao={faseAtualConfig.nome}
+          onConfirmar={(respostas) => executarGeracao(respostas)}
+          onPular={() => executarGeracao()}
+          onCancelar={() => setQuestionarioAberto(false)}
+        />
+      )}
     </div>
   )
 }

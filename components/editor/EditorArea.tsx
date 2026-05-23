@@ -84,6 +84,8 @@ export function EditorArea({
   useEffect(() => {
     setConfirmandoAvanco(false)
     setMostraIntro(!temConteudo)
+    ultimoConteudoValidado.current = ''
+    if (autoReviewTimer.current) clearTimeout(autoReviewTimer.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase.chave_secao])
 
@@ -101,6 +103,23 @@ export function EditorArea({
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { onSalvar(false) }, 3000)
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conteudo])
+
+  // Auto-revisão silenciosa: 25s após o usuário parar de editar (mín. 100 palavras, não validado recentemente)
+  const autoReviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ultimoConteudoValidado = useRef<string>('')
+  useEffect(() => {
+    if (autoReviewTimer.current) clearTimeout(autoReviewTimer.current)
+    const palavrasAtual = conteudo.trim().split(/\s+/).length
+    if (!conteudo.trim() || statusIA !== 'idle' || palavrasAtual < 100) return
+    // Só roda se o conteúdo mudou desde a última validação
+    if (conteudo === ultimoConteudoValidado.current) return
+    autoReviewTimer.current = setTimeout(() => {
+      ultimoConteudoValidado.current = conteudo
+      onValidar()
+    }, 25000)
+    return () => { if (autoReviewTimer.current) clearTimeout(autoReviewTimer.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conteudo])
 

@@ -75,6 +75,41 @@ export function formatarRefsParaPrompt(refs: Referencia[], formato: FormatoCitac
 // Prompt para geração de seção
 // ============================================================
 
+// Rótulos legíveis para as respostas do questionário
+const ROTULOS_RESPOSTAS: Record<string, string> = {
+  tema_principal:       'Tema principal',
+  delimitacao:          'Delimitação do tema',
+  motivacao:            'Motivação do pesquisador',
+  problema_central:     'Problema central',
+  pergunta_norteadora:  'Pergunta norteadora',
+  hipotese:             'Hipótese',
+  objetivo_geral:       'Objetivo geral',
+  objetivos_especificos:'Objetivos específicos',
+  relevancia:           'Relevância do tema',
+  problema_pratico:     'Problema prático abordado',
+  lacuna:               'Lacuna na literatura',
+  tipo_pesquisa:        'Tipo de pesquisa',
+  participantes:        'Participantes / fontes estudadas',
+  periodo_local:        'Período e local',
+  instrumentos:         'Instrumentos de coleta',
+  analise:              'Análise dos dados',
+  achado_principal:     'Achado principal',
+  outros_achados:       'Outros achados',
+  dados_numericos:      'Dados numéricos',
+  surpresa:             'Resultado surpreendente',
+  comparacao_literatura:'Comparação com a literatura',
+  explicacao:           'Explicação dos resultados',
+  implicacoes:          'Implicações práticas',
+  limitacoes:           'Limitações do estudo',
+  resposta_objetivo:    'Resposta ao objetivo',
+  contribuicao:         'Contribuição para a área',
+  recomendacoes:        'Recomendações',
+  temas_principais:     'Tópicos principais a cobrir',
+  autores_referencias:  'Autores/estudos a incluir',
+  perspectiva:          'Perspectiva teórica',
+  contexto:             'Contexto e informações adicionais',
+}
+
 export function buildGerarSecaoPrompt(
   fase: FaseConfig,
   dadosTrabalho: {
@@ -84,6 +119,7 @@ export function buildGerarSecaoPrompt(
     orientador?: string
     contexto_anterior?: string
     instrucoes_usuario?: string
+    respostas_usuario?: Record<string, string>
     referencias?: Referencia[]
     formato_citacao?: FormatoCitacao
   }
@@ -101,6 +137,22 @@ export function buildGerarSecaoPrompt(
   }
   if (dadosTrabalho.orientador) {
     partes.push(`**Orientador:** ${dadosTrabalho.orientador}`)
+  }
+
+  // ── Respostas do questionário do usuário (dados reais — máxima prioridade) ──
+  if (dadosTrabalho.respostas_usuario) {
+    const preenchidas = Object.entries(dadosTrabalho.respostas_usuario)
+      .filter(([, v]) => v?.trim())
+    if (preenchidas.length > 0) {
+      partes.push(`\n## DADOS REAIS DO PESQUISADOR — USE OBRIGATORIAMENTE`)
+      partes.push(`O pesquisador forneceu as informações abaixo sobre seu trabalho.`)
+      partes.push(`REGRA CRÍTICA: Você DEVE usar esses dados reais no texto gerado. Não invente informações diferentes. Não use placeholders genéricos como "[inserir dados]" ou "[autor, ano]" quando o pesquisador já forneceu a informação real. O texto deve refletir EXATAMENTE o que o pesquisador descreveu.`)
+      partes.push('')
+      preenchidas.forEach(([k, v]) => {
+        const rotulo = ROTULOS_RESPOSTAS[k] ?? k
+        partes.push(`**${rotulo}:**\n${v.trim()}`)
+      })
+    }
   }
 
   if (dadosTrabalho.contexto_anterior) {
@@ -129,7 +181,12 @@ export function buildGerarSecaoPrompt(
     partes.push(`\n**Extensão:** entre ${fase.min_palavras ?? '—'} e ${fase.max_palavras ?? '—'} palavras.`)
   }
 
-  partes.push(`\nAgora redija a seção "${fase.nome}" de forma completa e acadêmica. Escreva apenas o texto da seção, sem títulos introdutórios, sem metacomentários sobre o processo.`)
+  partes.push(`\nAgora redija a seção "${fase.nome}" de forma completa e acadêmica em português brasileiro formal.
+REGRAS FINAIS INEGOCIÁVEIS:
+- Escreva APENAS o texto da seção — sem títulos introdutórios, sem "Seção X:", sem metacomentários
+- Use SEMPRE os dados reais do pesquisador fornecidos acima — nunca escreva textos genéricos ou com placeholders como [autor], [ano], [inserir dados]
+- O texto deve soar como se o pesquisador realmente fez aquilo que descreveu
+- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto`)
 
   return partes.join('\n')
 }
