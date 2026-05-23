@@ -322,6 +322,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
               fase={faseAtualConfig}
               isOpen={iaPanelOpen}
               onClose={() => setIAPanelOpen(false)}
+              conteudoAtual={conteudoAtual}
             />
           )}
         </div>
@@ -332,6 +333,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         <QuestionarioGeracaoModal
           chaveSecao={faseAtualConfig.chave_secao}
           nomeSecao={faseAtualConfig.nome}
+          tipoTrabalho={trabalho.tipo_trabalho}
           onConfirmar={(respostas) => executarGeracao(respostas)}
           onPular={() => executarGeracao()}
           onCancelar={() => setQuestionarioAberto(false)}

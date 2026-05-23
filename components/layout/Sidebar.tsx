@@ -13,7 +13,7 @@ interface SidebarProps {
   secoes?: SecaoTrabalho[]
 }
 
-export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progressoGeral }: SidebarProps) {
+export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progressoGeral, secoes }: SidebarProps) {
   const faseAtualIdx = fases.findIndex(f => f.chave_secao === faseAtual)
   const proximaFase = fases[faseAtualIdx + 1]
 
@@ -58,7 +58,10 @@ export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progr
           {fases.map((fase, idx) => {
             const concluida = fasesConcluidas.includes(fase.chave_secao)
             const ativa = faseAtual === fase.chave_secao
-            const acessivel = idx === 0 || fasesConcluidas.includes(fases[idx - 1]?.chave_secao)
+            // Fase acessível se: é a primeira, anterior concluída, é opcional, ou o próprio usuário já tocou nela
+            const anteriorConcluida = idx === 0 || fasesConcluidas.includes(fases[idx - 1]?.chave_secao)
+            const temConteudo = secoes?.some(s => s.chave_secao === fase.chave_secao && (s.conteudo ?? '').trim().length > 0)
+            const acessivel = anteriorConcluida || !fase.obrigatoria || concluida || !!temConteudo
             const bloqueada = !acessivel && !concluida
 
             return (

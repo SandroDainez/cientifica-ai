@@ -5,14 +5,125 @@ import { Send, Bot, User, Loader2, MessageSquare, Lightbulb, X } from 'lucide-re
 import { cn } from '@/lib/utils'
 import type { MensagemIA, FaseConfig } from '@/types'
 
+// ── Sugestões de perguntas contextuais por tipo de seção ─────────────────
+function getSugestoesChat(chaveSecao: string, nomeSecao: string, temConteudo: boolean): string[] {
+  const chave = chaveSecao.toLowerCase()
+
+  if (temConteudo) {
+    return [
+      `O que está faltando neste texto da ${nomeSecao}?`,
+      `Como posso melhorar a qualidade acadêmica deste texto?`,
+      `Este texto está adequado para a seção "${nomeSecao}"?`,
+    ]
+  }
+
+  if (chave.includes('titulo')) return [
+    `Quais características deve ter um bom título acadêmico?`,
+    `Como identificar se meu título está claro e informativo?`,
+    `Devo incluir o tipo de estudo no título?`,
+  ]
+
+  if (chave.includes('introducao') || chave.includes('introdução')) return [
+    `Qual é a estrutura ideal de uma introdução científica?`,
+    `Como fazer o "funil" da contextualização para o problema?`,
+    `O que NÃO deve aparecer na introdução?`,
+  ]
+
+  if (chave.includes('justificativa')) return [
+    `Como argumentar que meu tema é relevante sem ser genérico?`,
+    `Que tipo de dados fortalecem uma justificativa?`,
+    `Como identificar e demonstrar a lacuna de conhecimento?`,
+  ]
+
+  if (chave.includes('objetivo')) return [
+    `Qual a diferença entre objetivo geral e específicos?`,
+    `Quais verbos usar nos objetivos científicos (ABNT)?`,
+    `Como garantir que os objetivos são mensuráveis?`,
+  ]
+
+  if (chave.includes('metodolog') || chave.includes('metodos') || chave.includes('método')) return [
+    `Qual a diferença entre pesquisa qualitativa e quantitativa?`,
+    `O que é e como fazer o cálculo amostral?`,
+    `Como descrever instrumentos de coleta na metodologia?`,
+  ]
+
+  if (chave.includes('resultado')) return [
+    `Como apresentar resultados negativos no texto?`,
+    `Qual a diferença entre resultados e discussão?`,
+    `Como descrever tabelas e figuras no texto?`,
+  ]
+
+  if (chave.includes('discussao') || chave.includes('discussão')) return [
+    `Como comparar meus resultados com a literatura existente?`,
+    `Como discutir resultados que contradizem outros estudos?`,
+    `Onde e como mencionar as limitações do estudo?`,
+  ]
+
+  if (chave.includes('conclusao') || chave.includes('conclusão') || chave.includes('consideracoes')) return [
+    `O que não pode faltar em uma conclusão científica?`,
+    `Como diferenciar conclusão de resumo dos resultados?`,
+    `Como fazer recomendações práticas baseadas nos achados?`,
+  ]
+
+  if (chave.includes('revisao') || chave.includes('revisão') || chave.includes('referencial')) return [
+    `Como organizar uma revisão de literatura por subtemas?`,
+    `Como fazer síntese crítica sem apenas resumir artigos?`,
+    `Como identificar artigos fundamentais vs. recentes para incluir?`,
+  ]
+
+  if (chave.includes('resumo') || chave.includes('abstract')) return [
+    `Qual a estrutura de um resumo ABNT NBR 6028?`,
+    `Como escrever um abstract em inglês acadêmico?`,
+    `Que informações são obrigatórias no resumo?`,
+  ]
+
+  if (chave.includes('estrategia_busca') || chave.includes('busca')) return [
+    `Como montar uma string de busca com operadores booleanos?`,
+    `Quais bases de dados usar para revisão sistemática?`,
+    `Como usar descritores MeSH/DeCS na busca?`,
+  ]
+
+  if (chave.includes('investigacao_diagnostica') || chave.includes('diagnostica')) return [
+    `Como apresentar o raciocínio diagnóstico em um relato de caso?`,
+    `Como descrever exames de imagem no texto?`,
+    `O que incluir no diagnóstico diferencial?`,
+  ]
+
+  if (chave.includes('conduta') || chave.includes('tratamento')) return [
+    `Como descrever um esquema terapêutico em linguagem científica?`,
+    `Por que devo justificar as decisões de tratamento?`,
+    `Como mencionar medicamentos (genérico vs. marca)?`,
+  ]
+
+  if (chave.includes('cronograma')) return [
+    `Como montar um cronograma de pesquisa realista?`,
+    `Quais atividades não podem faltar em um cronograma de IC/mestrado?`,
+    `Como apresentar o cronograma em formato de tabela?`,
+  ]
+
+  if (chave.includes('etico') || chave.includes('ético') || chave.includes('cep')) return [
+    `Quando é obrigatório submeter ao CEP?`,
+    `O que deve constar no TCLE?`,
+    `Como mencionar aspectos éticos em pesquisa com dados secundários?`,
+  ]
+
+  // default
+  return [
+    `Como deve ser a "${nomeSecao}" de um trabalho científico?`,
+    `Qual é a extensão ideal para esta seção?`,
+    `Quais são os erros mais comuns nesta seção?`,
+  ]
+}
+
 interface PainelIAProps {
   trabalhoId: string
   fase: FaseConfig
   isOpen: boolean
   onClose: () => void
+  conteudoAtual?: string
 }
 
-export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
+export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: PainelIAProps) {
   const [mensagens, setMensagens] = useState<MensagemIA[]>([])
   const [input, setInput] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -42,6 +153,8 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
           trabalhoId,
           chaveSecao: fase.chave_secao,
           mensagens: [...mensagens, novaMensagem],
+          // Envia o conteúdo atual para que a IA possa analisar e sugerir melhorias no texto
+          conteudoAtual: conteudoAtual ? conteudoAtual.substring(0, 3000) : undefined,
         }),
       })
 
@@ -222,13 +335,9 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose }: PainelIAProps) {
                     Pergunte qualquer coisa sobre a seção "{fase.nome}"
                   </p>
                 </div>
-                {/* Perguntas sugeridas */}
+                {/* Perguntas sugeridas — contextuais por tipo de seção */}
                 <div className="space-y-1.5">
-                  {[
-                    `Como deve ser a "${fase.nome}" de um trabalho científico?`,
-                    `Qual é a extensão ideal para esta seção?`,
-                    `Posso ver um exemplo de "${fase.nome}"?`,
-                  ].map(pergunta => (
+                  {getSugestoesChat(fase.chave_secao, fase.nome, !!conteudoAtual?.trim()).map(pergunta => (
                     <button key={pergunta}
                       onClick={() => enviarTexto(pergunta)}
                       disabled={enviando}

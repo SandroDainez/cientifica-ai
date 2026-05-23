@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Sparkles, Loader2, Save, CheckCircle2, Globe, FileText, Tag, Languages } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Sparkles, Loader2, Save, CheckCircle2, Globe, FileText, Tag, Languages, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { ContadorPalavras } from './ContadorPalavras'
@@ -37,9 +37,15 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
   const [gerandoResumo, setGerandoResumo] = useState(false)
   const [gerandoAbstract, setGerandoAbstract] = useState(false)
   const [salvo, setSalvo] = useState(false)
+  const [erroGeracao, setErroGeracao] = useState<string | null>(null)
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const minResumo = fase.min_palavras ?? 150
   const maxResumo = fase.max_palavras ?? 500
+  const maxAbstract = Math.min(fase.max_palavras ?? 350, 400) // respeita o config mas cap em 400
+
+  const temConteudo = dados.resumo.trim().length > 0 || dados.abstract.trim().length > 0
+  const isBusy = statusExterno === 'salvando' || gerandoResumo || gerandoAbstract
 
   function set(key: keyof ResumoData, val: string | string[]) {
     setSalvo(false)
@@ -50,14 +56,34 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
     return JSON.stringify(d)
   }
 
+  // ── Auto-save com debounce de 4s ─────────────────────────────
+  useEffect(() => {
+    if (!temConteudo) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(async () => {
+      const conteudo = serializar(dados)
+      await onSalvar(conteudo, false)
+      setSalvo(true)
+    }, 4000)
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dados.resumo, dados.abstract, dados.palavras_chave.join(','), dados.keywords.join(',')])
+
   async function gerarResumo() {
     setGerandoResumo(true)
+    setErroGeracao(null)
     try {
       const res = await fetch('/api/ia/gerar-resumo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trabalhoId: trabalho.id, modo: 'resumo_pt' }),
       })
+      if (!res.ok) {
+        const err = await res.text()
+        throw new Error(err || `Erro ${res.status}`)
+      }
       if (!res.body) return
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -68,6 +94,9 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         acumulado += decoder.decode(value, { stream: true })
         setDados(prev => ({ ...prev, resumo: acumulado }))
       }
+    } catch (err) {
+      setErroGeracao('Erro ao gerar resumo. Tente novamente.')
+      console.error(err)
     } finally {
       setGerandoResumo(false)
     }
@@ -75,12 +104,17 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
 
   async function gerarAbstract() {
     setGerandoAbstract(true)
+    setErroGeracao(null)
     try {
       const res = await fetch('/api/ia/gerar-resumo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trabalhoId: trabalho.id, modo: 'abstract_en', resumo_pt: dados.resumo }),
       })
+      if (!res.ok) {
+        const err = await res.text()
+        throw new Error(err || `Erro ${res.status}`)
+      }
       if (!res.body) return
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -91,6 +125,9 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         acumulado += decoder.decode(value, { stream: true })
         setDados(prev => ({ ...prev, abstract: acumulado }))
       }
+    } catch (err) {
+      setErroGeracao('Erro ao gerar abstract. Tente novamente.')
+      console.error(err)
     } finally {
       setGerandoAbstract(false)
     }
@@ -192,7 +229,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
               </div>
             )}
           </div>
-          <ContadorPalavras texto={dados.abstract} min={150} max={350} label="Abstract" />
+          <ContadorPalavras texto={dados.abstract} min={150} max={maxAbstract} label="Abstract" />
           <button
             type="button"
             onClick={gerarAbstract}
@@ -232,12 +269,20 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         </div>
       </div>
 
+      {/* ── MENSAGEM DE ERRO ──────────────────────────────── */}
+      {erroGeracao && (
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {erroGeracao}
+        </div>
+      )}
+
       {/* ── BOTÕES ────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <span>
           {salvo && (
             <p className="flex items-center gap-1.5 text-sm text-green-600">
-              <CheckCircle2 className="h-4 w-4" /> Rascunho salvo!
+              <CheckCircle2 className="h-4 w-4" /> Rascunho salvo automaticamente
             </p>
           )}
         </span>
@@ -245,16 +290,16 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
           <button
             type="button"
             onClick={() => handleSalvar(false)}
-            disabled={statusExterno === 'salvando' || !dados.resumo.trim()}
+            disabled={isBusy || !temConteudo}
             className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
           >
-            {statusExterno === 'salvando' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Salvar rascunho
           </button>
           <button
             type="button"
             onClick={() => handleSalvar(true)}
-            disabled={statusExterno === 'salvando' || !dados.resumo.trim()}
+            disabled={isBusy || !dados.resumo.trim()}
             className={cn(buttonVariants(), 'gap-2')}
           >
             {isUltimaFase ? 'Concluir trabalho' : 'Concluir e avançar →'}

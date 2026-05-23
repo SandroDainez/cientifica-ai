@@ -49,8 +49,30 @@ export async function POST(request: Request) {
     .in('status', ['gerado', 'editado', 'aprovado'])
     .order('ordem')
 
+  // Extrai texto legível de conteúdo de seções (alguns campos são JSON — ex: resumo)
+  function extrairTextoSecao(conteudo: string): string {
+    if (!conteudo) return ''
+    try {
+      const parsed = JSON.parse(conteudo)
+      if (typeof parsed === 'object' && parsed !== null) {
+        // ResumoEditor serializa: { resumo, abstract, palavras_chave, keywords }
+        const partes: string[] = []
+        if (parsed.resumo) partes.push(`Resumo: ${parsed.resumo}`)
+        if (parsed.abstract) partes.push(`Abstract: ${parsed.abstract}`)
+        if (parsed.palavras_chave?.length) partes.push(`Palavras-chave: ${parsed.palavras_chave.join('; ')}`)
+        return partes.join('\n')
+      }
+    } catch {
+      // não é JSON — usa o texto puro
+    }
+    return conteudo
+  }
+
   const contexto_anterior = secoesAnteriores
-    ?.map(s => `**${s.nome_secao}** (resumo):\n${(s.conteudo ?? '').substring(0, 500)}`)
+    ?.map(s => {
+      const textoLimpo = extrairTextoSecao(s.conteudo ?? '')
+      return `**${s.nome_secao}**:\n${textoLimpo.substring(0, 1500)}`
+    })
     .join('\n\n') ?? ''
 
   const systemPromptEspecializado = getSystemPromptEspecializado(

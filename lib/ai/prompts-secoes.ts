@@ -93,7 +93,7 @@ const PROMPTS_MAP: Record<string, string> = {
   'monografia_discussao':           'Monografia_fase_5_8_discussao.md',
   'monografia_conclusao':           'Monografia_fase_5_9_conclusao.md',
   'monografia_resumo':              'Monografia_fase_5_10_resumo_abstract.md',
-  'monografia_introducao':          'TCC_fase_1_12_introducao.md',
+  'monografia_introducao':          'Artigo_Original_fase_2_3_introducao.md',
 
   // ── Dissertação de Mestrado ───────────────────────────────────
   'dissertacao_mestrado_tema':                'Dissertacao_fase_6_1_tema_lacuna_originalidade.md',
@@ -109,7 +109,7 @@ const PROMPTS_MAP: Record<string, string> = {
   'dissertacao_mestrado_conclusao':           'Dissertacao_fase_7_11_conclusao.md',
   'dissertacao_mestrado_limitacoes':          'Dissertacao_fase_7_12_limitacoes.md',
   'dissertacao_mestrado_resumo':              'Dissertacao_fase_7_13_resumo_abstract.md',
-  'dissertacao_mestrado_introducao':          'TCC_fase_1_12_introducao.md',
+  'dissertacao_mestrado_introducao':          'Artigo_Original_fase_2_3_introducao.md',
 
   // ── Tese de Doutorado ─────────────────────────────────────────
   'tese_doutorado_tema':                'Tese_fase_8_1_tema_lacuna_contribuicao.md',
@@ -142,7 +142,7 @@ const PROMPTS_MAP: Record<string, string> = {
   'projeto_pesquisa_cronograma':            'Cientifica_AI_Projeto_Pesquisa_9.7_Cronograma.md',
   'projeto_pesquisa_orcamento':             'Cientifica_AI_Projeto_Pesquisa_9.8_Orcamento_Recursos.md',
   'projeto_pesquisa_resultados_esperados':  'Cientifica_AI_Projeto_Pesquisa_9.9_Resultados_Esperados_Impacto.md',
-  'projeto_pesquisa_resumo':                'TCC_fase_1_11_resumo_abstract.md',
+  'projeto_pesquisa_resumo':                'TCC_fase_1_11_resumo_abstract.md', // fallback — não há fase 'resumo' neste fluxo
 
   // ── Relatório de IC ───────────────────────────────────────────
   'relatorio_ic_resumo_atividades':  'Cientifica_AI_Relatorio_IC_10.1_Resumo_Atividades.md',
