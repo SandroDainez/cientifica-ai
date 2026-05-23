@@ -65,33 +65,35 @@ const PLANOS = [
     nome: 'Gratuito',
     preco: 'R$ 0',
     periodo: 'para sempre',
-    desc: 'Ideal para experimentar e trabalhos simples.',
+    desc: 'Escreva e gere todas as seções livremente, sem pagar nada.',
     cor: 'border-border',
     destaque: false,
+    cta: 'Começar grátis',
+    href: '/cadastro',
     itens: [
-      '2 trabalhos ativos',
-      'Geração de seções com IA (modelo rápido)',
+      'Geração de todas as seções com IA',
+      'Validação automática com score',
       'Visualizador formatado',
-      'Referências manuais',
-      'Exportação básica (texto)',
+      'Chat científico integrado',
+      'Referências manuais e automáticas',
     ],
-    nao: ['DOCX com formatação ABNT', 'Exportação PPTX', 'IA avançada (deepseek-reasoner)', 'Suporte prioritário'],
+    nao: ['Exportação DOCX formatado ABNT', 'Exportação PPTX para defesa'],
   },
   {
-    nome: 'Pro',
-    preco: 'R$ 49',
-    periodo: '/mês',
-    desc: 'Para estudantes e pesquisadores que precisam de qualidade.',
+    nome: 'Por trabalho',
+    preco: 'R$ 197',
+    periodo: 'por trabalho',
+    desc: 'Pague uma única vez e exporte o trabalho completo. Sem assinatura.',
     cor: 'border-primary',
     destaque: true,
+    cta: 'Criar trabalho agora',
+    href: '/cadastro',
     itens: [
-      'Trabalhos ilimitados',
-      'IA avançada (deepseek-reasoner)',
+      'Tudo do plano gratuito incluso',
       'DOCX com formatação ABNT completa',
-      'Exportação PPTX',
-      'Geração de referências por IA',
-      'Chat científico ilimitado',
-      'Suporte via e-mail',
+      'Exportação PPTX para apresentação',
+      'Acesso permanente ao documento',
+      'Suporte via WhatsApp',
     ],
     nao: [],
   },
@@ -102,8 +104,10 @@ const PLANOS = [
     desc: 'Para faculdades, universidades e grupos de pesquisa.',
     cor: 'border-border',
     destaque: false,
+    cta: 'Falar com equipe',
+    href: 'mailto:contato@cientifica.ai',
     itens: [
-      'Tudo do plano Pro',
+      'Assinatura mensal ilimitada',
       'Múltiplos usuários',
       'Painel do orientador',
       'Relatórios de progresso',
@@ -211,7 +215,7 @@ export default function HomePage() {
         </div>
 
         <p className="mt-4 text-xs text-muted-foreground">
-          Sem cartão de crédito · 2 trabalhos gratuitos · Cancele quando quiser
+          Sem cartão de crédito · Escreva grátis · Pague R$ 197 só para exportar
         </p>
 
         {/* Tipos suportados */}
@@ -321,8 +325,8 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="text-center mb-14">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-2">Preços</p>
-            <h2 className="text-3xl font-bold text-gray-900">Planos para cada momento da pesquisa</h2>
-            <p className="mt-3 text-muted-foreground">Comece grátis, evolua quando precisar.</p>
+            <h2 className="text-3xl font-bold text-gray-900">Sem assinatura. Pague só para exportar.</h2>
+            <p className="mt-3 text-muted-foreground">Use tudo de graça. Pague R$ 197 uma única vez quando quiser baixar o trabalho.</p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -365,15 +369,14 @@ export default function HomePage() {
                 </ul>
 
                 <Link
-                  href={plano.nome === 'Institucional' ? 'mailto:contato@cientifica.ai' : '/cadastro'}
+                  href={plano.href}
                   className={cn(
                     buttonVariants({ variant: plano.destaque ? 'default' : 'outline' }),
                     'w-full justify-center gap-2'
                   )}
                 >
-                  {plano.nome === 'Gratuito' && 'Começar grátis'}
-                  {plano.nome === 'Pro' && <><Sparkles className="h-4 w-4" /> Assinar Pro</>}
-                  {plano.nome === 'Institucional' && 'Falar com equipe'}
+                  {plano.destaque && <Sparkles className="h-4 w-4" />}
+                  {plano.cta}
                 </Link>
               </div>
             ))}
@@ -411,8 +414,8 @@ export default function HomePage() {
           <h2 className="text-4xl font-bold mb-4 leading-tight">
             Pronto para escrever seu próximo trabalho?
           </h2>
-          <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto">
-            Crie sua conta gratuita agora e comece o seu TCC, artigo ou dissertação em minutos.
+          <p className="text-teal-100 text-lg mb-8 max-w-xl mx-auto">
+            Crie sua conta gratuita agora e comece o seu TCC, artigo ou dissertação em minutos. Sem assinatura.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/cadastro"
@@ -424,8 +427,8 @@ export default function HomePage() {
               Já tenho conta
             </Link>
           </div>
-          <p className="mt-5 text-xs text-blue-200">
-            Sem cartão de crédito · Dados seguros · Cancele quando quiser
+          <p className="mt-5 text-xs text-teal-200">
+            Sem cartão de crédito · Escreva grátis · Pague só para exportar
           </p>
         </div>
       </section>
