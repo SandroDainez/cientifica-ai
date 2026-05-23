@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Sparkles, BookOpen, ArrowLeft, Loader2, Filter } from 'lucide-react'
+import { Plus, BookOpen, ArrowLeft, Filter, Search, ListTree } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ReferenciaCard } from '@/components/referencias/ReferenciaCard'
 import { FormAdicionarReferencia } from '@/components/referencias/FormAdicionarReferencia'
+import { BuscarReferencias } from '@/components/referencias/BuscarReferencias'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
-import type { Trabalho, Referencia, TipoReferencia } from '@/types'
+import type { Trabalho, Referencia } from '@/types'
 
 interface Props {
   trabalho: Trabalho
@@ -17,39 +18,31 @@ interface Props {
 }
 
 const FILTROS: { value: string; label: string }[] = [
-  { value: '', label: 'Todos' },
-  { value: 'artigo', label: 'Artigos' },
-  { value: 'livro', label: 'Livros' },
-  { value: 'site', label: 'Sites' },
-  { value: 'tese', label: 'Teses' },
+  { value: '',            label: 'Todos' },
+  { value: 'artigo',      label: 'Artigos' },
+  { value: 'livro',       label: 'Livros' },
+  { value: 'site',        label: 'Sites' },
+  { value: 'tese',        label: 'Teses' },
   { value: 'dissertacao', label: 'Dissertações' },
+  { value: 'anais',       label: 'Anais' },
 ]
 
-interface ReferenciaIA {
-  tipo: TipoReferencia
-  titulo: string
-  autores?: Array<{ nome: string; sobrenome: string }>
-  ano?: number
-  journal?: string
-  doi?: string
-  editora?: string
-  cidade?: string
-}
+type Aba = 'buscar' | 'lista'
 
 export function ReferenciasClient({ trabalho, referenciasIniciais }: Props) {
   const [referencias, setReferencias] = useState<Referencia[]>(referenciasIniciais)
   const [filtro, setFiltro] = useState('')
   const [formAberto, setFormAberto] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [gerandoIA, setGerandoIA] = useState(false)
-  const [sugestoesIA, setSugestoesIA] = useState<ReferenciaIA[]>([])
-  const [erroIA, setErroIA] = useState('')
+  // Abre diretamente na busca se ainda não tem referências
+  const [aba, setAba] = useState<Aba>(referenciasIniciais.length === 0 ? 'buscar' : 'lista')
 
+  const doisExistentes = referencias.map(r => r.doi).filter(Boolean) as string[]
   const referenciasExibidas = filtro
     ? referencias.filter(r => r.tipo === filtro)
     : referencias
 
-  // ── Adicionar referência manualmente ───────────────────────────
+  // ── Adicionar (manual ou importada da busca) ───────────────────────
   async function handleAdicionarReferencia(dados: Record<string, unknown>) {
     setSalvando(true)
     try {
@@ -60,7 +53,7 @@ export function ReferenciasClient({ trabalho, referenciasIniciais }: Props) {
       })
       const json = await res.json()
       if (res.ok && json.referencia) {
-        setReferencias(prev => [...prev, json.referencia])
+        setReferencias(prev => [...prev, json.referencia as Referencia])
         setFormAberto(false)
       }
     } catch (err) {
@@ -70,7 +63,7 @@ export function ReferenciasClient({ trabalho, referenciasIniciais }: Props) {
     }
   }
 
-  // ── Deletar referência ─────────────────────────────────────────
+  // ── Deletar ────────────────────────────────────────────────────────
   async function handleDeletar(id: string) {
     if (!confirm('Remover esta referência?')) return
     try {
@@ -81,164 +74,154 @@ export function ReferenciasClient({ trabalho, referenciasIniciais }: Props) {
     }
   }
 
-  // ── Gerar sugestões por IA ─────────────────────────────────────
-  async function handleGerarIA() {
-    setGerandoIA(true)
-    setErroIA('')
-    setSugestoesIA([])
-    try {
-      const res = await fetch('/api/ia/gerar-referencias', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trabalhoId: trabalho.id }),
-      })
-      const json = await res.json()
-      if (res.ok) {
-        setSugestoesIA(json.referencias ?? [])
-      } else {
-        setErroIA(json.error ?? 'Erro ao gerar sugestões')
-      }
-    } catch {
-      setErroIA('Erro de conexão')
-    } finally {
-      setGerandoIA(false)
-    }
-  }
-
-  // ── Importar sugestão da IA ─────────────────────────────────────
-  async function handleImportarSugestao(s: ReferenciaIA) {
-    await handleAdicionarReferencia(s as unknown as Record<string, unknown>)
-    setSugestoesIA(prev => prev.filter(x => x !== s))
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Referências bibliográficas"
-        description={`${referencias.length} referência${referencias.length !== 1 ? 's' : ''} · ${getTipoLabel(trabalho.tipo_trabalho)}`}
+        description={`${referencias.length} referência${referencias.length !== 1 ? 's' : ''} · ${getTipoLabel(trabalho.tipo_trabalho)} · ${trabalho.formato_citacao.toUpperCase()}`}
         breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Dashboard',      href: '/dashboard' },
           { label: 'Meus Trabalhos', href: '/trabalhos' },
           { label: trabalho.titulo || 'Trabalho', href: `/trabalhos/${trabalho.id}/editar` },
           { label: 'Referências' },
         ]}
         actions={
           <div className="flex items-center gap-2">
-            <Link href={`/trabalhos/${trabalho.id}/editar`} className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}>
+            <Link href={`/trabalhos/${trabalho.id}/editar`}
+              className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}>
               <ArrowLeft className="h-4 w-4" /> Editor
             </Link>
             <button
-              onClick={handleGerarIA}
-              disabled={gerandoIA}
+              onClick={() => setFormAberto(true)}
               className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
             >
-              {gerandoIA
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando…</>
-                : <><Sparkles className="h-4 w-4" /> Sugerir com IA</>
-              }
-            </button>
-            <button onClick={() => setFormAberto(true)} className={cn(buttonVariants(), 'gap-2')}>
-              <Plus className="h-4 w-4" /> Adicionar
+              <Plus className="h-4 w-4" /> Adicionar manualmente
             </button>
           </div>
         }
       />
 
-      {/* Formato em uso */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>Formato padrão deste trabalho:</span>
-        <span className="font-semibold text-gray-900 uppercase">{trabalho.formato_citacao}</span>
+      {/* ── Abas ────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 border-b">
+        <button
+          onClick={() => setAba('buscar')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            aba === 'buscar'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Search className="h-4 w-4" />
+          Buscar referências
+        </button>
+        <button
+          onClick={() => setAba('lista')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            aba === 'lista'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <ListTree className="h-4 w-4" />
+          Minhas referências
+          {referencias.length > 0 && (
+            <span className={cn(
+              'px-1.5 py-0.5 rounded-full text-xs font-bold',
+              aba === 'lista' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+            )}>
+              {referencias.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Filtros de tipo */}
-      <div className="flex gap-2 flex-wrap">
-        <Filter className="h-4 w-4 text-muted-foreground self-center" />
-        {FILTROS.map(f => (
-          <button
-            key={f.value}
-            onClick={() => setFiltro(f.value)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
-              filtro === f.value
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-white text-gray-700 border-border hover:border-primary/40'
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      {/* ── Aba: Buscar ─────────────────────────────────────────── */}
+      {aba === 'buscar' && (
+        <BuscarReferencias
+          querySugerida={trabalho.titulo || trabalho.area_conhecimento || ''}
+          formato={trabalho.formato_citacao}
+          autoSearch={referenciasIniciais.length === 0}
+          doisExistentes={doisExistentes}
+          onAdicionar={handleAdicionarReferencia}
+          onAdicionarManualmente={() => setFormAberto(true)}
+        />
+      )}
 
-      {/* Sugestões da IA */}
-      {sugestoesIA.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold text-gray-900">Sugestões da IA</p>
-            <span className="text-xs text-muted-foreground">(revise antes de importar)</span>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {sugestoesIA.map((s, i) => (
-              <div key={i} className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-2">
-                <p className="text-sm font-medium text-gray-900 line-clamp-2">{s.titulo}</p>
-                <p className="text-xs text-muted-foreground">
-                  {s.autores?.[0]?.sobrenome ?? 'Anônimo'}{s.ano ? `, ${s.ano}` : ''} · {s.tipo}
+      {/* ── Aba: Minhas referências ──────────────────────────────── */}
+      {aba === 'lista' && (
+        <div className="space-y-4">
+
+          {/* Filtros */}
+          {referencias.length > 0 && (
+            <div className="flex gap-2 flex-wrap items-center">
+              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+              {FILTROS.map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setFiltro(f.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                    filtro === f.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:border-primary/40'
+                  )}
+                >
+                  {f.label}
+                  {f.value === '' && (
+                    <span className="ml-1.5 opacity-70">{referencias.length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Lista vazia */}
+          {referenciasExibidas.length === 0 ? (
+            <div className="rounded-xl border bg-card p-12 text-center space-y-4">
+              <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">
+                  {filtro ? 'Nenhuma referência deste tipo' : 'Nenhuma referência ainda'}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  {filtro
+                    ? 'Tente outro filtro ou adicione uma referência deste tipo.'
+                    : 'Use a busca para encontrar referências reais em bases acadêmicas (CrossRef, PubMed, OpenAlex), ou adicione manualmente.'}
                 </p>
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={() => handleImportarSugestao(s)}
-                    disabled={salvando}
-                    className="text-xs font-medium text-primary hover:underline"
-                  >
-                    Importar
-                  </button>
-                  <button
-                    onClick={() => setSugestoesIA(prev => prev.filter((_, idx) => idx !== i))}
-                    className="text-xs text-muted-foreground hover:text-red-500"
-                  >
-                    Ignorar
-                  </button>
-                </div>
               </div>
-            ))}
-          </div>
+              <div className="flex justify-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setAba('buscar')}
+                  className={cn(buttonVariants(), 'gap-2')}
+                >
+                  <Search className="h-4 w-4" /> Buscar referências
+                </button>
+                <button
+                  onClick={() => setFormAberto(true)}
+                  className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+                >
+                  <Plus className="h-4 w-4" /> Adicionar manualmente
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {referenciasExibidas.map(ref => (
+                <ReferenciaCard
+                  key={ref.id}
+                  referencia={ref}
+                  formato={trabalho.formato_citacao}
+                  onDeletar={handleDeletar}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {erroIA && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{erroIA}</p>
-      )}
-
-      {/* Lista de referências */}
-      {referenciasExibidas.length === 0 ? (
-        <div className="bg-white border rounded-xl p-16 text-center">
-          <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-semibold text-gray-900 mb-2">
-            {filtro ? 'Nenhuma referência deste tipo' : 'Nenhuma referência ainda'}
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            {filtro
-              ? 'Tente outro filtro ou adicione uma referência deste tipo.'
-              : 'Adicione manualmente ou use a IA para sugerir referências relevantes.'}
-          </p>
-          <button onClick={() => setFormAberto(true)} className={cn(buttonVariants(), 'gap-2')}>
-            <Plus className="h-4 w-4" /> Adicionar referência
-          </button>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {referenciasExibidas.map(ref => (
-            <ReferenciaCard
-              key={ref.id}
-              referencia={ref}
-              formato={trabalho.formato_citacao}
-              onDeletar={handleDeletar}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Modal de adicionar */}
+      {/* ── Modal: adicionar manualmente ────────────────────────── */}
       {formAberto && (
         <FormAdicionarReferencia
           onAdicionada={handleAdicionarReferencia}
