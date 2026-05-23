@@ -1,4 +1,5 @@
 import type { TipoTrabalho, FormatoCitacao, NivelExperiencia, FaseConfig, Referencia } from '@/types'
+import { citacaoInTexto } from '@/lib/referencias/formatar'
 
 // ============================================================
 // Sistema base — personaliza o tom conforme nível do usuário
@@ -54,17 +55,8 @@ Siga rigorosamente as normas ABNT para trabalhos brasileiros quando aplicável.`
 export function formatarRefsParaPrompt(refs: Referencia[], formato: FormatoCitacao = 'abnt'): string {
   if (!refs.length) return ''
   return refs.map((ref, i) => {
-    const autores = ref.autores ?? []
-    const sobrenome1 = autores[0]?.sobrenome?.toUpperCase() ?? 'AUTOR'
-    const citacao = formato === 'vancouver'
-      ? `[${i + 1}]`
-      : autores.length === 0
-        ? `(AUTOR, ${ref.ano ?? 'ANO'})`
-        : autores.length === 1
-          ? `(${sobrenome1}, ${ref.ano ?? 'ANO'})`
-          : autores.length === 2
-            ? `(${sobrenome1}; ${autores[1].sobrenome?.toUpperCase()}, ${ref.ano ?? 'ANO'})`
-            : `(${sobrenome1} et al., ${ref.ano ?? 'ANO'})`
+    // Usa o helper centralizado de citação inline
+    const citacao = citacaoInTexto(ref, formato, i + 1)
 
     const refFormatada = formato === 'abnt'
       ? ref.referencia_formatada_abnt
@@ -72,7 +64,10 @@ export function formatarRefsParaPrompt(refs: Referencia[], formato: FormatoCitac
         ? ref.referencia_formatada_vancouver
         : ref.referencia_formatada_apa
 
-    return `  ${citacao} → "${ref.titulo}"${refFormatada ? ` | Ref completa: ${refFormatada}` : ''}`
+    // Remove markdown da visualização no prompt
+    const refLimpa = refFormatada?.replace(/\*\*/g, '').replace(/\*/g, '') ?? null
+
+    return `  ${citacao} → "${ref.titulo}"${refLimpa ? ` | Ref completa: ${refLimpa}` : ''}`
   }).join('\n')
 }
 
@@ -145,8 +140,15 @@ export function buildGerarSecaoPrompt(
 
 export function buildValidarSecaoPrompt(
   fase: FaseConfig,
-  conteudo: string
+  conteudo: string,
+  formatoCitacao?: FormatoCitacao
 ): string {
+  const formatoInstrucao = formatoCitacao === 'vancouver'
+    ? 'Citações devem ser numéricas [1], [2] etc. Verifique se há citações no formato errado como (AUTOR, ANO).'
+    : formatoCitacao === 'apa'
+    ? 'Citações devem ser no formato APA: (Sobrenome, Ano) ou Sobrenome (Ano) com & para dois autores. Verifique inconsistências.'
+    : 'Citações devem ser no formato ABNT NBR 10520: SOBRENOME (ANO) ou (SOBRENOME, ANO). Para 3+ autores: SOBRENOME et al. (ANO). Verifique se há [AUTOR, ANO] ou outros formatos incorretos.'
+
   return `Avalie a seção "${fase.nome}" abaixo de acordo com os critérios de qualidade acadêmica.
 
 **Texto enviado:**
@@ -156,6 +158,7 @@ ${conteudo}
 - Elementos obrigatórios presentes: ${fase.elementos_obrigatorios.join(', ')}
 - Erros a verificar: ${fase.erros_comuns.join(', ')}
 - Extensão: ${fase.min_palavras ?? 0}–${fase.max_palavras ?? '∞'} palavras
+- Formato de citação: ${formatoCitacao?.toUpperCase() ?? 'ABNT'}. ${formatoInstrucao}
 
 Responda APENAS com JSON válido no seguinte formato:
 {

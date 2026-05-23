@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
-import { formatarReferencia } from '@/lib/referencias/formatar'
+import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   HeadingLevel, PageBreak, convertInchesToTwip,
@@ -94,6 +94,28 @@ export async function GET(request: Request) {
     })
   }
 
+  /**
+   * Converte texto com markdown **bold** e *italic* em TextRuns do docx.
+   * ABNT usa **negrito** para periódicos; APA usa *itálico* para revistas/livros.
+   */
+  function textRunsFromMarkdown(text: string, opts: { size?: number } = {}): TextRun[] {
+    const sz = opts.size ?? SIZE
+    const runs: TextRun[] = []
+    // Divide em tokens: **bold**, *italic*, texto normal
+    const tokens = text.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*)/)
+    for (const token of tokens) {
+      if (!token) continue
+      if (token.startsWith('**') && token.endsWith('**')) {
+        runs.push(new TextRun({ text: token.slice(2, -2), font: FONT, size: sz, bold: true }))
+      } else if (token.startsWith('*') && token.endsWith('*')) {
+        runs.push(new TextRun({ text: token.slice(1, -1), font: FONT, size: sz, italics: true }))
+      } else {
+        runs.push(new TextRun({ text: token, font: FONT, size: sz }))
+      }
+    }
+    return runs.length ? runs : [new TextRun({ text, font: FONT, size: sz })]
+  }
+
   // ── Montar documento ────────────────────────────────────────
   const children: Paragraph[] = []
 
@@ -137,8 +159,11 @@ export async function GET(request: Request) {
     })
   })
 
-  // Referências
+  // Referências — ordenação e formatação por formato de citação
   if (referencias.length > 0) {
+    const refsOrdenadas = ordenarReferencias(referencias, trabalho.formato_citacao)
+    const isVancouver = trabalho.formato_citacao === 'vancouver'
+
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       new Paragraph({
@@ -148,14 +173,26 @@ export async function GET(request: Request) {
       }),
     )
 
-    referencias.forEach(ref => {
-      const texto = formatarReferencia(ref, trabalho.formato_citacao).replace(/\*\*/g, '')
-      children.push(new Paragraph({
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: { line: 360, lineRule: LineRuleType.AUTO, after: 240 },
-        indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
-        children: [new TextRun({ text: texto, font: FONT, size: SIZE })],
-      }))
+    refsOrdenadas.forEach((ref, idx) => {
+      const numero = isVancouver ? idx + 1 : undefined
+      const textoFormatado = formatarReferencia(ref, trabalho.formato_citacao, numero)
+
+      if (isVancouver) {
+        // Vancouver: lista numerada — sem recuo pendente
+        children.push(new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { line: 360, lineRule: LineRuleType.AUTO, after: 240 },
+          children: textRunsFromMarkdown(textoFormatado),
+        }))
+      } else {
+        // ABNT / APA: recuo pendente + bold/italic preservados
+        children.push(new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { line: 360, lineRule: LineRuleType.AUTO, after: 240 },
+          indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
+          children: textRunsFromMarkdown(textoFormatado),
+        }))
+      }
     })
   }
 

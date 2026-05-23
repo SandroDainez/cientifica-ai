@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import pptxgen from 'pptxgenjs'
-import type { Trabalho, SecaoTrabalho } from '@/types'
+import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -14,16 +15,18 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const [{ data: tData }, { data: sData }, { data: pData }] = await Promise.all([
+  const [{ data: tData }, { data: sData }, { data: pData }, { data: rData }] = await Promise.all([
     supabase.from('trabalhos').select('*').eq('id', trabalhoId).eq('usuario_id', user.id).single(),
     supabase.from('secoes_trabalho').select('*').eq('trabalho_id', trabalhoId).order('ordem'),
     supabase.from('profiles').select('nome, instituicao').eq('id', user.id).single(),
+    supabase.from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at'),
   ])
 
   if (!tData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
 
   const trabalho = tData as Trabalho
   const secoes = (sData ?? []) as SecaoTrabalho[]
+  const referencias = ordenarReferencias((rData ?? []) as Referencia[], trabalho.formato_citacao)
   const fluxo = getFluxo(trabalho.tipo_trabalho)
 
   const secoesOrdenadas = fluxo
@@ -132,6 +135,52 @@ export async function GET(request: Request) {
       color: CINZA, fontSize: 9, align: 'right',
     })
   })
+
+  // ── Slide de referências ────────────────────────────────────
+  if (referencias.length > 0) {
+    const isVancouver = trabalho.formato_citacao === 'vancouver'
+    // Divide em grupos de até 8 refs por slide
+    const grupos: Referencia[][] = []
+    for (let i = 0; i < referencias.length; i += 8) {
+      grupos.push(referencias.slice(i, i + 8))
+    }
+
+    grupos.forEach((grupo, gi) => {
+      const slideRefs = pptx.addSlide()
+
+      slideRefs.addShape(pptx.ShapeType.rect, {
+        x: 0, y: 0, w: '100%', h: 1.1, fill: { color: AZUL },
+      })
+      slideRefs.addText('REFERÊNCIAS', {
+        x: 0.5, y: 0.1, w: 9, h: 0.9,
+        color: BRANCO, fontSize: 18, bold: true, valign: 'middle',
+      })
+      if (grupos.length > 1) {
+        slideRefs.addText(`${gi + 1}/${grupos.length}`, {
+          x: 8.5, y: 0.3, w: 1, h: 0.5,
+          color: '93c5fd', fontSize: 10, align: 'right',
+        })
+      }
+
+      const linhas = grupo.map((ref, idx) => {
+        const num = isVancouver ? gi * 8 + idx + 1 : undefined
+        return formatarReferencia(ref, trabalho.formato_citacao, num)
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+      })
+
+      slideRefs.addText(linhas.join('\n\n'), {
+        x: 0.5, y: 1.3, w: 9, h: 4,
+        color: '1f2937', fontSize: 9, valign: 'top',
+        lineSpacingMultiple: 1.4, wrap: true,
+      })
+
+      slideRefs.addText(trabalho.titulo ?? '', {
+        x: 0.5, y: 5.4, w: 8, h: 0.3,
+        color: CINZA, fontSize: 9, italic: true,
+      })
+    })
+  }
 
   // ── Slide final ─────────────────────────────────────────────
   const slideFinal = pptx.addSlide()

@@ -97,6 +97,7 @@ export interface Referencia {
   titulo: string
   autores?: AutorReferencia[]
   ano?: number
+  data_acesso?: string   // ex: "15 jan. 2024" — obrigatório ABNT/Vancouver para sites
   journal?: string
   volume?: string
   numero?: string

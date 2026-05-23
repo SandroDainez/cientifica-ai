@@ -6,7 +6,7 @@ import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List, Shield,
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
-import { formatarReferencia } from '@/lib/referencias/formatar'
+import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
@@ -223,25 +223,37 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
         ))}
 
         {/* ── Referências ───────────────────────────────────── */}
-        {referencias.length > 0 && (
-          <section
-            id="referencias"
-            className="doc-page doc-section-break bg-white shadow-sm rounded-b-lg px-16 py-12 border"
-          >
-            <h2 className="doc-content font-bold text-base uppercase tracking-wide text-center mb-8"
-              style={{ textIndent: 0, fontFamily: 'inherit' }}>
-              REFERÊNCIAS
-            </h2>
-            <div className="space-y-3">
-              {referencias.map((ref, i) => (
-                <p key={ref.id} className="doc-content text-sm leading-relaxed"
-                  style={{ paddingLeft: '2em', textIndent: '-2em' } as React.CSSProperties}>
-                  {formatarReferencia(ref, trabalho.formato_citacao).replace(/\*\*/g, '')}
-                </p>
-              ))}
-            </div>
-          </section>
-        )}
+        {referencias.length > 0 && (() => {
+          const refsOrdenadas = ordenarReferencias(referencias, trabalho.formato_citacao)
+          const isVancouver = trabalho.formato_citacao === 'vancouver'
+          return (
+            <section
+              id="referencias"
+              className="doc-page doc-section-break bg-white shadow-sm rounded-b-lg px-16 py-12 border"
+            >
+              <h2 className="doc-content font-bold text-base uppercase tracking-wide text-center mb-8"
+                style={{ textIndent: 0, fontFamily: 'inherit' }}>
+                REFERÊNCIAS
+              </h2>
+              <div className="space-y-3">
+                {refsOrdenadas.map((ref, i) => {
+                  const numero = isVancouver ? i + 1 : undefined
+                  const texto = formatarReferencia(ref, trabalho.formato_citacao, numero)
+                    .replace(/\*\*/g, '')
+                    .replace(/\*/g, '')
+                  return (
+                    <p key={ref.id} className="doc-content text-sm leading-relaxed"
+                      style={isVancouver
+                        ? undefined
+                        : { paddingLeft: '2em', textIndent: '-2em' } as React.CSSProperties}>
+                      {texto}
+                    </p>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })()}
 
         {/* Estado vazio */}
         {secoesComConteudo.length === 0 && (

@@ -41,6 +41,7 @@ export function FormAdicionarReferencia({ onAdicionada, onCancelar, salvando }: 
   const [paginas, setPaginas] = useState('')
   const [doi, setDoi] = useState('')
   const [url, setUrl] = useState('')
+  const [dataAcesso, setDataAcesso] = useState('')
   const [editora, setEditora] = useState('')
   const [cidade, setCidade] = useState('')
   const [isbn, setIsbn] = useState('')
@@ -61,7 +62,12 @@ export function FormAdicionarReferencia({ onAdicionada, onCancelar, salvando }: 
 
     const autoresFiltrados: AutorReferencia[] = autores
       .filter(a => a.nome.trim() || a.sobrenome.trim())
-      .map(a => ({ nome: a.nome.trim(), sobrenome: a.sobrenome.trim(), iniciais: a.nome.charAt(0) + '.' }))
+      .map(a => ({
+        nome: a.nome.trim(),
+        sobrenome: a.sobrenome.trim(),
+        // "João Antônio" → "JA" (sem pontos — formatadores adicionam conforme o padrão)
+        iniciais: a.nome.trim().split(/\s+/).map(n => n.charAt(0).toUpperCase()).join(''),
+      }))
 
     onAdicionada({
       tipo: TIPO_REF_MAP[tipo],
@@ -74,6 +80,7 @@ export function FormAdicionarReferencia({ onAdicionada, onCancelar, salvando }: 
       paginas: paginas.trim() || undefined,
       doi: doi.trim() || undefined,
       url: url.trim() || undefined,
+      data_acesso: dataAcesso.trim() || undefined,
       editora: editora.trim() || undefined,
       cidade: cidade.trim() || undefined,
       isbn: isbn.trim() || undefined,
@@ -186,10 +193,17 @@ export function FormAdicionarReferencia({ onAdicionada, onCancelar, salvando }: 
           )}
 
           {tipo === 'site' && (
-            <Field label="URL">
-              <input value={url} onChange={e => setUrl(e.target.value)}
-                type="url" placeholder="https://…" className={inputCls} />
-            </Field>
+            <>
+              <Field label="URL">
+                <input value={url} onChange={e => setUrl(e.target.value)}
+                  type="url" placeholder="https://…" className={inputCls} />
+              </Field>
+              <Field label="Data de acesso *">
+                <input value={dataAcesso} onChange={e => setDataAcesso(e.target.value)}
+                  placeholder="Ex: 15 jan. 2024" className={inputCls} />
+                <p className="text-xs text-muted-foreground mt-1">Obrigatório pela ABNT e Vancouver para sites.</p>
+              </Field>
+            </>
           )}
 
           {tipo === 'tese' && (

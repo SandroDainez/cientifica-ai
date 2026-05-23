@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     trabalho.formato_citacao
   )
 
-  const userPrompt = buildValidarSecaoPrompt(fase, conteudo)
+  const userPrompt = buildValidarSecaoPrompt(fase, conteudo, trabalho.formato_citacao)
 
   try {
     const raw = await callAI(systemPrompt, userPrompt, false)
