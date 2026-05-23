@@ -10,7 +10,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
   if (user) redirect('/dashboard')
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       {/* Logo */}
       <div className="flex items-center gap-3 mb-8">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-brand shadow-lg glow-teal">

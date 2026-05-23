@@ -98,7 +98,7 @@ export default function NovoTrabalhoPage() {
           <ArrowLeft className="h-4 w-4" />
           {step === 0 ? 'Voltar' : STEPS[step - 1]}
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Novo trabalho</h1>
+        <h1 className="text-2xl font-bold text-foreground">Novo trabalho</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Passo {step + 1} de {STEPS.length} — {STEPS[step]}
         </p>
@@ -119,7 +119,7 @@ export default function NovoTrabalhoPage() {
       {/* Step 1 — Tipo */}
       {step === 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Qual tipo de trabalho você vai criar?</h2>
+          <h2 className="text-lg font-semibold text-foreground">Qual tipo de trabalho você vai criar?</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {TIPOS_LISTA.map(tipo => (
               <TipoTrabalhoCard
@@ -146,12 +146,12 @@ export default function NovoTrabalhoPage() {
       {/* Step 2 — Detalhes */}
       {step === 1 && (
         <div className="space-y-5">
-          <h2 className="text-lg font-semibold text-gray-900">Detalhes do trabalho</h2>
+          <h2 className="text-lg font-semibold text-foreground">Detalhes do trabalho</h2>
 
-          <div className="bg-white border rounded-xl p-6 space-y-5">
+          <div className="bg-card border rounded-xl p-6 space-y-5">
             {/* Título */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-muted-foreground">
                 Título <span className="text-muted-foreground font-normal">(opcional — pode definir depois)</span>
               </label>
               <input
@@ -165,7 +165,7 @@ export default function NovoTrabalhoPage() {
 
             {/* Área */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Área do conhecimento</label>
+              <label className="text-sm font-medium text-muted-foreground">Área do conhecimento</label>
               <select
                 value={form.area_conhecimento}
                 onChange={e => set('area_conhecimento', e.target.value)}
@@ -178,7 +178,7 @@ export default function NovoTrabalhoPage() {
 
             {/* Formato de citação */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Formato de citação</label>
+              <label className="text-sm font-medium text-muted-foreground">Formato de citação</label>
               {fluxoSelecionado?.formatos_citacao_recomendados && (
                 <p className="text-xs text-muted-foreground">
                   Recomendado para {fluxoSelecionado.nome_completo}:{' '}
@@ -211,7 +211,7 @@ export default function NovoTrabalhoPage() {
 
             {/* Instituição */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-muted-foreground">
                 Instituição de destino <span className="text-muted-foreground font-normal">(opcional)</span>
               </label>
               <input
@@ -239,7 +239,7 @@ export default function NovoTrabalhoPage() {
                     form.tem_orientador ? 'translate-x-4.5' : 'translate-x-0.5'
                   )} />
                 </button>
-                <span className="text-sm font-medium text-gray-700">Tenho orientador(a)</span>
+                <span className="text-sm font-medium text-muted-foreground">Tenho orientador(a)</span>
               </div>
               {form.tem_orientador && (
                 <input
@@ -254,7 +254,7 @@ export default function NovoTrabalhoPage() {
 
             {/* Nível de experiência */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Seu nível de experiência em escrita científica</label>
+              <label className="text-sm font-medium text-muted-foreground">Seu nível de experiência em escrita científica</label>
               <div className="flex gap-3">
                 {([
                   { v: 'iniciante', l: 'Iniciante' },
@@ -296,9 +296,9 @@ export default function NovoTrabalhoPage() {
       {/* Step 3 — Confirmar */}
       {step === 2 && (
         <div className="space-y-5">
-          <h2 className="text-lg font-semibold text-gray-900">Confirme seu trabalho</h2>
+          <h2 className="text-lg font-semibold text-foreground">Confirme seu trabalho</h2>
 
-          <div className="bg-white border rounded-xl divide-y">
+          <div className="bg-card border rounded-xl divide-y">
             <SummaryRow label="Tipo" value={fluxoSelecionado?.nome_completo ?? ''} />
             <SummaryRow label="Título" value={form.titulo || '(a definir)'} />
             <SummaryRow label="Área" value={form.area_conhecimento || '(a definir)'} />
@@ -351,7 +351,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-3.5">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-gray-900">{value}</span>
+      <span className="text-sm font-medium text-foreground">{value}</span>
     </div>
   )
 }
