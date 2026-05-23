@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -14,6 +14,19 @@ import { PainelIA } from '@/components/editor/PainelIA'
 import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
+
+// ── Extrai opções de título de respostas da IA ────────────────────────────────
+// Captura strings entre aspas que parecem títulos (5–35 palavras)
+function extrairOpcoesTitulo(texto: string): string[] {
+  const matches = [...texto.matchAll(/"([^"]{20,250})"/g)]
+  return matches
+    .map(m => m[1].trim())
+    .filter(t => {
+      const words = t.split(/\s+/).length
+      return words >= 5 && words <= 35
+    })
+    .slice(0, 6)
+}
 
 interface EditorClientProps {
   trabalho: Trabalho
@@ -34,6 +47,13 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
   const [statusIA, setStatusIA] = useState<StatusIA>('idle')
   const [validacao, setValidacao] = useState<ResultadoValidacao | null>(null)
   const [iaPanelOpen, setIAPanelOpen] = useState(true)
+  // Opções de título geradas pela IA (picker visual em vez de markdown bruto)
+  const [tituloOpcoes, setTituloOpcoes] = useState<string[]>([])
+
+  // Detecta fim de geração para seções de título e extrai opções
+  const prevStatusRef = useRef<StatusIA>('idle')
+  const faseAtualRef = useRef(fases.find(f => f.chave_secao === faseAtiva || f.id === faseAtiva) ?? fases[0])
+  const conteudosRef = useRef(conteudos)
 
   const faseAtualConfig = fases.find(f => f.chave_secao === faseAtiva || f.id === faseAtiva) ?? fases[0]
   const faseIndex = fases.indexOf(faseAtualConfig)
@@ -41,6 +61,10 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
   const progresso = Math.round((fasesConcluidas.length / fases.length) * 100)
 
   const conteudoAtual = conteudos[faseAtualConfig.chave_secao] ?? conteudos[faseAtiva] ?? ''
+
+  // Mantém refs sincronizadas para uso no useEffect
+  faseAtualRef.current = faseAtualConfig
+  conteudosRef.current = conteudos
 
   function setConteudoAtual(valor: string) {
     const chave = faseAtualConfig.chave_secao
@@ -50,10 +74,38 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
   function trocarFase(chave: string) {
     setFaseAtiva(chave)
     setValidacao(null)
+    setTituloOpcoes([])
+  }
+
+  // Detecta fim de geração de seção de título → extrai opções e limpa textarea
+  useEffect(() => {
+    if (prevStatusRef.current === 'gerando' && statusIA === 'idle') {
+      const fase = faseAtualRef.current
+      const isTitulo = fase?.chave_secao?.includes('titulo')
+      if (isTitulo) {
+        const textoGerado = conteudosRef.current[fase.chave_secao] ?? ''
+        if (textoGerado.length > 60) {
+          const opcoes = extrairOpcoesTitulo(textoGerado)
+          if (opcoes.length >= 2) {
+            setTituloOpcoes(opcoes)
+            // Limpa o texto bruto do textarea
+            setConteudos(prev => ({ ...prev, [fase.chave_secao]: '' }))
+          }
+        }
+      }
+    }
+    prevStatusRef.current = statusIA
+  }, [statusIA])
+
+  // ── Selecionar opção de título ───────────────────────────────
+  function handleSelecionarTituloOpcao(opcao: string) {
+    setConteudoAtual(opcao)
+    setTituloOpcoes([])
   }
 
   // ── Gerar seção com IA (streaming) ──────────────────────────
   async function handleGerar() {
+    setTituloOpcoes([])
     setStatusIA('gerando')
     setConteudoAtual('')
     try {
@@ -246,6 +298,8 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 onAplicarSugestao={handleAplicarSugestao}
                 iaPanelOpen={iaPanelOpen}
                 isUltimaFase={isUltimaFase}
+                tituloOpcoes={faseAtualConfig.chave_secao?.includes('titulo') ? tituloOpcoes : []}
+                onSelecionarTituloOpcao={handleSelecionarTituloOpcao}
               />
             )}
           </div>

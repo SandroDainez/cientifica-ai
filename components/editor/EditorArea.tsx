@@ -3,7 +3,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import {
   Sparkles, CheckCircle2, Lightbulb, Save,
-  Loader2, ChevronRight, AlignLeft,
+  Loader2, ChevronRight, AlignLeft, MousePointerClick,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -25,6 +25,9 @@ interface EditorAreaProps {
   onAplicarSugestao: (id: string) => void
   iaPanelOpen: boolean
   isUltimaFase: boolean
+  /** Opções de título extraídas da resposta da IA — mostra picker em vez de markdown bruto */
+  tituloOpcoes?: string[]
+  onSelecionarTituloOpcao?: (opcao: string) => void
 }
 
 export function EditorArea({
@@ -32,6 +35,7 @@ export function EditorArea({
   onGerar, onValidar, onSalvar, onAbrirIA,
   statusIA, validacao, onAplicarSugestao,
   iaPanelOpen, isUltimaFase,
+  tituloOpcoes = [], onSelecionarTituloOpcao,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -145,6 +149,39 @@ export function EditorArea({
           </div>
         </div>
       </div>
+
+      {/* ── Picker de opções de título (quando a IA gera múltiplas sugestões) ── */}
+      {tituloOpcoes.length > 0 && (
+        <div className="bg-card border rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+              <MousePointerClick className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                A IA sugeriu {tituloOpcoes.length} opções de título
+              </p>
+              <p className="text-xs text-muted-foreground">Clique em uma para usá-la, ou escreva diretamente abaixo</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {tituloOpcoes.map((opcao, i) => (
+              <button
+                key={i}
+                onClick={() => onSelecionarTituloOpcao?.(opcao)}
+                className="w-full text-left px-4 py-3 rounded-lg border-2 border-transparent hover:border-primary/50 bg-muted/40 hover:bg-primary/5 transition-all group"
+              >
+                <span className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Opção {i + 1}
+                </span>
+                <span className="text-sm text-foreground group-hover:text-primary transition-colors leading-snug">
+                  {opcao}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Área de texto */}
       <div className="bg-card border rounded-xl overflow-hidden">
