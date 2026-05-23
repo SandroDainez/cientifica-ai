@@ -174,7 +174,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
       {/* Conteúdo principal */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b bg-background sticky top-16 z-10">
+        <div className="px-6 pt-4 pb-3 border-b bg-background">
           <PageHeader
             title={trabalho.titulo || 'Trabalho sem título'}
             description={getTipoLabel(trabalho.tipo_trabalho)}
@@ -184,30 +184,31 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
               { label: 'Editor' },
             ]}
             actions={
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Link href={`/trabalhos/${trabalho.id}/referencias`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                  <BookMarked className="h-3.5 w-3.5" /> Refs
+              <div className="flex items-center gap-0.5">
+                <Link href={`/trabalhos/${trabalho.id}/referencias`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Referências">
+                  <BookMarked className="h-4 w-4" />
                 </Link>
                 {trabalho.tipo_trabalho === 'revisao_sistematica' && (
-                  <Link href={`/trabalhos/${trabalho.id}/prisma`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                    <Filter className="h-3.5 w-3.5" /> PRISMA
+                  <Link href={`/trabalhos/${trabalho.id}/prisma`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="PRISMA">
+                    <Filter className="h-4 w-4" />
                   </Link>
                 )}
-                <Link href={`/trabalhos/${trabalho.id}/etica`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                  <Shield className="h-3.5 w-3.5" /> Ética
+                <Link href={`/trabalhos/${trabalho.id}/etica`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Ética em Pesquisa">
+                  <Shield className="h-4 w-4" />
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/coleta-dados`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                  <ClipboardList className="h-3.5 w-3.5" /> Coleta
+                <Link href={`/trabalhos/${trabalho.id}/coleta-dados`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Coleta de Dados">
+                  <ClipboardList className="h-4 w-4" />
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/visualizar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                  <Eye className="h-3.5 w-3.5" /> Preview
+                <Link href={`/trabalhos/${trabalho.id}/visualizar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Preview do Documento">
+                  <Eye className="h-4 w-4" />
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/apresentacao`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                  <Presentation className="h-3.5 w-3.5" /> Slides
+                <Link href={`/trabalhos/${trabalho.id}/apresentacao`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Gerar Slides">
+                  <Presentation className="h-4 w-4" />
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/exportar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-                  <Download className="h-3.5 w-3.5" /> Exportar
+                <Link href={`/trabalhos/${trabalho.id}/exportar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Exportar">
+                  <Download className="h-4 w-4" />
                 </Link>
+                <div className="w-px h-5 bg-border mx-1" />
                 <Link href="/trabalhos" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
                   <ArrowLeft className="h-3.5 w-3.5" /> Sair
                 </Link>
