@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { GraduationCap, LayoutDashboard, FolderOpen, PlusCircle, User, Settings, LogOut, Menu, X, ShieldCheck } from 'lucide-react'
+import { GraduationCap, LayoutDashboard, FolderOpen, PlusCircle, User, Settings, LogOut, Menu, X, ShieldCheck, Sun, Moon } from 'lucide-react'
 import { useState } from 'react'
+import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -93,6 +95,17 @@ export function Navbar({ userName, userEmail }: NavbarProps) {
 
           {/* Avatar + mobile toggle */}
           <div className="flex items-center gap-2">
+            {/* Toggle claro/escuro */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            >
+              {theme === 'dark'
+                ? <Sun className="h-4 w-4" />
+                : <Moon className="h-4 w-4" />
+              }
+            </button>
             <DropdownMenu>
               <DropdownMenuTrigger
                 className="flex h-8 w-8 items-center justify-center rounded-full gradient-brand text-white text-xs font-bold hover:opacity-90 transition-opacity"
