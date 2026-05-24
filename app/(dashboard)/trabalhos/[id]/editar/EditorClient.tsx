@@ -19,16 +19,29 @@ import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Captura strings entre aspas que parecem títulos (5–35 palavras)
 function extrairOpcoesTitulo(texto: string): string[] {
+  // Normaliza quebras de linha dentro do mesmo parágrafo:
+  // "linha A\nlinha B" → "linha A linha B" (só une quando NÃO há linha em branco entre elas)
+  const normalizado = texto
+    .replace(/([^\n])\n(?!\n)([^\n])/g, '$1 $2')
+    .replace(/([^\n])\n(?!\n)([^\n])/g, '$1 $2') // segunda passagem para casos restantes
+
   const candidatos: string[] = []
 
-  // 1. Texto entre aspas duplas: "Título aqui"
-  for (const m of texto.matchAll(/"([^"]{20,300})"/g)) {
+  // 1. Texto em negrito **Título** — padrão preferido do DeepSeek
+  for (const m of normalizado.matchAll(/\*\*([^*]{20,350})\*\*/g)) {
     candidatos.push(m[1].trim())
   }
 
-  // 2. Linhas com marcador de lista: "- Título", "• Título", "1. Título", "**1.** Título"
+  // 2. Texto entre aspas duplas "Título"
   if (candidatos.length < 2) {
-    for (const m of texto.matchAll(/^[\s*]*(?:\d+[.)]\s*|\*{0,2}\d+\.\*{0,2}\s*|[-•*]\s+)(.{20,300})$/gm)) {
+    for (const m of normalizado.matchAll(/"([^"]{20,300})"/g)) {
+      candidatos.push(m[1].trim())
+    }
+  }
+
+  // 3. Linhas com marcador: "- Título", "• Título", "1. Título"
+  if (candidatos.length < 2) {
+    for (const m of normalizado.matchAll(/^[\s*]*(?:\d+[.)]\s*|[-•]\s+)(.{20,350})$/gm)) {
       candidatos.push(m[1].trim())
     }
   }
