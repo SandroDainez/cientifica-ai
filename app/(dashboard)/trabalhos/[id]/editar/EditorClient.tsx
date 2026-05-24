@@ -19,13 +19,27 @@ import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Captura strings entre aspas que parecem títulos (5–35 palavras)
 function extrairOpcoesTitulo(texto: string): string[] {
-  const matches = [...texto.matchAll(/"([^"]{20,250})"/g)]
-  return matches
-    .map(m => m[1].trim())
+  const candidatos: string[] = []
+
+  // 1. Texto entre aspas duplas: "Título aqui"
+  for (const m of texto.matchAll(/"([^"]{20,300})"/g)) {
+    candidatos.push(m[1].trim())
+  }
+
+  // 2. Linhas com marcador de lista: "- Título", "• Título", "1. Título", "**1.** Título"
+  if (candidatos.length < 2) {
+    for (const m of texto.matchAll(/^[\s*]*(?:\d+[.)]\s*|\*{0,2}\d+\.\*{0,2}\s*|[-•*]\s+)(.{20,300})$/gm)) {
+      candidatos.push(m[1].trim())
+    }
+  }
+
+  return candidatos
+    .map(t => t.replace(/\s*\(\d+\s*palavras?\)/gi, '').replace(/\*+/g, '').trim())
     .filter(t => {
       const words = t.split(/\s+/).length
       return words >= 5 && words <= 35
     })
+    .filter((t, i, arr) => arr.indexOf(t) === i) // deduplicar
     .slice(0, 6)
 }
 
