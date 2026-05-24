@@ -199,7 +199,18 @@ REGRAS FINAIS INEGOCIÁVEIS:
 - Escreva APENAS o texto da seção — sem títulos introdutórios, sem "Seção X:", sem metacomentários
 - Use SEMPRE os dados reais do pesquisador fornecidos acima — nunca escreva textos genéricos ou com placeholders como [autor], [ano], [inserir dados]
 - O texto deve soar como se o pesquisador realmente fez aquilo que descreveu
-- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto`)
+- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto
+
+REGRA CRÍTICA DE CITAÇÃO — LEIA COM ATENÇÃO:
+Uma citação em ABNT é sempre (SOBRENOME DO AUTOR, ANO) — nunca o título do documento.
+EXEMPLOS DE ERROS FATAIS QUE VOCÊ DEVE EVITAR:
+  ✗ ERRADO: (TÓPICOS EM CIÊNCIAS DA SAÚDE, 2021) — isso é um título, não um sobrenome de autor
+  ✗ ERRADO: (PERFIL DE COMPETÊNCIAS, s.d.) — isso é um título, não um sobrenome de autor
+  ✗ ERRADO: (DIRETRIZES NACIONAIS, 2020) — isso é um título, não um sobrenome de autor
+  ✓ CORRETO: (SILVA, 2021) — sobrenome do autor + ano
+  ✓ CORRETO: (COSTA et al., 2019) — sobrenome + et al. + ano
+  ✓ CORRETO: (SOBRENOME, ANO) — marcador genérico quando não há referência disponível
+Se não houver referência disponível para embasar um argumento, escreva o argumento SEM citação. Jamais invente sobrenomes de autores.`)
 
   return partes.join('\n')
 }

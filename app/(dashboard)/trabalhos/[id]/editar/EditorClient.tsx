@@ -137,24 +137,35 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
     setQuestionarioAberto(false)
   }
 
-  // Detecta fim de geração de seção de título → extrai opções e limpa textarea
+  // Detecta fim de geração → extrai opções de título OU dispara auto-validação
   useEffect(() => {
     if (prevStatusRef.current === 'gerando' && statusIA === 'idle') {
       const fase = faseAtualRef.current
       const isTitulo = fase?.chave_secao?.includes('titulo')
+      const textoGerado = conteudosRef.current[fase.chave_secao] ?? ''
+
       if (isTitulo) {
-        const textoGerado = conteudosRef.current[fase.chave_secao] ?? ''
+        // Seção de título: mostra picker
         if (textoGerado.length > 60) {
           const opcoes = extrairOpcoesTitulo(textoGerado)
           if (opcoes.length >= 2) {
             setTituloOpcoes(opcoes)
-            // Limpa o texto bruto do textarea
             setConteudos(prev => ({ ...prev, [fase.chave_secao]: '' }))
           }
+        }
+      } else {
+        // Outras seções: auto-valida 4s após geração terminar
+        if (textoGerado.trim().split(/\s+/).length >= 80) {
+          const t = setTimeout(() => {
+            setValidacao(null)
+            handleValidar()
+          }, 4000)
+          return () => clearTimeout(t)
         }
       }
     }
     prevStatusRef.current = statusIA
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusIA])
 
   // ── Selecionar opção de título ───────────────────────────────
