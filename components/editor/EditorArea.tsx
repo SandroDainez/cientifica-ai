@@ -6,7 +6,7 @@ import {
   Sparkles, CheckCircle2, Lightbulb, Save,
   Loader2, ChevronRight, AlignLeft, MousePointerClick,
   PenLine, AlertTriangle, XCircle, Trophy, ArrowRight,
-  BookOpen, Target, ListChecks, BookMarked,
+  BookOpen, Target, ListChecks, BookMarked, RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,8 @@ interface EditorAreaProps {
   /** Opções de título extraídas da resposta da IA — mostra picker em vez de markdown bruto */
   tituloOpcoes?: string[]
   onSelecionarTituloOpcao?: (opcao: string) => void
+  /** Callback para regenerar títulos com instrução de refinamento */
+  onGerarNovamenteTitulo?: (refinamento: string) => void
   /** Link para a página de referências — exibe aviso quando conteúdo tem placeholders (SOBRENOME, ANO) */
   linkReferencias?: string
 }
@@ -64,7 +66,7 @@ export function EditorArea({
   onGerar, onValidar, onSalvar, onAbrirIA,
   statusIA, validacao, onAplicarSugestao,
   iaPanelOpen, isUltimaFase,
-  tituloOpcoes = [], onSelecionarTituloOpcao,
+  tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
   linkReferencias,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -73,6 +75,7 @@ export function EditorArea({
   // Estado local da UX
   const [mostraIntro, setMostraIntro] = useState(true)
   const [confirmandoAvanco, setConfirmandoAvanco] = useState(false)
+  const [refinamentoTitulo, setRefinamentoTitulo] = useState('')
 
   const palavras = conteudo.trim() ? conteudo.trim().split(/\s+/).length : 0
   const statusPalavras = avaliarPalavras(palavras, fase.min_palavras, fase.max_palavras)
@@ -311,7 +314,8 @@ export function EditorArea({
 
       {/* ── Picker de opções de título ───────────────────────────────── */}
       {tituloOpcoes.length > 0 && (
-        <div className="bg-card border rounded-xl p-5 space-y-3">
+        <div className="bg-card border rounded-xl p-5 space-y-4">
+          {/* Cabeçalho */}
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
               <MousePointerClick className="h-4 w-4 text-primary" />
@@ -323,6 +327,8 @@ export function EditorArea({
               <p className="text-xs text-muted-foreground">Clique em uma para usá-la, ou escreva diretamente abaixo</p>
             </div>
           </div>
+
+          {/* Cards de opções */}
           <div className="space-y-2">
             {tituloOpcoes.map((opcao, i) => (
               <button key={i} onClick={() => onSelecionarTituloOpcao?.(opcao)}
@@ -331,6 +337,45 @@ export function EditorArea({
                 <span className="text-sm text-foreground group-hover:text-primary transition-colors leading-snug">{opcao}</span>
               </button>
             ))}
+          </div>
+
+          {/* Refinamento */}
+          <div className="border-t pt-4 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Não gostou? Descreva o que prefere e gere novamente:
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={refinamentoTitulo}
+                onChange={e => setRefinamentoTitulo(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && refinamentoTitulo.trim() && statusIA === 'idle') {
+                    onGerarNovamenteTitulo?.(refinamentoTitulo.trim())
+                    setRefinamentoTitulo('')
+                  }
+                }}
+                placeholder="Ex: prefiro título mais curto, sem mencionar UTI, com foco no desfecho…"
+                disabled={statusIA !== 'idle'}
+                className="flex-1 h-9 rounded-lg border bg-muted/40 px-3 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+              />
+              <button
+                onClick={() => {
+                  if (refinamentoTitulo.trim()) {
+                    onGerarNovamenteTitulo?.(refinamentoTitulo.trim())
+                    setRefinamentoTitulo('')
+                  }
+                }}
+                disabled={!refinamentoTitulo.trim() || statusIA !== 'idle'}
+                className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-40 transition-colors shrink-0"
+              >
+                {statusIA === 'gerando'
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />
+                }
+                Gerar novamente
+              </button>
+            </div>
           </div>
         </div>
       )}

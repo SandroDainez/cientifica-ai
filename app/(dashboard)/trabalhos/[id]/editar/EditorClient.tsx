@@ -163,13 +163,18 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
     setTituloOpcoes([])
   }
 
+  // ── Regenerar título com instrução de refinamento ────────────
+  function handleGerarNovamenteTitulo(refinamento: string) {
+    executarGeracao(undefined, refinamento)
+  }
+
   // ── Gerar seção com IA (com questionário pré-geração) ───────
   function handleGerar() {
     // Para seção de resumo tem UI própria; para outras, abre questionário
     setQuestionarioAberto(true)
   }
 
-  async function executarGeracao(respostas?: RespostasQuestionario) {
+  async function executarGeracao(respostas?: RespostasQuestionario, instrucoes?: string) {
     setQuestionarioAberto(false)
     setTituloOpcoes([])
     setStatusIA('gerando')
@@ -182,6 +187,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           trabalhoId: trabalho.id,
           chaveSecao: faseAtualConfig.chave_secao,
           respostas_usuario: respostas,
+          instrucoes_usuario: instrucoes,
         }),
       })
       if (!res.ok) throw new Error(`Erro na geração: ${res.status}`)
@@ -372,6 +378,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 isUltimaFase={isUltimaFase}
                 tituloOpcoes={faseAtualConfig.chave_secao?.includes('titulo') ? tituloOpcoes : []}
                 onSelecionarTituloOpcao={handleSelecionarTituloOpcao}
+                onGerarNovamenteTitulo={handleGerarNovamenteTitulo}
                 linkReferencias={`/trabalhos/${trabalho.id}/referencias`}
               />
             )}
