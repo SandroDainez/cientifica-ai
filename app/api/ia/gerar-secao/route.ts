@@ -78,7 +78,8 @@ export async function POST(request: Request) {
     return q
   }
 
-  if (referencias.length === 0) {
+  // Auto-importa se não tem refs, ou se tem poucas (< 8) — garante cobertura mínima
+  if (referencias.length < 8) {
     try {
       // Monta queries diversificadas para cobrir diferentes ângulos do tema
       const queries: string[] = []
@@ -127,9 +128,9 @@ export async function POST(request: Request) {
           queriesValidas.map(q => buscarRefsExternas(q, 6))
         )
 
-        // Achata e deduplica por DOI e título
-        const vistosDois  = new Set<string>()
-        const vistosTitulos = new Set<string>()
+        // Achata e deduplica por DOI e título (inclui as que já existem no banco)
+        const vistosDois  = new Set<string>(referencias.map(r => r.doi ?? '').filter(Boolean))
+        const vistosTitulos = new Set<string>(referencias.map(r => r.titulo.toLowerCase().slice(0, 60)))
         const refsUnicas = resultados.flat().filter(ref => {
           const titleKey = ref.titulo.toLowerCase().slice(0, 60)
           if (vistosTitulos.has(titleKey)) return false
@@ -139,7 +140,7 @@ export async function POST(request: Request) {
             vistosDois.add(ref.doi)
           }
           return true
-        }).slice(0, 15)
+        }).slice(0, 15 - referencias.length)  // só importa o que falta para chegar em ~15
 
         if (refsUnicas.length > 0) {
           const formato = (trabalho.formato_citacao ?? 'abnt') as FormatoCitacao
@@ -182,8 +183,9 @@ export async function POST(request: Request) {
             .select()
 
           if (salvas && salvas.length > 0) {
-            referencias = salvas as Referencia[]
-            console.log(`[gerar-secao] ${referencias.length} referências reais auto-importadas`)
+            // Adiciona as novas às que já existiam (não substitui)
+            referencias = [...referencias, ...(salvas as Referencia[])]
+            console.log(`[gerar-secao] ${salvas.length} novas refs importadas → total: ${referencias.length}`)
           }
         }
       }

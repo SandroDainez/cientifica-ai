@@ -723,52 +723,85 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
   ) {
     return [
       {
-        id: 'tipo_pesquisa',
-        pergunta: 'Como você fez (ou vai fazer) sua pesquisa?',
+        id: 'delineamento',
+        pergunta: 'Qual é o tipo/delineamento do seu estudo?',
         tipo: 'selecao',
         opcoes: [
-          'Li artigos, livros e textos sobre o tema (pesquisa bibliográfica/revisão)',
-          'Apliquei questionário ou formulário para pessoas responderem',
-          'Fiz entrevistas com pessoas',
-          'Observei pessoas ou situações em campo',
-          'Analisei dados ou documentos já existentes',
-          'Fiz um experimento ou intervenção',
-          'Usei mais de um método (pesquisa mista)',
+          'Estudo observacional transversal (cross-sectional)',
+          'Estudo de coorte retrospectiva (análise de prontuários/dados passados)',
+          'Estudo de coorte prospectiva (acompanhamento ao longo do tempo)',
+          'Estudo caso-controle',
+          'Estudo descritivo / série de casos',
+          'Ensaio clínico randomizado (ECR)',
+          'Pesquisa qualitativa (entrevistas, grupos focais)',
+          'Pesquisa bibliográfica / revisão de literatura',
+          'Pesquisa mista (quantitativa + qualitativa)',
         ],
         obrigatoria: true,
+        dica: 'O delineamento define toda a metodologia. Se não tiver certeza, escolha o mais próximo.',
       },
       {
-        id: 'participantes',
-        pergunta: 'Quem ou o quê foi estudado?',
+        id: 'local_periodo',
+        pergunta: 'Onde e quando foi realizado o estudo? Seja específico.',
         tipo: 'textarea',
         placeholder:
-          'Ex: 200 estudantes do ensino médio de 5 escolas públicas de BH, com idades entre 14-17 anos, sendo 110 meninas e 90 meninos',
+          'Ex: Hospital Universitário de São Paulo (HUSP), UTI adulto, de janeiro a dezembro de 2024\nEx: Unidade Básica de Saúde Central de Ribeirão Preto (MG), de março a setembro de 2023',
         obrigatoria: true,
-        dica: 'Inclua: número de pessoas/fontes, perfil (idade, sexo, nível de ensino), localização',
+        dica: 'Coloque o nome real da instituição, cidade/estado e as datas exatas. Esses dados precisam ser reais.',
       },
       {
-        id: 'periodo_local',
-        pergunta: 'Quando e onde foi feita a pesquisa?',
+        id: 'populacao_amostra',
+        pergunta: 'Quem foram os participantes? Quantos? Qual o perfil?',
+        tipo: 'textarea',
+        placeholder:
+          'Ex: Pacientes adultos internados na UTI com diagnóstico de sepse, ≥18 anos, de ambos os sexos. Total: 87 pacientes.\nEx: 200 estudantes do ensino médio, 14-17 anos, de 5 escolas públicas de BH, sendo 110 meninas e 90 meninos.',
+        obrigatoria: true,
+        dica: 'Inclua: número total de participantes, faixa etária, sexo, diagnóstico ou perfil relevante.',
+      },
+      {
+        id: 'criterios_inclusao',
+        pergunta: 'Quais foram os critérios de INCLUSÃO? (quem entrou no estudo)',
+        tipo: 'textarea',
+        placeholder:
+          'Ex:\n• Idade ≥ 18 anos\n• Internado na UTI por ≥ 24 horas\n• Diagnóstico de sepse pelos critérios Sepsis-3\n• Prontuário completo disponível',
+        obrigatoria: true,
+        dica: 'Liste um critério por linha. Seja preciso — isso é fundamental para a qualidade do texto.',
+      },
+      {
+        id: 'criterios_exclusao',
+        pergunta: 'Quais foram os critérios de EXCLUSÃO? (quem ficou fora)',
+        tipo: 'textarea',
+        placeholder:
+          'Ex:\n• Gestantes\n• Óbito nas primeiras 6 horas de internação\n• Prontuário com dados incompletos (>20% dos campos)\n• Pacientes transferidos de outra instituição sem história prévia',
+        obrigatoria: true,
+        dica: 'Critérios de exclusão protegem a validade interna do estudo. Seja específico.',
+      },
+      {
+        id: 'coleta_instrumentos',
+        pergunta: 'Como os dados foram coletados? Quais instrumentos/escalas foram usados?',
+        tipo: 'textarea',
+        placeholder:
+          'Ex: Revisão de prontuários eletrônicos (sistema TrakCare). Dados coletados por formulário padronizado: variáveis demográficas, APACHE II, SOFA, tempo de ventilação mecânica.\nEx: Questionário autoaplicado online (Google Forms). Escala de Autoestima de Rosenberg (10 itens), Escala de Ansiedade de Beck.',
+        obrigatoria: true,
+        dica: 'Se usou escalas/scores validados, mencione o nome completo. Ex: APACHE II, SOFA, Escala de Rosenberg.',
+      },
+      {
+        id: 'analise_estatistica',
+        pergunta: 'Como foi feita a análise dos dados? Qual software foi usado?',
+        tipo: 'textarea',
+        placeholder:
+          'Ex: Análise estatística no SPSS v.26. Variáveis quantitativas: média ± desvio padrão; qualitativas: frequências e percentuais. Correlação de Pearson para associações. Nível de significância: p<0,05.\nEx: Análise temática de conteúdo segundo Bardin. Codificação manual das entrevistas transcritas.',
+        obrigatoria: false,
+        dica: 'Se não fez análise ainda, descreva o que planeja usar. Mencione o software (SPSS, R, Stata, Excel, etc.).',
+      },
+      {
+        id: 'cep_etica',
+        pergunta: 'O estudo tem aprovação do Comitê de Ética (CEP)? Qual é o número CAAE?',
         tipo: 'texto',
-        placeholder: 'Ex: De março a junho de 2024, em Belo Horizonte (MG)',
-        obrigatoria: false,
-      },
-      {
-        id: 'instrumentos',
-        pergunta: 'Que instrumentos ou ferramentas você usou para coletar os dados?',
-        tipo: 'textarea',
         placeholder:
-          'Ex: Questionário online (Google Forms) com 25 perguntas; Escala de Autoestima de Rosenberg (10 itens); dados de tempo de tela do smartphone',
+          'Ex: Aprovado pelo CEP-HUSP, CAAE nº 12345678.9.0000.5390, Parecer nº 4.123.456\nEx: Dispensado de CEP — pesquisa com dados secundários públicos / pesquisa bibliográfica',
         obrigatoria: false,
-        dica: 'Se usou escalas ou questionários validados, mencione o nome completo',
-      },
-      {
-        id: 'analise',
-        pergunta: 'Como você analisou os dados que coletou?',
-        tipo: 'textarea',
-        placeholder:
-          'Ex: Usei o SPSS para calcular médias e correlação de Pearson / Fiz análise temática das entrevistas agrupando por categorias / Usei estatística descritiva (percentuais e médias)',
-        obrigatoria: false,
+        dica: 'Se ainda não tem aprovação, escreva "Em análise no CEP" ou "Dispensado de CEP" conforme seu caso.',
       },
     ]
   }
