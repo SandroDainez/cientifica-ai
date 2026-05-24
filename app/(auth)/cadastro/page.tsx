@@ -86,14 +86,19 @@ export default function CadastroPage() {
     setSucesso(true)
   }
 
+  const inputCls = 'bg-white/10 border-white/20 text-white placeholder:text-slate-500 focus-visible:ring-primary'
+  const labelCls = 'text-sm font-medium text-slate-200'
+  const errorCls = 'text-xs text-red-400'
+  const selectCls = 'w-full h-9 rounded-lg border border-white/20 bg-white/10 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50'
+
   if (sucesso) {
     return (
       <div className="text-center space-y-4">
         <div className="flex justify-center">
-          <CheckCircle2 className="h-16 w-16 text-green-500" />
+          <CheckCircle2 className="h-16 w-16 text-green-400" />
         </div>
-        <h2 className="text-2xl font-bold">Conta criada!</h2>
-        <p className="text-muted-foreground text-sm">
+        <h2 className="text-2xl font-bold text-white">Conta criada!</h2>
+        <p className="text-slate-400 text-sm">
           Enviamos um link de confirmação para o seu e-mail.<br />
           Clique no link para ativar sua conta.
         </p>
@@ -107,8 +112,8 @@ export default function CadastroPage() {
   return (
     <div className="space-y-5">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-foreground">Criar conta gratuita</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="text-2xl font-bold text-white">Criar conta gratuita</h2>
+        <p className="text-sm text-slate-400 mt-1">
           Já tem conta?{' '}
           <Link href="/login" className="text-primary font-medium hover:underline">Entrar</Link>
         </p>
@@ -117,87 +122,83 @@ export default function CadastroPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Nome */}
         <div className="space-y-1.5">
-          <Label htmlFor="nome">Nome completo</Label>
-          <Input id="nome" placeholder="Seu nome completo" {...register('nome')} />
-          {errors.nome && <p className="text-xs text-destructive">{errors.nome.message}</p>}
+          <label htmlFor="nome" className={labelCls}>Nome completo</label>
+          <Input id="nome" placeholder="Seu nome completo" className={inputCls} {...register('nome')} />
+          {errors.nome && <p className={errorCls}>{errors.nome.message}</p>}
         </div>
 
         {/* Email */}
         <div className="space-y-1.5">
-          <Label htmlFor="email">E-mail</Label>
-          <Input id="email" type="email" placeholder="seu@email.com" {...register('email')} />
-          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+          <label htmlFor="email" className={labelCls}>E-mail</label>
+          <Input id="email" type="email" placeholder="seu@email.com" className={inputCls} {...register('email')} />
+          {errors.email && <p className={errorCls}>{errors.email.message}</p>}
         </div>
 
         {/* Senha */}
         <div className="space-y-1.5">
-          <Label htmlFor="senha">Senha</Label>
+          <label htmlFor="senha" className={labelCls}>Senha</label>
           <div className="relative">
             <Input
               id="senha"
               type={showSenha ? 'text' : 'password'}
               placeholder="Mínimo 8 caracteres"
+              className={inputCls}
               {...register('senha')}
             />
             <button
               type="button"
               onClick={() => setShowSenha(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
             >
               {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.senha && <p className="text-xs text-destructive">{errors.senha.message}</p>}
+          {errors.senha && <p className={errorCls}>{errors.senha.message}</p>}
         </div>
 
         {/* Confirmar senha */}
         <div className="space-y-1.5">
-          <Label htmlFor="confirmarSenha">Confirmar senha</Label>
+          <label htmlFor="confirmarSenha" className={labelCls}>Confirmar senha</label>
           <Input
             id="confirmarSenha"
             type="password"
             placeholder="Repita a senha"
+            className={inputCls}
             {...register('confirmarSenha')}
           />
-          {errors.confirmarSenha && <p className="text-xs text-destructive">{errors.confirmarSenha.message}</p>}
+          {errors.confirmarSenha && <p className={errorCls}>{errors.confirmarSenha.message}</p>}
         </div>
 
         {/* Nível acadêmico */}
         <div className="space-y-1.5">
-          <Label htmlFor="nivelAcademico">Nível acadêmico</Label>
-          <select
-            id="nivelAcademico"
-            {...register('nivelAcademico')}
-            className="w-full h-8 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
-          >
-            <option value="">Selecione...</option>
+          <label htmlFor="nivelAcademico" className={labelCls}>Nível acadêmico</label>
+          <select id="nivelAcademico" {...register('nivelAcademico')} className={selectCls}>
+            <option value="" className="bg-slate-800">Selecione...</option>
             {NIVEIS.map(n => (
-              <option key={n.value} value={n.value}>{n.label}</option>
+              <option key={n.value} value={n.value} className="bg-slate-800">{n.label}</option>
             ))}
           </select>
-          {errors.nivelAcademico && <p className="text-xs text-destructive">{errors.nivelAcademico.message}</p>}
+          {errors.nivelAcademico && <p className={errorCls}>{errors.nivelAcademico.message}</p>}
         </div>
 
         {/* Área */}
         <div className="space-y-1.5">
-          <Label htmlFor="areaConhecimento">Grande área de conhecimento</Label>
-          <select
-            id="areaConhecimento"
-            {...register('areaConhecimento')}
-            className="w-full h-8 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
-          >
-            <option value="">Selecione...</option>
+          <label htmlFor="areaConhecimento" className={labelCls}>Grande área de conhecimento</label>
+          <select id="areaConhecimento" {...register('areaConhecimento')} className={selectCls}>
+            <option value="" className="bg-slate-800">Selecione...</option>
             {AREAS.map(a => (
-              <option key={a} value={a}>{a}</option>
+              <option key={a} value={a} className="bg-slate-800">{a}</option>
             ))}
           </select>
-          {errors.areaConhecimento && <p className="text-xs text-destructive">{errors.areaConhecimento.message}</p>}
+          {errors.areaConhecimento && <p className={errorCls}>{errors.areaConhecimento.message}</p>}
         </div>
 
         {/* Instituição */}
         <div className="space-y-1.5">
-          <Label htmlFor="instituicao">Instituição de ensino <span className="text-muted-foreground">(opcional)</span></Label>
-          <Input id="instituicao" placeholder="Ex: USP, UNICAMP, UFMG..." {...register('instituicao')} />
+          <label htmlFor="instituicao" className={labelCls}>
+            Instituição de ensino <span className="text-slate-500 font-normal">(opcional)</span>
+          </label>
+          <Input id="instituicao" placeholder="Ex: USP, UNICAMP, UFMG..." className={inputCls} {...register('instituicao')} />
         </div>
 
         {/* Termos */}
@@ -206,19 +207,19 @@ export default function CadastroPage() {
             id="termos"
             type="checkbox"
             {...register('termos')}
-            className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+            className="mt-0.5 h-4 w-4 rounded border-white/20 accent-primary"
           />
-          <label htmlFor="termos" className="text-xs text-muted-foreground leading-relaxed">
+          <label htmlFor="termos" className="text-xs text-slate-400 leading-relaxed">
             Concordo com os{' '}
             <Link href="/termos" className="text-primary hover:underline">Termos de Uso</Link>
             {' '}e a{' '}
             <Link href="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
           </label>
         </div>
-        {errors.termos && <p className="text-xs text-destructive">{errors.termos.message}</p>}
+        {errors.termos && <p className={errorCls}>{errors.termos.message}</p>}
 
         {erro && (
-          <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400">
             {erro}
           </div>
         )}

@@ -60,8 +60,8 @@ export default function LoginPage() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-foreground">Entrar na sua conta</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="text-2xl font-bold text-white">Entrar na sua conta</h2>
+        <p className="text-sm text-slate-400 mt-1">
           Não tem conta?{' '}
           <Link href="/cadastro" className="text-primary font-medium hover:underline">
             Cadastre-se grátis
@@ -73,7 +73,7 @@ export default function LoginPage() {
       <button
         onClick={loginGoogle}
         disabled={loadingGoogle}
-        className="w-full flex items-center justify-center gap-3 border border-border rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-3 border border-white/20 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/10 transition-colors disabled:opacity-50"
       >
         {loadingGoogle ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -90,30 +90,31 @@ export default function LoginPage() {
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
+          <div className="w-full border-t border-white/10" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-3 text-muted-foreground">ou entre com e-mail</span>
+          <span className="bg-[rgba(14,26,42,0.9)] px-3 text-slate-400 tracking-widest">ou entre com e-mail</span>
         </div>
       </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="email">E-mail</Label>
+          <label htmlFor="email" className="text-sm font-medium text-slate-200">E-mail</label>
           <Input
             id="email"
             type="email"
             placeholder="seu@email.com"
             autoComplete="email"
+            className="bg-white/10 border-white/20 text-white placeholder:text-slate-500 focus-visible:ring-primary"
             {...register('email')}
           />
-          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+          {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="senha">Senha</Label>
+            <label htmlFor="senha" className="text-sm font-medium text-slate-200">Senha</label>
             <Link href="/recuperar-senha" className="text-xs text-primary hover:underline">
               Esqueci a senha
             </Link>
@@ -124,17 +125,18 @@ export default function LoginPage() {
               type={showSenha ? 'text' : 'password'}
               placeholder="••••••••"
               autoComplete="current-password"
+              className="bg-white/10 border-white/20 text-white placeholder:text-slate-500 focus-visible:ring-primary"
               {...register('senha')}
             />
             <button
               type="button"
               onClick={() => setShowSenha(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
             >
               {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.senha && <p className="text-xs text-destructive">{errors.senha.message}</p>}
+          {errors.senha && <p className="text-xs text-red-400">{errors.senha.message}</p>}
         </div>
 
         {erro && (
