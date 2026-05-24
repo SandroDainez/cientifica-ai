@@ -19,29 +19,27 @@ import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Captura strings entre aspas que parecem títulos (5–35 palavras)
 function extrairOpcoesTitulo(texto: string): string[] {
-  // Normaliza quebras de linha dentro do mesmo parágrafo:
-  // "linha A\nlinha B" → "linha A linha B" (só une quando NÃO há linha em branco entre elas)
-  const normalizado = texto
-    .replace(/([^\n])\n(?!\n)([^\n])/g, '$1 $2')
-    .replace(/([^\n])\n(?!\n)([^\n])/g, '$1 $2') // segunda passagem para casos restantes
-
   const candidatos: string[] = []
 
-  // 1. Texto em negrito **Título** — padrão preferido do DeepSeek
-  for (const m of normalizado.matchAll(/\*\*([^*]{20,350})\*\*/g)) {
-    candidatos.push(m[1].trim())
+  // Estratégia 1: marcador de lista + negrito que pode quebrar em até 1 linha
+  // Padrão DeepSeek: "- **Título longo\nque quebra aqui** (16 palavras)"
+  const re1 = /^[-•]\s+\*\*([^*]+)\*\*\s*(?:\(\d+\s*palavras?\))?/gm
+  for (const m of texto.matchAll(re1)) {
+    const t = m[1].replace(/\n/g, ' ').trim()
+    candidatos.push(t)
   }
 
-  // 2. Texto entre aspas duplas "Título"
+  // Estratégia 2: marcador de lista sem negrito (ex: "- Título aqui (14 palavras)")
   if (candidatos.length < 2) {
-    for (const m of normalizado.matchAll(/"([^"]{20,300})"/g)) {
+    const re2 = /^[-•]\s+([A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ][^:\n*]{15,300}?)(?:\s*\(\d+\s*palavras?\))?$/gm
+    for (const m of texto.matchAll(re2)) {
       candidatos.push(m[1].trim())
     }
   }
 
-  // 3. Linhas com marcador: "- Título", "• Título", "1. Título"
+  // Estratégia 3: texto entre aspas duplas (fallback)
   if (candidatos.length < 2) {
-    for (const m of normalizado.matchAll(/^[\s*]*(?:\d+[.)]\s*|[-•]\s+)(.{20,350})$/gm)) {
+    for (const m of texto.matchAll(/"([^"]{20,300})"/g)) {
       candidatos.push(m[1].trim())
     }
   }
@@ -52,7 +50,7 @@ function extrairOpcoesTitulo(texto: string): string[] {
       const words = t.split(/\s+/).length
       return words >= 5 && words <= 35
     })
-    .filter((t, i, arr) => arr.indexOf(t) === i) // deduplicar
+    .filter((t, i, arr) => arr.indexOf(t) === i)
     .slice(0, 6)
 }
 
