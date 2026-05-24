@@ -170,7 +170,12 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
 
   // ── Gerar seção com IA (com questionário pré-geração) ───────
   function handleGerar() {
-    // Para seção de resumo tem UI própria; para outras, abre questionário
+    // Para seção de título: gera direto (refinamento fica no picker)
+    if (faseAtualConfig.chave_secao?.includes('titulo')) {
+      executarGeracao()
+      return
+    }
+    // Para resumo: tem UI própria; para demais seções: abre questionário
     setQuestionarioAberto(true)
   }
 
