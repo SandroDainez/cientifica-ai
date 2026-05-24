@@ -190,3 +190,69 @@ export interface ConfiguracaoFluxo {
   formatos_citacao_recomendados: FormatoCitacao[]
   fases: FaseConfig[]
 }
+
+// ============================================================
+// DADOS DO PROJETO DE PESQUISA
+// ============================================================
+
+export interface ItemChecklist {
+  id: string
+  item: string
+  descricao: string
+  categoria: 'etica' | 'institucional' | 'metodologia' | 'coleta' | 'escrita'
+  urgencia: 'alta' | 'media' | 'baixa'
+  link_ajuda?: string
+  concluido: boolean
+}
+
+export interface EtapaRoadmap {
+  id: string
+  titulo: string
+  descricao: string
+  tipo: 'preparacao' | 'etica' | 'aguardar' | 'coleta' | 'analise' | 'escrita' | 'submissao'
+  duracao_estimada: string
+  app_executa: boolean   // true = o app faz, false = o usuário precisa fazer
+  obrigatoria: boolean
+  bloqueante: boolean   // se true, próximas etapas dependem desta
+}
+
+export interface DadosProjeto {
+  // Identificação
+  descricao_original: string       // texto livre do usuário
+  titulo_provisorio: string
+  tipo_trabalho_sugerido: TipoTrabalho
+
+  // Essência
+  pergunta_pesquisa: string
+  objetivo_geral: string
+
+  // Metodologia
+  tipo_coleta: 'primaria' | 'secundaria' | 'bibliografica'
+  delineamento: string
+  envolve_seres_humanos: boolean
+  local_previsto: string
+  periodo_previsto: string
+  populacao_alvo: string
+  amostra_estimada: string
+  instrumentos_previstos: string
+  analise_prevista: string
+
+  // Ética
+  precisa_cep: boolean
+  precisa_carta_anuencia: boolean
+  precisa_tcle: boolean
+
+  // Contexto para geração das seções (alimenta o buildGerarSecaoPrompt)
+  contexto_geral: string
+  justificativa_resumida: string
+
+  // Roadmap e checklist
+  roadmap: EtapaRoadmap[]
+  checklist: ItemChecklist[]
+  alertas: string[]
+  tempo_total_estimado: string
+
+  // Controle
+  criado_em: string
+  confirmado: boolean
+}

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Eye, BookMarked, Download, Presentation, Shield, Filter, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Eye, BookMarked, Download, Presentation, Shield, Filter, ClipboardList, Map } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -337,6 +337,9 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
             ]}
             actions={
               <div className="flex items-center gap-0.5">
+                <Link href={`/trabalhos/${trabalho.id}/projeto`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Projeto de Pesquisa">
+                  <Map className="h-4 w-4" />
+                </Link>
                 <Link href={`/trabalhos/${trabalho.id}/referencias`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Referências">
                   <BookMarked className="h-4 w-4" />
                 </Link>

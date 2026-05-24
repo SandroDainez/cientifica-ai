@@ -41,6 +41,7 @@ export async function POST(request: Request) {
 
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
   const trabalho = trabalhoData as Trabalho
+  const dados_projeto = ((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as import('@/types').DadosProjeto | undefined) ?? null
 
   const fluxo = getFluxo(trabalho.tipo_trabalho)
   const fase = fluxo?.fases.find(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
@@ -229,6 +230,7 @@ export async function POST(request: Request) {
     respostas_usuario,
     referencias: referencias.length > 0 ? referencias : undefined,
     formato_citacao: trabalho.formato_citacao,
+    dados_projeto: dados_projeto ?? undefined,
   })
 
   // Garante que a seção existe na tabela (upsert)

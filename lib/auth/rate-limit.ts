@@ -19,6 +19,7 @@ const LIMITES: Record<string, number> = {
   'gerar-tcle':             5,
   'gerar-estrategia-busca': 5,
   'gerar-questionario':     8,
+  'planejar-projeto':       3,
 }
 
 const LIMITE_PADRAO = 15

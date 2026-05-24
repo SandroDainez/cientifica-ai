@@ -122,6 +122,7 @@ export function buildGerarSecaoPrompt(
     respostas_usuario?: Record<string, string>
     referencias?: Referencia[]
     formato_citacao?: FormatoCitacao
+    dados_projeto?: import('@/types').DadosProjeto | null
   }
 ): string {
   const partes: string[] = []
@@ -137,6 +138,24 @@ export function buildGerarSecaoPrompt(
   }
   if (dadosTrabalho.orientador) {
     partes.push(`**Orientador:** ${dadosTrabalho.orientador}`)
+  }
+
+  if (dadosTrabalho.dados_projeto) {
+    const p = dadosTrabalho.dados_projeto
+    partes.push(`\n## PLANO DO PROJETO DE PESQUISA — USE COMO BASE FACTUAL`)
+    partes.push(`Este é o plano de pesquisa criado pelo pesquisador. Use estes dados reais em vez de inventar detalhes:`)
+    if (p.pergunta_pesquisa)      partes.push(`**Pergunta de pesquisa:** ${p.pergunta_pesquisa}`)
+    if (p.objetivo_geral)         partes.push(`**Objetivo geral:** ${p.objetivo_geral}`)
+    if (p.delineamento)           partes.push(`**Delineamento:** ${p.delineamento}`)
+    if (p.local_previsto)         partes.push(`**Local:** ${p.local_previsto}`)
+    if (p.periodo_previsto)       partes.push(`**Período:** ${p.periodo_previsto}`)
+    if (p.populacao_alvo)         partes.push(`**População:** ${p.populacao_alvo}`)
+    if (p.amostra_estimada)       partes.push(`**Amostra:** ${p.amostra_estimada}`)
+    if (p.instrumentos_previstos) partes.push(`**Instrumentos:** ${p.instrumentos_previstos}`)
+    if (p.analise_prevista)       partes.push(`**Análise:** ${p.analise_prevista}`)
+    if (p.contexto_geral)         partes.push(`**Contexto:** ${p.contexto_geral}`)
+    if (p.justificativa_resumida) partes.push(`**Justificativa:** ${p.justificativa_resumida}`)
+    partes.push(`CRÍTICO: Use os dados acima onde forem relevantes. Nunca invente hospital, datas ou população diferente do que está aqui.`)
   }
 
   // ── Respostas do questionário do usuário (dados reais — máxima prioridade) ──
