@@ -165,10 +165,23 @@ export function buildGerarSecaoPrompt(
 
   if (dadosTrabalho.referencias && dadosTrabalho.referencias.length > 0) {
     const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt')
-    partes.push(`\n**Referências bibliográficas cadastradas para este trabalho (use-as nas citações do texto):**\n${refsFormatadas}`)
-    partes.push(`Use as citações acima no corpo do texto sempre que pertinente. Não invente referências fora dessa lista.`)
+    partes.push(`\n**REFERÊNCIAS DISPONÍVEIS — USE APENAS ESTAS:**\n${refsFormatadas}`)
+    partes.push(`
+REGRA ABSOLUTA DE CITAÇÃO (violá-la invalida todo o texto):
+- Cite SOMENTE as referências da lista acima — extrai o sobrenome do primeiro autor e o ano.
+- É PROIBIDO inventar qualquer autor, título ou ano que não esteja na lista.
+- É PROIBIDO usar como citação o título de um documento (ex: "TÓPICOS EM SAÚDE, 2021") — cite sempre pelo SOBRENOME do autor.
+- Se precisar de um conceito não coberto pelas referências disponíveis, escreva o argumento sem citar — NÃO invente uma referência.
+- Distribua as citações disponíveis de forma natural ao longo do texto.`)
   } else {
-    partes.push(`\n**Nota sobre citações:** O autor ainda não cadastrou referências. Use o formato (SOBRENOME, ANO) como indicativo nos locais onde deveriam aparecer citações, para o autor substituir pelas referências reais.`)
+    partes.push(`
+REGRA ABSOLUTA DE CITAÇÃO — SEM REFERÊNCIAS CADASTRADAS:
+O autor ainda não cadastrou referências. Para marcar onde uma citação deveria aparecer, use EXCLUSIVAMENTE o marcador genérico: (SOBRENOME, ANO).
+- PROIBIDO inventar nomes de autores reais (ex: Silva, Costa, Hahn).
+- PROIBIDO usar título de documento como citação (ex: "PERFIL DE COMPETÊNCIAS, s.d.").
+- PROIBIDO inventar anos específicos (ex: 2019, 2023).
+- Use SEMPRE: (SOBRENOME, ANO) — exatamente assim, sem variação.
+O autor substituirá esses marcadores pelas referências reais depois.`)
   }
 
   partes.push(`\n**Elementos obrigatórios nesta seção:**`)
