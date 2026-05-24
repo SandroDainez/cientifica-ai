@@ -49,7 +49,8 @@ export function streamText(
 export async function callAI(
   systemPrompt: string,
   userPrompt: string,
-  fast = true
+  fast = true,
+  maxTokens = 4096
 ): Promise<string> {
   const model = fast ? currentModel.fast : currentModel.smart
 
@@ -60,7 +61,7 @@ export async function callAI(
       { role: 'user', content: userPrompt },
     ],
     temperature: 0.3,
-    max_tokens: 2048,
+    max_tokens: maxTokens,
   })
 
   return completion.choices[0]?.message?.content ?? ''

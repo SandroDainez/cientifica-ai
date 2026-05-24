@@ -49,11 +49,35 @@ export async function POST(request: Request) {
   const userPrompt = buildValidarSecaoPrompt(fase, conteudo, trabalho.formato_citacao)
 
   try {
-    const raw = await callAI(systemPrompt, userPrompt, false)
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('Resposta inválida da IA')
+    // Usa modelo smart com tokens suficientes para textos longos (evita JSON truncado)
+    const raw = await callAI(systemPrompt, userPrompt, false, 6000)
 
-    const resultado: ResultadoValidacao = JSON.parse(jsonMatch[0])
+    // Extrai o JSON da resposta — tenta greedy primeiro, depois lazy
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.error('Resposta da IA sem JSON:', raw.slice(0, 300))
+      throw new Error('Resposta inválida da IA')
+    }
+
+    let resultado: ResultadoValidacao
+    try {
+      resultado = JSON.parse(jsonMatch[0])
+    } catch (parseErr) {
+      // JSON pode estar truncado — tenta extrair campos mínimos com regex
+      console.error('JSON truncado, tentando recuperar:', parseErr)
+      const scoreMatch  = raw.match(/"score"\s*:\s*(\d+)/)
+      const aprovadoMatch = raw.match(/"aprovado"\s*:\s*(true|false)/)
+      const comentariosMatch = raw.match(/"comentarios"\s*:\s*"([^"]*)"/)
+
+      if (!scoreMatch) throw new Error('Resposta inválida da IA — não foi possível extrair score')
+
+      resultado = {
+        aprovado: aprovadoMatch ? aprovadoMatch[1] === 'true' : Number(scoreMatch[1]) >= 70,
+        score: Number(scoreMatch[1]),
+        comentarios: comentariosMatch?.[1] ?? 'Avaliação parcial — texto muito extenso.',
+        sugestoes: [],
+      }
+    }
 
     // Salva sugestões na seção
     await supabase

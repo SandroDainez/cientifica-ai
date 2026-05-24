@@ -241,20 +241,8 @@ ${conteudo}
 - Extensão: ${fase.min_palavras ?? 0}–${fase.max_palavras ?? '∞'} palavras
 - Formato de citação: ${formatoCitacao?.toUpperCase() ?? 'ABNT'}. ${formatoInstrucao}
 
-Responda APENAS com JSON válido no seguinte formato:
-{
-  "aprovado": boolean,
-  "score": number (0-100),
-  "comentarios": "string com avaliação geral",
-  "sugestoes": [
-    {
-      "id": "string único",
-      "tipo": "critico" | "importante" | "sugestao",
-      "titulo": "título curto",
-      "descricao": "descrição da melhoria"
-    }
-  ]
-}`
+Responda APENAS com JSON válido e compacto. Máximo 5 sugestões. Seja breve nas descrições:
+{"aprovado":boolean,"score":number,"comentarios":"avaliação geral em 1-2 frases","sugestoes":[{"id":"s1","tipo":"critico"|"importante"|"sugestao","titulo":"título curto","descricao":"descrição objetiva"}]}`
 }
 
 // ============================================================
