@@ -206,6 +206,46 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
     ]
   }
 
+  // ── Consentimento do Paciente (Relato de Caso) ───────────────
+  if (chave === 'consentimento_paciente' || chave.includes('consentimento_paciente')) {
+    return [
+      {
+        id: 'status_consentimento',
+        pergunta: 'O paciente (ou familiar responsável) já assinou o TCLE de publicação?',
+        tipo: 'selecao' as const,
+        opcoes: [
+          'Sim — paciente vivo assinou o TCLE de publicação',
+          'Sim — familiares assinaram (paciente falecido)',
+          'Ainda não obtive o consentimento escrito',
+          'Paciente não foi localizado — estou verificando alternativas com o CEP',
+        ],
+        obrigatoria: true,
+        dica: 'Todos os periódicos exigem consentimento escrito. Sem ele, o artigo não pode ser publicado.',
+      },
+      {
+        id: 'cep_relato',
+        pergunta: 'A instituição exige aprovação do CEP para relatos de caso?',
+        tipo: 'selecao' as const,
+        opcoes: [
+          'Sim — já obtive aprovação do CEP (tenho o número CAAE e parecer)',
+          'Sim — está em análise no CEP',
+          'Minha instituição dispensa CEP para relatos com consentimento do paciente',
+          'Não sei — vou verificar com o responsável ético da instituição',
+        ],
+        obrigatoria: false,
+        dica: 'Independente do CEP institucional, o consentimento do paciente é sempre obrigatório para qualquer periódico.',
+      },
+      {
+        id: 'dados_protegidos',
+        pergunta: 'Quais informações identificatórias foram protegidas/omitidas do relato?',
+        tipo: 'textarea' as const,
+        placeholder: 'Ex: Nome omitido. Idade aproximada (30-40 anos) em vez de exata. Datas apresentadas como intervalos (mês/ano). Local genérico ("hospital universitário do Sul do Brasil").',
+        obrigatoria: false,
+        dica: 'Proteja sempre: nome, datas exatas, local específico, número de prontuário, imagens com rosto.',
+      },
+    ]
+  }
+
   // ── Aspectos Éticos ─────────────────────────────────────────
   if (chave.includes('aspecto') && chave.includes('etic') || chave === 'aspectos_eticos') {
     return [
@@ -240,6 +280,43 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
           'Não se aplica — pesquisa sem participantes humanos',
         ],
         obrigatoria: false,
+      },
+    ]
+  }
+
+  // ── TCLE Modelo (Projeto de Pesquisa) ───────────────────────────
+  if (chave === 'tcle_modelo' || chave.includes('tcle_modelo')) {
+    return [
+      {
+        id: 'titulo_pesquisa',
+        pergunta: 'Qual é o título completo da pesquisa para o TCLE?',
+        tipo: 'texto' as const,
+        placeholder: 'Ex: Avaliação do impacto da carga de trabalho de enfermagem nos desfechos clínicos de pacientes internados em UTI',
+        obrigatoria: true,
+      },
+      {
+        id: 'procedimentos_participante',
+        pergunta: 'O que exatamente será pedido ao participante? (em linguagem simples)',
+        tipo: 'textarea' as const,
+        placeholder: 'Ex: Responder um questionário online de 15 perguntas sobre hábitos alimentares (leva ~10 minutos). Não envolve coleta de sangue, procedimentos físicos ou divulgação de dados pessoais identificados.',
+        obrigatoria: true,
+        dica: 'Escreva como se estivesse explicando para alguém sem formação científica.',
+      },
+      {
+        id: 'riscos_beneficios',
+        pergunta: 'Quais são os riscos e benefícios para o participante?',
+        tipo: 'textarea' as const,
+        placeholder: 'Riscos: mínimos — possível desconforto ao responder perguntas sobre saúde mental. Benefícios: contribuição para o conhecimento científico; não há benefício direto imediato ao participante.',
+        obrigatoria: true,
+        dica: 'Seja honesto. Minimizar riscos ou exagerar benefícios compromete a ética.',
+      },
+      {
+        id: 'contato_cep',
+        pergunta: 'Qual é o contato do CEP da sua instituição?',
+        tipo: 'texto' as const,
+        placeholder: 'Ex: CEP-UFMG — Av. Antônio Carlos, 6627 — Tel: (31) 3409-4592 — email: cep@prpq.ufmg.br',
+        obrigatoria: false,
+        dica: 'O TCLE deve sempre incluir o contato do CEP para que participantes possam fazer denúncias ou perguntas.',
       },
     ]
   }
