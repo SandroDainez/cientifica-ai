@@ -15,6 +15,7 @@ import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
+import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Estratégia primária: bloco delimitado ===OPÇÕES DE TÍTULO=== … ===FIM===
@@ -219,6 +220,11 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         acumulado += decoder.decode(value, { stream: true })
         // Atualiza em batches para não re-render a cada char
         setConteudoAtual(acumulado)
+      }
+      // Pós-processamento: substitui citações com título no lugar de sobrenome
+      const acumuladoLimpo = limparCitacoesInventadas(acumulado)
+      if (acumuladoLimpo !== acumulado) {
+        setConteudoAtual(acumuladoLimpo)
       }
     } catch (err) {
       console.error('Erro na geração:', err)

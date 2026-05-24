@@ -58,12 +58,36 @@ export async function POST(request: Request) {
   // Quando o trabalho não tem referências, busca automaticamente em CrossRef
   // + PubMed usando múltiplas queries paralelas (título, área, seção) para
   // garantir cobertura abrangente. Objetivo: ≥ 12 refs reais antes de gerar.
+
+  function toEnglishQuery(titulo: string): string {
+    const map: Array<[RegExp, string]> = [
+      [/intelig[eê]ncia artificial/gi, 'artificial intelligence'],
+      [/unidade[s]? de terapia intensiva/gi, 'intensive care unit'],
+      [/\bUTI\b/g, 'ICU'],
+      [/carga de trabalho/gi, 'workload'],
+      [/profissionais de sa[uú]de/gi, 'healthcare professionals'],
+      [/mortalidade/gi, 'mortality'],
+      [/revis[aã]o sistem[aá]tica/gi, 'systematic review'],
+      [/ensaio cl[ií]nico/gi, 'clinical trial'],
+      [/enfermagem/gi, 'nursing'],
+      [/medicina/gi, 'medicine'],
+      [/pacientes cr[ií]ticos/gi, 'critical patients'],
+    ]
+    let q = titulo
+    for (const [pt, en] of map) q = q.replace(pt, en)
+    return q
+  }
+
   if (referencias.length === 0) {
     try {
       // Monta queries diversificadas para cobrir diferentes ângulos do tema
       const queries: string[] = []
 
       if (trabalho.titulo?.trim())            queries.push(trabalho.titulo.trim())
+      const tituloEN = toEnglishQuery(trabalho.titulo?.trim() ?? '')
+      if (tituloEN.toLowerCase() !== (trabalho.titulo?.trim() ?? '').toLowerCase()) {
+        queries.push(tituloEN)
+      }
       if (trabalho.area_conhecimento?.trim()) queries.push(trabalho.area_conhecimento.trim())
 
       // Query específica por seção para maior relevância
