@@ -17,19 +17,34 @@ import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
-// Suporta múltiplos formatos de saída do modelo.
+// Estratégia primária: bloco delimitado ===OPÇÕES DE TÍTULO=== … ===FIM===
+// Estratégias de fallback para respostas em formatos livres.
 function extrairOpcoesTitulo(texto: string): string[] {
-  const candidatos: string[] = []
-
-  // Estratégia 1 (formato canônico após ajuste de prompt):
-  // "- **Título aqui** (N palavras)"  — aceita quebra de linha dentro do negrito
-  const re1 = /^[-•]\s+\*\*([^*]{10,}?)\*\*\s*(?:\(\d+\s*palavras?\))?/gm
-  for (const m of texto.matchAll(re1)) {
-    const t = m[1].replace(/\n/g, ' ').trim()
-    candidatos.push(t)
+  // ── Estratégia 1 (confiável): bloco estruturado delimitado ─────────────────
+  const blocoMatch = texto.match(
+    /===OPÇÕES DE TÍTULO===([\s\S]+?)===FIM===/i
+  )
+  if (blocoMatch) {
+    const linhas = blocoMatch[1]
+      .split('\n')
+      .map(l => l.replace(/^\s*\d+\.\s*/, '').replace(/\*+/g, '').replace(/^\[|\]$/g, '').trim())
+      .filter(l => {
+        const words = l.split(/\s+/).length
+        return words >= 5 && words <= 40
+      })
+    if (linhas.length >= 2) return linhas.slice(0, 6)
   }
 
-  // Estratégia 2: blockquote + negrito  ex: "> **Título aqui**"
+  // ── Estratégias de fallback (texto livre) ──────────────────────────────────
+  const candidatos: string[] = []
+
+  // F1: marcador de lista + negrito, ex: "- **Título aqui** (N palavras)"
+  const re1 = /^[-•]\s+\*\*([^*]{10,}?)\*\*\s*(?:\(\d+\s*palavras?\))?/gm
+  for (const m of texto.matchAll(re1)) {
+    candidatos.push(m[1].replace(/\n/g, ' ').trim())
+  }
+
+  // F2: blockquote + negrito, ex: "> **Título aqui**"
   if (candidatos.length < 2) {
     const re2 = /^>\s+\*\*([^*]{10,}?)\*\*\s*(?:\(\d+\s*palavras?\))?$/gm
     for (const m of texto.matchAll(re2)) {
@@ -37,8 +52,7 @@ function extrairOpcoesTitulo(texto: string): string[] {
     }
   }
 
-  // Estratégia 3: "**Opção N ...**:" seguido de título em negrito na linha seguinte
-  // ex: "**Opção 1 (descritivo):**\n\n**Título completo aqui**"
+  // F3: "**Opção N ...:**" seguido de título em negrito na linha seguinte
   if (candidatos.length < 2) {
     const re3 = /\*\*Opção\s+\d[^*]*\*\*\s*:?\s*\n+\s*\*\*([^*]{10,}?)\*\*/gm
     for (const m of texto.matchAll(re3)) {
@@ -46,15 +60,15 @@ function extrairOpcoesTitulo(texto: string): string[] {
     }
   }
 
-  // Estratégia 4: marcador de lista sem negrito, começa com maiúscula
+  // F4: lista numerada simples, ex: "1. Título da opção aqui"
   if (candidatos.length < 2) {
-    const re4 = /^[-•]\s+([A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ][^:\n*]{15,300}?)(?:\s*\(\d+\s*palavras?\))?$/gm
+    const re4 = /^\d+\.\s+([A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ][^:\n*]{15,300}?)(?:\s*\(\d+\s*palavras?\))?$/gm
     for (const m of texto.matchAll(re4)) {
       candidatos.push(m[1].trim())
     }
   }
 
-  // Estratégia 5: aspas duplas — último recurso
+  // F5: aspas duplas — último recurso
   if (candidatos.length < 2) {
     for (const m of texto.matchAll(/"([^"]{20,300})"/g)) {
       candidatos.push(m[1].trim())
@@ -62,10 +76,10 @@ function extrairOpcoesTitulo(texto: string): string[] {
   }
 
   return candidatos
-    .map(t => t.replace(/\s*\(\d+\s*palavras?\)/gi, '').replace(/\*+/g, '').trim())
+    .map(t => t.replace(/\s*\(\d+\s*palavras?\)/gi, '').replace(/\*+/g, '').replace(/^\[|\]$/g, '').trim())
     .filter(t => {
       const words = t.split(/\s+/).length
-      return words >= 5 && words <= 35
+      return words >= 5 && words <= 40
     })
     .filter((t, i, arr) => arr.indexOf(t) === i)
     .slice(0, 6)

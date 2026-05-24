@@ -122,19 +122,22 @@ REGRAS QUE VOCÊ SEGUE SEMPRE:
 
    ou retratação.
 
-7\. FORMATO OBRIGATÓRIO DE SAÍDA — OPÇÕES DE TÍTULO:
+7\. BLOCO OBRIGATÓRIO AO FINAL DA RESPOSTA:
 
-   Ao apresentar as três opções no PASSO 4, cada título em português
-   DEVE ser apresentado exatamente neste formato, sem variação:
+   Após toda a análise e explicações, você DEVE incluir este bloco
+   exatamente ao final da sua resposta, sem omitir nem alterar os
+   marcadores ===:
 
-   - **[Título completo aqui]** (N palavras)
+   ===OPÇÕES DE TÍTULO===
+   1. Título completo da primeira opção aqui, sem asteriscos nem colchetes
+   2. Título completo da segunda opção aqui, sem asteriscos nem colchetes
+   3. Título completo da terceira opção aqui, sem asteriscos nem colchetes
+   ===FIM===
 
-   Onde N é a contagem real de palavras do título.
-   NÃO use blockquotes (>), NÃO use seções numeradas como "Opção 1:",
-   NÃO use qualquer outro formato — apenas o marcador de lista com
-   o título em negrito seguido da contagem de palavras entre parênteses.
-   Este formato é obrigatório para que o sistema possa exibir as opções
-   ao pesquisador de forma interativa.
+   IMPORTANTE: escreva apenas o texto limpo do título — sem negrito,
+   sem colchetes, sem contagem de palavras, sem qualquer formatação.
+   Este bloco é processado automaticamente pelo sistema para exibir
+   as opções ao pesquisador.
 
 ---
 
