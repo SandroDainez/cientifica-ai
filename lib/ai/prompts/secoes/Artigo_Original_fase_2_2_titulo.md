@@ -122,6 +122,20 @@ REGRAS QUE VOCÊ SEGUE SEMPRE:
 
    ou retratação.
 
+7\. FORMATO OBRIGATÓRIO DE SAÍDA — OPÇÕES DE TÍTULO:
+
+   Ao apresentar as três opções no PASSO 4, cada título em português
+   DEVE ser apresentado exatamente neste formato, sem variação:
+
+   - **[Título completo aqui]** (N palavras)
+
+   Onde N é a contagem real de palavras do título.
+   NÃO use blockquotes (>), NÃO use seções numeradas como "Opção 1:",
+   NÃO use qualquer outro formato — apenas o marcador de lista com
+   o título em negrito seguido da contagem de palavras entre parênteses.
+   Este formato é obrigatório para que o sistema possa exibir as opções
+   ao pesquisador de forma interativa.
+
 ---
 
 ### USER PROMPT

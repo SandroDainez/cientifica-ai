@@ -17,27 +17,44 @@ import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
-// Captura strings entre aspas que parecem títulos (5–35 palavras)
+// Suporta múltiplos formatos de saída do modelo.
 function extrairOpcoesTitulo(texto: string): string[] {
   const candidatos: string[] = []
 
-  // Estratégia 1: marcador de lista + negrito que pode quebrar em até 1 linha
-  // Padrão DeepSeek: "- **Título longo\nque quebra aqui** (16 palavras)"
-  const re1 = /^[-•]\s+\*\*([^*]+)\*\*\s*(?:\(\d+\s*palavras?\))?/gm
+  // Estratégia 1 (formato canônico após ajuste de prompt):
+  // "- **Título aqui** (N palavras)"  — aceita quebra de linha dentro do negrito
+  const re1 = /^[-•]\s+\*\*([^*]{10,}?)\*\*\s*(?:\(\d+\s*palavras?\))?/gm
   for (const m of texto.matchAll(re1)) {
     const t = m[1].replace(/\n/g, ' ').trim()
     candidatos.push(t)
   }
 
-  // Estratégia 2: marcador de lista sem negrito (ex: "- Título aqui (14 palavras)")
+  // Estratégia 2: blockquote + negrito  ex: "> **Título aqui**"
   if (candidatos.length < 2) {
-    const re2 = /^[-•]\s+([A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ][^:\n*]{15,300}?)(?:\s*\(\d+\s*palavras?\))?$/gm
+    const re2 = /^>\s+\*\*([^*]{10,}?)\*\*\s*(?:\(\d+\s*palavras?\))?$/gm
     for (const m of texto.matchAll(re2)) {
+      candidatos.push(m[1].replace(/\n/g, ' ').trim())
+    }
+  }
+
+  // Estratégia 3: "**Opção N ...**:" seguido de título em negrito na linha seguinte
+  // ex: "**Opção 1 (descritivo):**\n\n**Título completo aqui**"
+  if (candidatos.length < 2) {
+    const re3 = /\*\*Opção\s+\d[^*]*\*\*\s*:?\s*\n+\s*\*\*([^*]{10,}?)\*\*/gm
+    for (const m of texto.matchAll(re3)) {
+      candidatos.push(m[1].replace(/\n/g, ' ').trim())
+    }
+  }
+
+  // Estratégia 4: marcador de lista sem negrito, começa com maiúscula
+  if (candidatos.length < 2) {
+    const re4 = /^[-•]\s+([A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ][^:\n*]{15,300}?)(?:\s*\(\d+\s*palavras?\))?$/gm
+    for (const m of texto.matchAll(re4)) {
       candidatos.push(m[1].trim())
     }
   }
 
-  // Estratégia 3: texto entre aspas duplas (fallback)
+  // Estratégia 5: aspas duplas — último recurso
   if (candidatos.length < 2) {
     for (const m of texto.matchAll(/"([^"]{20,300})"/g)) {
       candidatos.push(m[1].trim())
