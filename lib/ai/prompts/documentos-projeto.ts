@@ -377,6 +377,10 @@ Produza o guia completo, formal e pronto para uso em campo.`
 }
 
 function buildGuiaAnalise(dados: DadosProjeto): string {
+  const softwareEscolhido = dados.software_analise
+    ? `O pesquisador escolheu usar: **${dados.software_analise}**. Todo o código e passo a passo deve ser para esse software especificamente.`
+    : 'O pesquisador ainda não definiu o software. Recomende o mais adequado para este delineamento e forneça código para ele.'
+
   return `${dadosResumo(dados)}
 
 Gere um Guia de Análise Estatística completo para o projeto de pesquisa descrito acima.
@@ -384,14 +388,22 @@ Gere um Guia de Análise Estatística completo para o projeto de pesquisa descri
 Análise prevista: ${dados.analise_prevista}
 Delineamento: ${dados.delineamento}
 Amostra estimada: ${dados.amostra_estimada}
+${dados.n_participantes ? `N real coletado: ${dados.n_participantes}` : ''}
+${dados.taxa_resposta ? `Taxa de resposta: ${dados.taxa_resposta}` : ''}
+
+SOFTWARE: ${softwareEscolhido}
 
 O guia deve conter:
 
 1. VISÃO GERAL DA ESTRATÉGIA ANALÍTICA
    Descrição geral da abordagem estatística adequada ao delineamento e pergunta de pesquisa.
+   Explique em linguagem acessível quais testes serão usados e por quê.
 
-2. SOFTWARE E VERSÃO RECOMENDADOS
-   Indique o(s) software(s) mais adequados para esta análise (R, SPSS, Stata, Python/pandas+scipy, etc.) com justificativa. Inclua versão mínima recomendada e como citar no artigo.
+2. SOFTWARE E CONFIGURAÇÃO INICIAL
+   ${dados.software_analise
+     ? `Como instalar/acessar o ${dados.software_analise}, configurar o arquivo de dados e importar a planilha. Inclua versão recomendada e como citar o software no artigo.`
+     : 'Recomende o software mais adequado com justificativa. Inclua como instalar/acessar e como citar no artigo.'
+   }
 
 3. PREPARAÇÃO E LIMPEZA DOS DADOS
    3.1 Importação dos dados (formato: .csv, .xlsx, .sav)

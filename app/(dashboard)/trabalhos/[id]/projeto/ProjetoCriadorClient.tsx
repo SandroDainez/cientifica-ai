@@ -1489,6 +1489,70 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
 // ─── sub-componentes ──────────────────────────────────────────────────────────
 
+// Infere o software mais adequado com base nos campos do projeto
+interface SoftwareSugestao {
+  valor: string
+  motivo: string
+}
+function inferirSoftware(dados: DadosProjeto | null): SoftwareSugestao | null {
+  if (!dados) return null
+  const analise = (dados.analise_prevista ?? '').toLowerCase()
+  const delineamento = (dados.delineamento ?? '').toLowerCase()
+  const tipo = (dados.tipo_coleta ?? '').toLowerCase()
+
+  // Pesquisa bibliográfica / revisão → não aplica
+  if (tipo === 'bibliografica' || delineamento.includes('revisão') || delineamento.includes('revisao') || delineamento.includes('bibliográfica')) {
+    return { valor: 'Não aplica (pesquisa bibliográfica)', motivo: 'Pesquisa bibliográfica não exige software estatístico.' }
+  }
+  // R mencionado explicitamente
+  if (analise.includes(' r ') || analise.includes('(r)') || analise.startsWith('r,') || analise.includes(', r') || analise.includes('r studio') || analise.includes('rstudio')) {
+    return { valor: 'R', motivo: 'R foi indicado no plano. Excelente para regressão, correlação e análises avançadas — gratuito e reproduzível.' }
+  }
+  // SPSS mencionado
+  if (analise.includes('spss')) {
+    return { valor: 'SPSS', motivo: 'SPSS foi indicado no plano. Interface amigável para análises descritivas e inferenciais, padrão em saúde e ciências sociais.' }
+  }
+  // Stata
+  if (analise.includes('stata')) {
+    return { valor: 'Stata', motivo: 'Stata foi indicado no plano. Excelente para dados longitudinais e epidemiológicos.' }
+  }
+  // Python
+  if (analise.includes('python') || analise.includes('pandas') || analise.includes('scipy')) {
+    return { valor: 'Python (pandas/scipy)', motivo: 'Python foi indicado no plano. Ideal para grandes volumes de dados e análises customizadas.' }
+  }
+  // GraphPad — dados clínicos, experimentos
+  if (analise.includes('graphpad') || analise.includes('prism') || delineamento.includes('experimental') || delineamento.includes('ensaio clínico') || delineamento.includes('erc')) {
+    return { valor: 'GraphPad Prism', motivo: 'GraphPad Prism é o padrão para estudos experimentais e ensaios clínicos — gera gráficos prontos para publicação.' }
+  }
+  // Jamovi — interface fácil, R por baixo
+  if (analise.includes('jamovi')) {
+    return { valor: 'Jamovi', motivo: 'Jamovi é gratuito, com interface visual simples e análises robustas — ótimo para quem está iniciando.' }
+  }
+  // Heurística por tipo de análise mencionada
+  if (analise.includes('correlação') || analise.includes('correlacao') || analise.includes('regressão') || analise.includes('regressao') || analise.includes('anova') || analise.includes('qui-quadrado') || analise.includes('mann-whitney') || analise.includes('kruskal')) {
+    return { valor: 'SPSS', motivo: 'Para o tipo de análise do seu projeto (testes de hipótese, correlação/regressão), o SPSS é o mais usado em saúde — interface intuitiva e amplamente aceito em periódicos.' }
+  }
+  // Análise qualitativa
+  if (analise.includes('qualitativ') || analise.includes('categor') || analise.includes('temátic') || analise.includes('discurso')) {
+    return { valor: 'Não aplica (pesquisa bibliográfica)', motivo: 'Análise qualitativa geralmente não usa software estatístico. Softwares como NVivo ou ATLAS.ti são opcionais.' }
+  }
+  // Padrão para estudos primários sem menção específica
+  return { valor: 'SPSS', motivo: 'Para estudos quantitativos com seres humanos, o SPSS é o software mais usado em saúde no Brasil — interface amigável e aceito em todos os periódicos.' }
+}
+
+// Dicas contextuais por software selecionado
+const DICAS_SOFTWARE: Record<string, string> = {
+  'SPSS': 'Disponível na maioria das universidades brasileiras. Acesse o computador do laboratório de informática ou verifique se sua instituição tem licença. Exporte os resultados como tabelas para Word.',
+  'R': 'Gratuito e de código aberto. Instale em r-project.org. Para iniciantes, use o RStudio (também gratuito) como interface. O pacote "tidyverse" cobre 90% das análises.',
+  'Excel': 'Disponível na maioria dos computadores. Use o "Analysis ToolPak" (suplemento gratuito do Excel) para análises estatísticas básicas. Limitado para testes avançados.',
+  'GraphPad Prism': 'Tem versão de avaliação gratuita de 30 dias. Ideal para curvas de sobrevida, análises de dose-resposta e gráficos de alta qualidade para artigos.',
+  'Python (pandas/scipy)': 'Gratuito. Use o Google Colab (navegador, sem instalação) ou instale o Anaconda. Mais flexível mas exige familiaridade com programação.',
+  'Stata': 'Software pago, geralmente disponível em pós-graduações. Excelente para dados de painel e análise de séries temporais.',
+  'SAS': 'Software institucional. Consulte o setor de TI da sua instituição. Interface procedural com alta robustez estatística.',
+  'Jamovi': 'Gratuito, instale em jamovi.org. Interface visual semelhante ao SPSS, roda R por baixo. Ótima opção para quem não quer programar.',
+  'Não aplica (pesquisa bibliográfica)': 'Para pesquisas bibliográficas, use gerenciadores de referência como Mendeley (gratuito) ou Zotero para organizar os artigos.',
+}
+
 interface DadosPesquisaPanelProps {
   trabalhoId: string
   dadosProjetoAtual: DadosProjeto | null
@@ -1710,30 +1774,63 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
             />
           </div>
           {/* Software */}
-          <div className="space-y-1">
+          <div className="space-y-1 sm:col-span-3">
             <label className="text-xs font-medium text-foreground">
               Software de análise usado
             </label>
-            <select
-              value={softwareAnalise}
-              onChange={e => handleCampoSimples('software_analise', e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-            >
-              <option value="">Selecione...</option>
-              <option value="SPSS">SPSS</option>
-              <option value="R">R</option>
-              <option value="Excel">Excel</option>
-              <option value="GraphPad Prism">GraphPad Prism</option>
-              <option value="Python (pandas/scipy)">Python</option>
-              <option value="Stata">Stata</option>
-              <option value="SAS">SAS</option>
-              <option value="Jamovi">Jamovi</option>
-              <option value="Não aplica (pesquisa bibliográfica)">Não aplica</option>
-            </select>
+            <div className="flex gap-2 items-start flex-col">
+              <select
+                value={softwareAnalise}
+                onChange={e => handleCampoSimples('software_analise', e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+              >
+                <option value="">Selecione...</option>
+                <option value="SPSS">SPSS</option>
+                <option value="R">R</option>
+                <option value="Excel">Excel</option>
+                <option value="GraphPad Prism">GraphPad Prism</option>
+                <option value="Python (pandas/scipy)">Python</option>
+                <option value="Stata">Stata</option>
+                <option value="SAS">SAS</option>
+                <option value="Jamovi">Jamovi</option>
+                <option value="Não aplica (pesquisa bibliográfica)">Não aplica</option>
+              </select>
+              {/* Sugestão automática baseada no plano */}
+              {(() => {
+                const sugestao = inferirSoftware(dadosProjetoAtual)
+                if (!sugestao || softwareAnalise === sugestao.valor) return null
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handleCampoSimples('software_analise', sugestao.valor)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/30 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors text-left"
+                  >
+                    <Info className="h-3 w-3 shrink-0" />
+                    Recomendado para seu projeto: <span className="font-semibold">{sugestao.valor}</span> — clique para aplicar
+                  </button>
+                )
+              })()}
+            </div>
+            {/* Dica contextual para o software selecionado */}
+            {softwareAnalise && DICAS_SOFTWARE[softwareAnalise] && (
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                💡 {DICAS_SOFTWARE[softwareAnalise]}
+              </p>
+            )}
+            {/* Motivo da sugestão quando aplicado */}
+            {softwareAnalise && (() => {
+              const sugestao = inferirSoftware(dadosProjetoAtual)
+              if (!sugestao || softwareAnalise !== sugestao.valor) return null
+              return (
+                <p className="text-xs text-primary/80 mt-0.5 leading-relaxed">
+                  ✓ {sugestao.motivo}
+                </p>
+              )
+            })()}
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          A IA usa esses dados automaticamente na seção de Metodologia e Resultados.
+          A IA usa esses dados automaticamente na seção de Metodologia e Resultados — e o Guia de Análise é gerado especificamente para o software selecionado.
         </p>
       </div>
 
