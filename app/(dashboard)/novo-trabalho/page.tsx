@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { TipoTrabalhoCard } from '@/components/trabalho/TipoTrabalhoCard'
@@ -41,6 +41,40 @@ export default function NovoTrabalhoPage() {
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+
+  // ── Sugestão da IA ───────────────────────────────────────────────────────
+  const [descricaoLivre, setDescricaoLivre] = useState('')
+  const [sugerindo, setSugerindo] = useState(false)
+  const [sugestao, setSugestao] = useState<{
+    tipo: TipoTrabalho
+    explicacao: string
+    alternativa?: TipoTrabalho | null
+    explicacao_alternativa?: string | null
+  } | null>(null)
+  const [erroSugestao, setErroSugestao] = useState('')
+
+  async function handleSugerir() {
+    if (descricaoLivre.trim().length < 10) return
+    setSugerindo(true)
+    setErroSugestao('')
+    setSugestao(null)
+    try {
+      const res = await fetch('/api/ia/sugerir-tipo-trabalho', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descricao: descricaoLivre }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erro ao sugerir')
+      setSugestao(json)
+      // Pré-seleciona o tipo sugerido
+      set('tipo_trabalho', json.tipo as TipoTrabalho)
+    } catch (e) {
+      setErroSugestao(e instanceof Error ? e.message : 'Erro ao sugerir. Tente novamente.')
+    } finally {
+      setSugerindo(false)
+    }
+  }
 
   const [form, setForm] = useState<FormData>({
     tipo_trabalho: null,
@@ -118,20 +152,104 @@ export default function NovoTrabalhoPage() {
 
       {/* Step 1 — Tipo */}
       {step === 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Qual tipo de trabalho você vai criar?</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {TIPOS_LISTA.map(tipo => (
-              <TipoTrabalhoCard
-                key={tipo}
-                tipo={tipo}
-                selected={form.tipo_trabalho === tipo}
-                onClick={() => set('tipo_trabalho', tipo)}
-                duracao={FLUXOS[tipo]?.duracao_estimada_horas}
-              />
-            ))}
+        <div className="space-y-5">
+
+          {/* Campo livre com sugestão da IA */}
+          <div className="rounded-xl border bg-card p-5 space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">
+                O que você quer criar ou pesquisar?
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Descreva sua ideia e a IA indica o tipo de trabalho mais adequado. Ou escolha direto na grade abaixo.
+              </p>
+            </div>
+
+            <textarea
+              rows={3}
+              value={descricaoLivre}
+              onChange={e => { setDescricaoLivre(e.target.value); setSugestao(null) }}
+              placeholder="Ex: Quero publicar um artigo sobre o impacto da carga de trabalho dos enfermeiros na UTI. / Preciso fazer meu TCC sobre saúde mental de adolescentes. / Quero revisar todos os estudos sobre vitamina D e diabetes."
+              className="w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            />
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSugerir}
+                disabled={sugerindo || descricaoLivre.trim().length < 10}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+                  'bg-primary text-primary-foreground hover:opacity-90',
+                  (sugerindo || descricaoLivre.trim().length < 10) && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {sugerindo
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Analisando...</>
+                  : <><Sparkles className="h-4 w-4" /> A IA indica o tipo ideal</>}
+              </button>
+              {erroSugestao && (
+                <p className="text-xs text-destructive">{erroSugestao}</p>
+              )}
+            </div>
+
+            {/* Card de sugestão */}
+            {sugestao && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-sm font-semibold text-primary">
+                      Sugestão da IA: {FLUXOS[sugestao.tipo]?.nome_completo ?? sugestao.tipo}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setSugestao(null); set('tipo_trabalho', null) }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-sm text-foreground/80 leading-relaxed">{sugestao.explicacao}</p>
+                {sugestao.alternativa && sugestao.explicacao_alternativa && (
+                  <div className="pt-1 border-t border-border/50">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium">Alternativa:</span>{' '}
+                      <button
+                        type="button"
+                        onClick={() => set('tipo_trabalho', sugestao.alternativa as TipoTrabalho)}
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                      >
+                        {FLUXOS[sugestao.alternativa]?.nome_completo ?? sugestao.alternativa}
+                      </button>
+                      {' '}— {sugestao.explicacao_alternativa}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex justify-end pt-2">
+
+          {/* Grade de tipos */}
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-3">
+              {sugestao ? 'Ou escolha outro tipo:' : 'Escolha o tipo de trabalho:'}
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {TIPOS_LISTA.map(tipo => (
+                <TipoTrabalhoCard
+                  key={tipo}
+                  tipo={tipo}
+                  selected={form.tipo_trabalho === tipo}
+                  onClick={() => set('tipo_trabalho', tipo)}
+                  duracao={FLUXOS[tipo]?.duracao_estimada_horas}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
             <button
               onClick={() => setStep(1)}
               disabled={!form.tipo_trabalho}
