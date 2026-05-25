@@ -123,79 +123,144 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
   }
 }
 
-// ─── Instruções estáticas por tipo de etapa ───────────────────────────────────
-// Determinadas no frontend — não precisam ser geradas pela IA, evitando JSON enorme.
+// ─── Calcula app_executa deterministicamente no frontend ─────────────────────
+// Não confia no valor gerado pela IA — define pela lógica de negócio.
+// Para etica: usa heurística de título (elaborar doc → app; submeter/obter → usuário).
 
-const INSTRUCOES_POR_TIPO: Record<EtapaRoadmap['tipo'], string[]> = {
-  preparacao: [
-    'Clique em "Gerar com IA" abaixo para gerar uma revisão de literatura do seu tema',
-    'Revise o conteúdo gerado com seu orientador e adapte ao contexto local',
-    'Use a revisão para fundamentar a justificativa e os objetivos do projeto',
-    'Identifique os instrumentos validados existentes (escalas, questionários)',
-    'Defina claramente a pergunta de pesquisa antes de avançar',
-  ],
-  etica: [
-    'Acesse a Plataforma Brasil em plataformabrasil.saude.gov.br',
-    'Crie ou acesse sua conta e cadastre o projeto de pesquisa',
-    'Anexe o protocolo de pesquisa, TCLE e carta de anuência da instituição',
-    'Aguarde o número CAAE gerado após a submissão',
-    'Acompanhe o status do parecer — prazo legal é 30 dias',
-  ],
-  aguardar: [
-    'Acompanhe o status na Plataforma Brasil regularmente',
-    'Em caso de pendência, responda dentro do prazo indicado pelo CEP',
-    'Aproveite o período para finalizar os instrumentos de coleta',
-    'Se o parecer for aprovado, avance para a próxima etapa',
-  ],
-  coleta: [
-    'Treine a equipe de coleta conforme o protocolo aprovado pelo CEP',
-    'Aplique o instrumento de coleta seguindo rigorosamente o protocolo',
-    'Registre os dados de forma sistemática — planilha ou software específico',
-    'Mantenha os TCLEs assinados arquivados em local seguro',
-    'Monitore o andamento e corrija desvios do protocolo imediatamente',
-  ],
-  analise: [
-    'Organize e limpe o banco de dados antes de iniciar a análise',
-    'Verifique a distribuição dos dados e os pressupostos dos testes',
-    'Aplique os testes estatísticos conforme planejado na metodologia',
-    'Documente todas as decisões analíticas e os softwares usados',
-    'Interprete os resultados à luz dos objetivos e da literatura',
-  ],
-  escrita: [
-    'Use o editor do Científica AI para gerar cada seção com auxílio de IA',
-    'Revise e adapte o conteúdo gerado inserindo seus dados reais coletados',
-    'Siga as normas ABNT/Vancouver/APA conforme o formato do trabalho',
-    'Valide cada seção antes de avançar para a próxima',
-    'Peça feedback do orientador ao final de cada capítulo principal',
-  ],
-  submissao: [
-    'Selecione o periódico ou banca adequada ao escopo do trabalho',
-    'Leia atentamente as normas de submissão do periódico/instituição',
-    'Prepare todos os documentos exigidos: carta, declarações, formulários',
-    'Submeta o manuscrito e anote o número de protocolo/protocolo de defesa',
-    'Aguarde e responda às revisões ou perguntas da banca/revisores',
-  ],
+function computeAppExecuta(etapa: EtapaRoadmap): boolean {
+  switch (etapa.tipo) {
+    case 'preparacao': return true    // IA sempre faz (revisão de literatura)
+    case 'escrita':    return true    // IA sempre faz (editor gera seções)
+    case 'aguardar':   return false   // usuário acompanha
+    case 'coleta':     return false   // usuário coleta
+    case 'analise':    return false   // usuário analisa
+    case 'submissao':  return false   // usuário submete
+    case 'etica': {
+      const t = etapa.titulo.toLowerCase()
+      // Etapas de elaboração de documentos → IA gera
+      if (
+        t.includes('elaborar') || t.includes('redigir') || t.includes('preparar') ||
+        t.includes('protocolo') || t.includes('tcle') ||
+        t.includes('anuência') || t.includes('anuencia')
+      ) return true
+      // Submeter, obter presencialmente, aguardar → usuário
+      return false
+    }
+  }
 }
 
-// ─── Documentos disponíveis por tipo de etapa ─────────────────────────────────
+// ─── Instruções estáticas por tipo/subtipo de etapa ──────────────────────────
+// Separadas por subtipo de etica para evitar conteúdo idêntico em cards diferentes.
+
+function getInstrucoesEtapa(etapa: EtapaRoadmap, appExecuta: boolean): string[] {
+  if (etapa.tipo === 'etica') {
+    if (appExecuta) {
+      // Etapas de elaboração de documentos CEP
+      return [
+        'Clique em "Gerar com IA" abaixo para gerar cada documento necessário',
+        'Revise cada documento e preencha os campos em [colchetes] com seus dados reais',
+        'Salve em PDF e organize numa pasta com o nome do projeto',
+        'Mostre os documentos ao seu orientador antes de submeter',
+        'Após revisão, submeta tudo na Plataforma Brasil como arquivo único ou separado',
+      ]
+    } else {
+      // Etapas de submissão presencial / obtenção de assinatura
+      const t = etapa.titulo.toLowerCase()
+      if (t.includes('anuência') || t.includes('anuencia') || t.includes('carta')) {
+        return [
+          'Imprima a Carta de Anuência em papel timbrado da sua instituição',
+          'Apresente ao diretor ou responsável institucional para assinatura',
+          'Digitalize (scan) o documento assinado em PDF de boa resolução',
+          'Guarde o original físico junto com os demais documentos do projeto',
+          'Anexe o PDF na Plataforma Brasil junto com o protocolo CEP',
+        ]
+      }
+      return [
+        'Acesse a Plataforma Brasil em plataformabrasil.saude.gov.br',
+        'Crie ou acesse sua conta e cadastre o projeto de pesquisa',
+        'Anexe o protocolo de pesquisa, TCLE e carta de anuência da instituição',
+        'Aguarde o número CAAE gerado após a submissão',
+        'Acompanhe o status do parecer — prazo legal é 30 dias',
+      ]
+    }
+  }
+
+  switch (etapa.tipo) {
+    case 'preparacao': return [
+      'Clique em "Gerar com IA" abaixo para gerar uma revisão de literatura do seu tema',
+      'Revise o conteúdo gerado com seu orientador e adapte ao contexto local',
+      'Use a revisão para fundamentar a justificativa e os objetivos do projeto',
+      'Identifique os instrumentos validados existentes (escalas, questionários)',
+      'Defina claramente a pergunta de pesquisa antes de avançar',
+    ]
+    case 'aguardar': return [
+      'Acompanhe o status na Plataforma Brasil regularmente',
+      'Em caso de pendência, responda dentro do prazo indicado pelo CEP',
+      'Aproveite o período para finalizar os instrumentos de coleta',
+      'Se o parecer for aprovado, avance para a próxima etapa',
+    ]
+    case 'coleta': return [
+      'Treine a equipe de coleta conforme o protocolo aprovado pelo CEP',
+      'Aplique o instrumento de coleta seguindo rigorosamente o protocolo',
+      'Registre os dados de forma sistemática — planilha ou software específico',
+      'Mantenha os TCLEs assinados arquivados em local seguro',
+      'Monitore o andamento e corrija desvios do protocolo imediatamente',
+    ]
+    case 'analise': return [
+      'Organize e limpe o banco de dados antes de iniciar a análise',
+      'Verifique a distribuição dos dados e os pressupostos dos testes',
+      'Aplique os testes estatísticos conforme planejado na metodologia',
+      'Documente todas as decisões analíticas e os softwares usados',
+      'Interprete os resultados à luz dos objetivos e da literatura',
+    ]
+    case 'escrita': return [
+      'Use o editor do Científica AI para gerar cada seção com auxílio de IA',
+      'Revise e adapte o conteúdo gerado inserindo seus dados reais coletados',
+      'Siga as normas ABNT/Vancouver/APA conforme o formato do trabalho',
+      'Valide cada seção antes de avançar para a próxima',
+      'Peça feedback do orientador ao final de cada capítulo principal',
+    ]
+    case 'submissao': return [
+      'Selecione o periódico ou banca adequada ao escopo do trabalho',
+      'Leia atentamente as normas de submissão do periódico/instituição',
+      'Prepare todos os documentos exigidos: carta, declarações, formulários',
+      'Submeta o manuscrito e anote o número de protocolo/protocolo de defesa',
+      'Aguarde e responda às revisões ou perguntas da banca/revisores',
+    ]
+    default: return []
+  }
+}
+
+// ─── Documentos disponíveis por etapa ─────────────────────────────────────────
+// Baseado no tipo E no appExecuta computado — não usa "primeiro de cada tipo".
 
 function getDocumentosEtapa(
-  tipo: EtapaRoadmap['tipo'],
+  etapa: EtapaRoadmap,
+  appExecuta: boolean,
   dadosProjeto?: DadosProjeto | null
 ): DocumentoEtapa[] {
-  switch (tipo) {
+  if (!appExecuta) return []   // etapas manuais não têm documentos da IA
+
+  switch (etapa.tipo) {
     case 'preparacao':
       return [
         { tipo: 'revisao_literatura', label: 'Revisão de Literatura', descricao: 'Síntese das publicações sobre o tema, lacunas e embasamento teórico' },
       ]
     case 'etica': {
       const docs: DocumentoEtapa[] = []
-      if (!dadosProjeto || dadosProjeto.precisa_cep)
-        docs.push({ tipo: 'protocolo_cep', label: 'Protocolo CEP', descricao: 'Documento formal para submissão ao CEP' })
-      if (!dadosProjeto || dadosProjeto.precisa_tcle)
-        docs.push({ tipo: 'tcle', label: 'TCLE', descricao: 'Termo de Consentimento Livre e Esclarecido' })
-      if (!dadosProjeto || dadosProjeto.precisa_carta_anuencia)
+      const t = etapa.titulo.toLowerCase()
+      // Carta de anuência: apenas na etapa específica
+      if (t.includes('anuência') || t.includes('anuencia') || t.includes('carta')) {
         docs.push({ tipo: 'carta_anuencia', label: 'Carta de Anuência', descricao: 'Autorização da instituição parceira' })
+      } else {
+        // Elaborar protocolo: protocolo + TCLE
+        if (!dadosProjeto || dadosProjeto.precisa_cep)
+          docs.push({ tipo: 'protocolo_cep', label: 'Protocolo CEP', descricao: 'Documento formal para submissão ao CEP' })
+        if (!dadosProjeto || dadosProjeto.precisa_tcle)
+          docs.push({ tipo: 'tcle', label: 'TCLE', descricao: 'Termo de Consentimento Livre e Esclarecido' })
+        if ((!dadosProjeto || dadosProjeto.precisa_carta_anuencia) && !t.includes('protocolo'))
+          docs.push({ tipo: 'carta_anuencia', label: 'Carta de Anuência', descricao: 'Autorização da instituição parceira' })
+      }
       return docs
     }
     case 'coleta':
@@ -1024,25 +1089,16 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                 {/* Linha vertical */}
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                 <ol className="space-y-4 pl-10">
-                  {(() => {
-                    // Pré-computar qual é a primeira etapa de cada tipo
-                    // (documentos só aparecem na primeira ocorrência de cada tipo)
-                    const tiposVistos = new Set<string>()
-                    const primeiraEtapaPorTipo = new Set<string>()
-                    for (const e of planData.roadmap) {
-                      if (!tiposVistos.has(e.tipo)) {
-                        tiposVistos.add(e.tipo)
-                        primeiraEtapaPorTipo.add(e.id)
-                      }
-                    }
-                    return planData.roadmap.map((etapa) => {
-                    const isFirstOfType = primeiraEtapaPorTipo.has(etapa.id)
+                  {planData.roadmap.map((etapa) => {
+                    // app_executa calculado no frontend — não depende do valor gerado pela IA
+                    const appExecuta = computeAppExecuta(etapa)
                     const isExpanded = expandedEtapas.has(etapa.id)
                     const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
-                    const instrucoes = INSTRUCOES_POR_TIPO[etapa.tipo] ?? []
-                    // Documentos e link externo só na primeira etapa de cada tipo
-                    const documentosEtapa = isFirstOfType ? getDocumentosEtapa(etapa.tipo, planData) : []
-                    const linkExterno = isFirstOfType && etapa.tipo === 'etica' ? 'https://plataformabrasil.saude.gov.br' : null
+                    const instrucoes = getInstrucoesEtapa(etapa, appExecuta)
+                    // Documentos baseados no appExecuta computado (não em "primeiro de cada tipo")
+                    const documentosEtapa = getDocumentosEtapa(etapa, appExecuta, planData)
+                    // Link para Plataforma Brasil em etapas de submissão de ética
+                    const linkExterno = etapa.tipo === 'etica' && !appExecuta ? 'https://plataformabrasil.saude.gov.br' : null
                     const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno
 
                     return (
@@ -1086,7 +1142,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                 {etapaStatusLabel(etapaStatus)}
                               </button>
 
-                              {etapa.app_executa ? (
+                              {appExecuta ? (
                                 <span className="ml-auto flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/60 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
                                   <Cpu className="h-3 w-3" /> App faz com IA
                                 </span>
@@ -1267,8 +1323,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                         </div>
                       </li>
                     )
-                  })
-                  })()}
+                  })}
                 </ol>
               </div>
             </div>
