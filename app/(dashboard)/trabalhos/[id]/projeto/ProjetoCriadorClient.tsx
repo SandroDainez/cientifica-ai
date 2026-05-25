@@ -817,6 +817,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
         // Auto-salva versão refinada
         setDocsMap(prev => ({ ...prev, [key]: { status: 'gerado', conteudo: accumulated } }))
         setRefineInput(prev => ({ ...prev, [key]: '' }))
+        // Clear stale editBuffer entry so next manual edit starts from the refined content
+        setEditBuffer(prev => { const n = { ...prev }; delete n[key]; return n })
         setEditingKey(null)
         void salvarDocumento(key, accumulated)
         toast.success('Documento refinado e salvo!')
@@ -1334,7 +1336,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                     const documentosEtapa = getDocumentosEtapa(etapa, appExecuta, planData)
                     // Link para Plataforma Brasil em etapas de submissão de ética
                     const linkExterno = etapa.tipo === 'etica' && !appExecuta ? 'https://plataformabrasil.saude.gov.br' : null
-                    const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno
+                    const etapaChecklistCount = (planData.checklist ?? []).filter(item => {
+                      const tipo = item.etapa_tipo ?? categoriaParaEtapaTipo(item.categoria)
+                      return tipo === etapa.tipo
+                    }).length
+                    const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno || etapaChecklistCount > 0
 
                     return (
                       <li key={etapa.id} className="relative">
@@ -2012,6 +2018,10 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
   const [arrastando, setArrastando] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Always-current ref — salvarDados reads this inside the debounce timeout
+  // so it never captures stale textos from the render closure.
+  const textosRef = useRef<Record<AbaNotas, string>>(textos)
+  textosRef.current = textos
 
   function salvarDados(patch: Partial<{
     dados_coletados: string
@@ -2033,10 +2043,11 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
           body: JSON.stringify({
             dados_projeto: {
               ...(dadosProjetoAtual ?? {}),
-              dados_coletados:     textos.resultados,
-              notas_contexto:      textos.contexto,
-              notas_metodologia:   textos.metodologia,
-              notas_interpretacao: textos.interpretacao,
+              // Use ref so we always get the latest textos, not the stale closure value
+              dados_coletados:     textosRef.current.resultados,
+              notas_contexto:      textosRef.current.contexto,
+              notas_metodologia:   textosRef.current.metodologia,
+              notas_interpretacao: textosRef.current.interpretacao,
               n_participantes:     nParticipantes,
               software_analise:    softwareAnalise,
               taxa_resposta:       taxaResposta,
@@ -2088,13 +2099,13 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
   function appendTexto(conteudo: string, nomeArquivo: string) {
     const separador = `\n\n--- Extraído de: ${nomeArquivo} ---\n`
     const aba = abaAtiva
-    setTextos(prev => {
-      const campo = abaParaCampo[aba]
-      const atual = prev[campo]
-      const novo = atual ? atual + separador + conteudo : conteudo
-      salvarDados({ [abaToCampoSalvar[aba]]: novo })
-      return { ...prev, [campo]: novo }
-    })
+    const campo = abaParaCampo[aba]
+    // Compute the new value OUTSIDE the updater to avoid side-effect-in-updater anti-pattern.
+    // textos here is current because appendTexto is redefined on every render.
+    const atual = textos[campo]
+    const novo = atual ? atual + separador + conteudo : conteudo
+    setTextos(prev => ({ ...prev, [campo]: novo }))
+    salvarDados({ [abaToCampoSalvar[aba]]: novo })
   }
 
   async function processarArquivo(file: File) {
