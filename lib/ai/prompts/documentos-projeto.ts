@@ -5,6 +5,56 @@ const SYSTEM_PROMPT =
   'regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos, ' +
   'formais e prontos para uso.'
 
+function buildRevisaoLiteratura(dados: DadosProjeto, titulo?: string): string {
+  return `${dadosResumo(dados)}
+
+Gere uma Revisão de Literatura completa e estruturada para fundamentar a pesquisa descrita acima.
+
+Título provisório: ${titulo ?? dados.titulo_provisorio}
+Pergunta de pesquisa: ${dados.pergunta_pesquisa}
+Delineamento: ${dados.delineamento}
+
+A revisão deve conter:
+
+1. CONTEXTO E MAGNITUDE DO PROBLEMA
+   Apresente dados epidemiológicos, estatísticas nacionais e internacionais relevantes ao tema.
+   Use linguagem acadêmica mas acessível. Cite tipos de fontes que o pesquisador deve buscar
+   (ex: "Segundo dados do Ministério da Saúde...", "Estudos internacionais demonstram...").
+   Mínimo 300 palavras.
+
+2. ESTADO ATUAL DO CONHECIMENTO
+   2.1 O que já se sabe sobre o tema (principais achados da literatura)
+   2.2 O que ainda não está claro ou é controverso
+   2.3 Lacuna que esta pesquisa vai preencher
+
+3. REFERENCIAL TEÓRICO
+   Apresente os principais conceitos, teorias e modelos relevantes para o tema.
+   Explique cada conceito de forma didática.
+
+4. INSTRUMENTOS E MÉTODOS JÁ UTILIZADOS NA LITERATURA
+   Liste os instrumentos validados (escalas, questionários, métodos) que foram usados
+   em pesquisas similares. Para cada um: nome, o que mede, vantagens e limitações.
+   Mencione especificamente: ${dados.instrumentos_previstos}
+
+5. EVIDÊNCIAS NACIONAIS (BRASIL)
+   Destaque o que a literatura brasileira já produziu sobre o tema.
+   Se houver lacuna nacional, aponte como justificativa para este estudo.
+
+6. JUSTIFICATIVA DESTA PESQUISA
+   Parágrafo síntese de por que este estudo é relevante, original e necessário,
+   conectando a lacuna identificada com o objetivo desta pesquisa.
+
+7. REFERÊNCIAS SUGERIDAS
+   Liste de 10 a 15 referências reais e relevantes que o pesquisador deve buscar,
+   em formato ABNT, incluindo: artigos de periódicos indexados (PubMed, SciELO),
+   diretrizes de sociedades médicas, dados de ministérios. Para cada referência,
+   adicione uma linha: "Relevância: [por que esta referência é importante para o estudo]"
+
+IMPORTANTE: Escreva em português brasileiro, linguagem acadêmica formal.
+Ao usar dados ou afirmações específicas, sinalize com "(verificar referência)" para que
+o pesquisador saiba o que precisa confirmar nas fontes originais.`
+}
+
 function dadosResumo(dados: DadosProjeto): string {
   return `
 DADOS DO PROJETO:
@@ -473,6 +523,9 @@ export function buildDocumentoPrompt(
   let user: string
 
   switch (tipo) {
+    case 'revisao_literatura':
+      user = buildRevisaoLiteratura(dados, trabalhoTitulo)
+      break
     case 'protocolo_cep':
       user = buildProtocoloCep(dados, trabalhoTitulo)
       break

@@ -206,6 +206,7 @@ export interface ItemChecklist {
 }
 
 export type TipoDocumento =
+  | 'revisao_literatura'
   | 'protocolo_cep'
   | 'carta_anuencia'
   | 'tcle'

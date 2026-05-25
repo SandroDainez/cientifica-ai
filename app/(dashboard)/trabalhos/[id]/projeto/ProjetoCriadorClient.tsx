@@ -128,11 +128,11 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
 
 const INSTRUCOES_POR_TIPO: Record<EtapaRoadmap['tipo'], string[]> = {
   preparacao: [
-    'Defina claramente a questão de pesquisa e os objetivos do estudo',
-    'Revise a literatura existente para identificar lacunas e embasamento',
-    'Consulte seu orientador sobre a viabilidade e escopo do projeto',
-    'Liste os recursos necessários: tempo, acesso a dados, equipamentos',
-    'Elabore um cronograma preliminar com marcos realistas',
+    'Clique em "Gerar com IA" abaixo para gerar uma revisão de literatura do seu tema',
+    'Revise o conteúdo gerado com seu orientador e adapte ao contexto local',
+    'Use a revisão para fundamentar a justificativa e os objetivos do projeto',
+    'Identifique os instrumentos validados existentes (escalas, questionários)',
+    'Defina claramente a pergunta de pesquisa antes de avançar',
   ],
   etica: [
     'Acesse a Plataforma Brasil em plataformabrasil.saude.gov.br',
@@ -184,6 +184,10 @@ function getDocumentosEtapa(
   dadosProjeto?: DadosProjeto | null
 ): DocumentoEtapa[] {
   switch (tipo) {
+    case 'preparacao':
+      return [
+        { tipo: 'revisao_literatura', label: 'Revisão de Literatura', descricao: 'Síntese das publicações sobre o tema, lacunas e embasamento teórico' },
+      ]
     case 'etica': {
       const docs: DocumentoEtapa[] = []
       if (!dadosProjeto || dadosProjeto.precisa_cep)
@@ -242,6 +246,10 @@ function extractJsonObject(text: string): string | null {
 // ─── O que fazer com cada documento após gerar ───────────────────────────────
 
 const USO_DOCUMENTO: Record<string, { acao: string; detalhe: string }> = {
+  revisao_literatura: {
+    acao: 'Use este texto como base para a Introdução e Justificativa do seu trabalho',
+    detalhe: 'Revise com seu orientador, adicione referências locais que você conhece e adapte ao contexto específico da sua pesquisa. No editor, a IA vai expandir cada seção usando esta revisão.',
+  },
   protocolo_cep: {
     acao: 'Preencha os campos em [colchetes] e submeta na Plataforma Brasil',
     detalhe: 'Acesse plataformabrasil.saude.gov.br → Nova Pesquisa → anexe como "Projeto Completo" em PDF.',
