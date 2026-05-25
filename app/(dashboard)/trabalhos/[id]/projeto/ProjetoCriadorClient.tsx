@@ -1017,6 +1017,22 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
             </div>
           </div>
 
+          {/* Análise do orientador virtual — logo abaixo do header */}
+          {(() => {
+            const textoAnalise = planData.analise_orientador
+              ?? (streamingText ? streamingText.split('===PLANO_JSON===')[0].trim() : '')
+            return textoAnalise ? (
+              <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4">
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">
+                  Análise do Orientador Virtual
+                </p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                  {textoAnalise}
+                </p>
+              </div>
+            ) : null
+          })()}
+
           {/* Progress bar */}
           {totalChecklist > 0 && (
             <div className="rounded-lg border bg-card p-4">
@@ -1433,22 +1449,6 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
               dadosProjetoAtual={planData}
             />
           </div>
-
-          {/* Análise gerada (texto da PARTE 1) — persiste via planData */}
-          {(planData.analise_orientador || streamingText) && (() => {
-            const textoAnalise = planData.analise_orientador
-              ?? streamingText.split('===PLANO_JSON===')[0].trim()
-            return textoAnalise ? (
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-2">Análise do Orientador Virtual</h3>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                    {textoAnalise}
-                  </p>
-                </div>
-              </div>
-            ) : null
-          })()}
 
           {/* Ações */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
