@@ -27,6 +27,8 @@ import {
   Table2,
   X,
   FileSpreadsheet,
+  Printer,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
@@ -645,6 +647,72 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       setTimeout(() => setCopiedKey(k => (k === key ? null : k)), 2000)
     } catch {
       toast.error('Não foi possível copiar.')
+    }
+  }, [])
+
+  // ── Download como .txt ────────────────────────────────────────────────────
+
+  const handleDownload = useCallback((texto: string, nomeDoc: string) => {
+    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${nomeDoc.replace(/[^a-zA-Z0-9À-ú\s]/g, '').trim().replace(/\s+/g, '_')}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  // ── Imprimir documento ────────────────────────────────────────────────────
+
+  const handleImprimir = useCallback((texto: string, nomeDoc: string, tituloTrabalho: string) => {
+    const linhas = texto
+      .split('\n')
+      .map(l => {
+        // Títulos markdown → <h2>/<h3>
+        if (/^### /.test(l)) return `<h3>${l.replace(/^### /, '')}</h3>`
+        if (/^## /.test(l))  return `<h2>${l.replace(/^## /, '')}</h2>`
+        if (/^# /.test(l))   return `<h1>${l.replace(/^# /, '')}</h1>`
+        // Negrito **texto**
+        const formatted = l.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        if (formatted.trim() === '') return '<br/>'
+        return `<p>${formatted}</p>`
+      })
+      .join('\n')
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>${nomeDoc}</title>
+  <style>
+    @page { margin: 2.5cm; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.8; color: #000; }
+    h1 { font-size: 14pt; text-align: center; margin: 24pt 0 12pt; text-transform: uppercase; }
+    h2 { font-size: 13pt; margin: 18pt 0 8pt; }
+    h3 { font-size: 12pt; margin: 14pt 0 6pt; }
+    p  { margin: 0 0 8pt; text-align: justify; }
+    .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 12pt; margin-bottom: 18pt; }
+    .header small { font-size: 10pt; color: #333; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <small>${tituloTrabalho}</small><br/>
+    <strong>${nomeDoc}</strong><br/>
+    <small>Gerado em ${new Date().toLocaleDateString('pt-BR')} pelo Científica AI</small>
+  </div>
+  ${linhas}
+  <script>window.onload = function(){ window.print(); }<\/script>
+</body>
+</html>`
+
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (w) {
+      w.document.write(html)
+      w.document.close()
+    } else {
+      toast.error('O navegador bloqueou a janela de impressão. Permita pop-ups para este site.')
     }
   }, [])
 
@@ -1275,17 +1343,35 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                               <span className="text-sm font-medium text-foreground">{doc.label}</span>
                                             </div>
 
-                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                            <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
                                               {docState?.status === 'gerado' && (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleCopy(key, docState.conteudo)}
-                                                  className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
-                                                >
-                                                  {copiedKey === key
-                                                    ? <><Check className="h-3 w-3" /> Copiado</>
-                                                    : <><Copy className="h-3 w-3" /> Copiar</>}
-                                                </button>
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleImprimir(docState.conteudo, doc.label, trabalho.titulo ?? '')}
+                                                    className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                                    title="Abre janela de impressão — use 'Salvar como PDF' para gerar um PDF"
+                                                  >
+                                                    <Printer className="h-3 w-3" /> Imprimir
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDownload(docState.conteudo, doc.label)}
+                                                    className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                                    title="Baixar como arquivo .txt para editar no Word"
+                                                  >
+                                                    <Download className="h-3 w-3" /> Baixar .txt
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleCopy(key, docState.conteudo)}
+                                                    className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                                  >
+                                                    {copiedKey === key
+                                                      ? <><Check className="h-3 w-3" /> Copiado</>
+                                                      : <><Copy className="h-3 w-3" /> Copiar</>}
+                                                  </button>
+                                                </>
                                               )}
 
                                               <button
