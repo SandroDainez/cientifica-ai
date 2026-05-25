@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   AlertTriangle,
   Clock,
@@ -20,6 +21,7 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Info,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
@@ -235,6 +237,59 @@ function extractJsonObject(text: string): string | null {
     }
   }
   return null   // JSON incompleto (truncado)
+}
+
+// ─── O que fazer com cada documento após gerar ───────────────────────────────
+
+const USO_DOCUMENTO: Record<string, { acao: string; detalhe: string }> = {
+  protocolo_cep: {
+    acao: 'Preencha os campos em [colchetes] e submeta na Plataforma Brasil',
+    detalhe: 'Acesse plataformabrasil.saude.gov.br → Nova Pesquisa → anexe como "Projeto Completo" em PDF.',
+  },
+  carta_anuencia: {
+    acao: 'Imprima em papel timbrado e colete a assinatura do diretor',
+    detalhe: 'Após assinada, digitalize e adicione na Plataforma Brasil junto com o protocolo CEP.',
+  },
+  tcle: {
+    acao: 'Imprima 2 vias por participante — uma fica com ele, outra com você',
+    detalhe: 'Colete a assinatura ANTES de aplicar o questionário. Guarde em local seguro por pelo menos 5 anos.',
+  },
+  instrumento_coleta: {
+    acao: 'Imprima uma cópia por participante — use número sequencial, nunca o nome',
+    detalhe: 'Preencha em campo. Ao final do dia, revise cada questionário e digitalize em planilha.',
+  },
+  guia_coleta: {
+    acao: 'Leve para campo e use como checklist a cada dia de coleta',
+    detalhe: 'Distribua para todos os pesquisadores/auxiliares que vão aplicar o instrumento.',
+  },
+  guia_analise: {
+    acao: 'Siga o passo a passo no software indicado — ou envie este guia a um estatístico',
+    detalhe: 'Se não tiver familiaridade com estatística, encaminhe este guia a um estatístico com seus dados. Muitas universidades oferecem serviço gratuito de assessoria estatística.',
+  },
+  sugestoes_periodicos: {
+    acao: 'Escolha 1 periódico e leia o Guia de Autores antes de formatar o artigo',
+    detalhe: 'Acesse o link de submissão do periódico escolhido. Cada periódico tem regras específicas de formatação.',
+  },
+  carta_submissao: {
+    acao: 'Preencha os campos em [colchetes], assine e envie junto com o manuscrito',
+    detalhe: 'Enviada no sistema de submissão do periódico, na mesma etapa em que você faz o upload do artigo.',
+  },
+  checklist_submissao: {
+    acao: 'Marque cada item ANTES de clicar em "Submeter" no sistema do periódico',
+    detalhe: 'Manuscritos rejeitados por erro formal atrasam meses. Vale a pena verificar cada item com calma.',
+  },
+}
+
+// ─── Próximo passo após completar cada tipo de etapa ─────────────────────────
+
+const PROXIMO_PASSO: Record<EtapaRoadmap['tipo'], string> = {
+  preparacao: 'Quando tiver o projeto definido, avance para a etapa de ética (CEP) se sua pesquisa envolver pessoas.',
+  etica: 'Após submeter na Plataforma Brasil, aguarde o parecer. O prazo legal é de 30 dias, mas pode levar até 60.',
+  aguardar: 'Aprovação em mãos? Avance para a coleta de dados. Reprovação? Responda às pendências dentro do prazo.',
+  coleta: 'Dados coletados e digitados em planilha? Avance para a análise estatística.',
+  analise: 'Com os resultados em mãos (tabelas e gráficos), use o editor do app para escrever cada seção do trabalho.',
+  escrita: 'Revise com seu orientador antes de submeter. Peça também revisão de um colega da área.',
+  submissao: 'Após a submissão, anote o número de protocolo e aguarde a resposta dos revisores.',
 }
 
 const TIPO_LABELS: Record<string, string> = {
@@ -987,6 +1042,23 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                             </div>
                                           )}
 
+                                          {/* O que fazer com este documento */}
+                                          {docState?.status === 'gerado' && USO_DOCUMENTO[doc.tipo] && (
+                                            <div className="mt-3 rounded-md bg-blue-50 border border-blue-200 p-3">
+                                              <div className="flex items-start gap-2">
+                                                <Info className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                  <p className="text-xs font-semibold text-blue-800 mb-0.5">
+                                                    {USO_DOCUMENTO[doc.tipo].acao}
+                                                  </p>
+                                                  <p className="text-xs text-blue-700">
+                                                    {USO_DOCUMENTO[doc.tipo].detalhe}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+
                                           {docState?.status === 'erro' && (
                                             <p className="mt-1 text-xs text-red-600">
                                               {docState.erro ?? 'Erro ao gerar. Tente novamente.'}
@@ -996,6 +1068,32 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                       )
                                     })}
                                   </div>
+                                </div>
+                              )}
+
+                              {/* Link direto ao editor para etapa de escrita */}
+                              {etapa.tipo === 'escrita' && (
+                                <Link
+                                  href={`/trabalhos/${trabalho.id}/editar`}
+                                  className={cn(
+                                    buttonVariants({ size: 'sm' }),
+                                    'w-full gap-2 justify-center'
+                                  )}
+                                >
+                                  <ArrowRight className="h-4 w-4" />
+                                  Abrir Editor e escrever com IA
+                                </Link>
+                              )}
+
+                              {/* Próximo passo */}
+                              {PROXIMO_PASSO[etapa.tipo] && (
+                                <div className="rounded-md bg-muted/60 border border-border p-3">
+                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                    Próximo passo
+                                  </p>
+                                  <p className="text-sm text-foreground">
+                                    {PROXIMO_PASSO[etapa.tipo]}
+                                  </p>
                                 </div>
                               )}
                             </div>
