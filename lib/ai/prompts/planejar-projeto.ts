@@ -75,13 +75,14 @@ Ao final, após a linha "===PLANO_JSON===", retorne APENAS um JSON válido com e
 }
 
 REGRAS para o roadmap:
-- Etapas tipo=preparacao: app_executa=true (o app gera revisão de literatura e orienta o planejamento)
+- NUNCA use placeholders como {app_name}, {nome_app} ou similares — quando precisar mencionar o app, use "Científica AI"
+- Etapas tipo=preparacao: app_executa=true (o Científica AI gera revisão de literatura e orienta o planejamento)
 - Etapas tipo=etica que envolvem elaborar documentos (protocolo, TCLE, carta): app_executa=true (o app gera os documentos)
 - Etapas tipo=etica que envolvem submissão ou espera presencial: app_executa=false
 - Se precisa_cep=true: inclua etapas "Elaborar protocolo de pesquisa" (etica, app_executa=true), "Obter carta de anuência" (etica, app_executa=false), "Submeter ao CEP via Plataforma Brasil" (bloqueante=true, app_executa=false), "Aguardar aprovação do CEP" (tipo=aguardar, duracao="30-60 dias", app_executa=false), "Iniciar coleta de dados"
 - Etapas tipo=coleta: app_executa=false (coleta física o usuário faz), mas o app gera instrumentos de coleta
 - Etapas tipo=analise: app_executa=false (análise o usuário ou estatístico faz), mas o app gera guia de análise
-- A etapa de escrita (tipo=escrita): app_executa=true, descricao deve mencionar que o app gera com IA
+- A etapa de escrita (tipo=escrita): app_executa=true, descricao deve mencionar que o Científica AI gera com IA (nunca use {app_name} ou outros placeholders — escreva "Científica AI" diretamente)
 - Etapas tipo=submissao: app_executa=false (usuário submete manualmente), mas o app gera os documentos de submissão
 - Se tipo_coleta=primaria: inclua etapas de coleta e análise
 - Se tipo_coleta=bibliografica: inclua etapas de busca bibliográfica

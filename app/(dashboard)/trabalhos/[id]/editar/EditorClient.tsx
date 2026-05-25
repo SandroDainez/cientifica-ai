@@ -14,7 +14,7 @@ import { PainelIA } from '@/components/editor/PainelIA'
 import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
-import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao } from '@/types'
+import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
@@ -90,6 +90,63 @@ interface EditorClientProps {
   trabalho: Trabalho
   fases: FaseConfig[]
   secoesIniciais: SecaoTrabalho[]
+}
+
+// ── Pré-preenche o questionário de geração com dados do plano do projeto ───────
+
+function buildValoresIniciais(
+  chaveSecao: string,
+  dadosProjeto: DadosProjeto | null | undefined
+): Record<string, string> | undefined {
+  if (!dadosProjeto) return undefined
+  const chave = chaveSecao.toLowerCase()
+  const vals: Record<string, string> = {}
+
+  // Seção: Introdução
+  if (chave === 'introducao' || chave.includes('introducao_') || chave.includes('_introducao')) {
+    if (dadosProjeto.contexto_geral) vals.contexto = dadosProjeto.contexto_geral
+  }
+
+  // Seção: Objetivo
+  if (chave.includes('objetivo')) {
+    if (dadosProjeto.objetivo_geral) vals.objetivo_geral = dadosProjeto.objetivo_geral
+  }
+
+  // Seção: Justificativa
+  if (chave.includes('justificativa')) {
+    if (dadosProjeto.justificativa_resumida) vals.relevancia = dadosProjeto.justificativa_resumida
+    if (dadosProjeto.contexto_geral) vals.lacuna = dadosProjeto.contexto_geral
+  }
+
+  // Seção: Problema / PICO / pergunta de pesquisa
+  if (chave.includes('problema') || chave.includes('pico')) {
+    if (dadosProjeto.pergunta_pesquisa) vals.pergunta_pesquisa = dadosProjeto.pergunta_pesquisa
+    if (dadosProjeto.populacao_alvo) vals.populacao = dadosProjeto.populacao_alvo
+  }
+
+  // Seção: Metodologia
+  if (chave.includes('metodologia') || chave.includes('material') || chave.includes('metodo')) {
+    if (dadosProjeto.instrumentos_previstos) vals.coleta_instrumentos = dadosProjeto.instrumentos_previstos
+    if (dadosProjeto.analise_prevista) vals.analise_estatistica = dadosProjeto.analise_prevista
+    if (dadosProjeto.populacao_alvo) {
+      vals.criterios_inclusao = dadosProjeto.populacao_alvo
+    }
+    if (dadosProjeto.local_previsto) vals.local_periodo = `${dadosProjeto.local_previsto} — ${dadosProjeto.periodo_previsto}`
+  }
+
+  // Seção: Resultados
+  if (chave.includes('resultado')) {
+    if (dadosProjeto.dados_coletados) {
+      vals.dados_numericos = dadosProjeto.dados_coletados
+    }
+  }
+
+  // Seção: Tema
+  if (chave.includes('tema')) {
+    if (dadosProjeto.titulo_provisorio) vals.tema = dadosProjeto.titulo_provisorio
+  }
+
+  return Object.keys(vals).length > 0 ? vals : undefined
 }
 
 export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientProps) {
@@ -448,6 +505,10 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           chaveSecao={faseAtualConfig.chave_secao}
           nomeSecao={faseAtualConfig.nome}
           tipoTrabalho={trabalho.tipo_trabalho}
+          valoresIniciais={buildValoresIniciais(
+            faseAtualConfig.chave_secao,
+            (trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined
+          )}
           onConfirmar={(respostas) => executarGeracao(respostas)}
           onPular={() => executarGeracao()}
           onCancelar={() => setQuestionarioAberto(false)}

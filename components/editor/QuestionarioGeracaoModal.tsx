@@ -10,6 +10,8 @@ interface QuestionarioGeracaoModalProps {
   chaveSecao: string
   nomeSecao: string
   tipoTrabalho?: string
+  /** Valores pré-preenchidos do plano do projeto (DadosProjeto) */
+  valoresIniciais?: Record<string, string>
   onConfirmar: (respostas: RespostasQuestionario) => void
   onPular: () => void
   onCancelar: () => void
@@ -1048,9 +1050,12 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
   ]
 }
 
-function inicializarRespostas(perguntas: Pergunta[]): RespostasQuestionario {
+function inicializarRespostas(
+  perguntas: Pergunta[],
+  valoresIniciais?: Record<string, string>
+): RespostasQuestionario {
   return perguntas.reduce<RespostasQuestionario>((acc, p) => {
-    acc[p.id] = ''
+    acc[p.id] = valoresIniciais?.[p.id] ?? ''
     return acc
   }, {})
 }
@@ -1059,13 +1064,14 @@ export default function QuestionarioGeracaoModal({
   chaveSecao,
   nomeSecao,
   tipoTrabalho,
+  valoresIniciais,
   onConfirmar,
   onPular,
   onCancelar,
 }: QuestionarioGeracaoModalProps) {
   const perguntas = getPerguntasParaSecao(chaveSecao, tipoTrabalho)
   const [respostas, setRespostas] = useState<RespostasQuestionario>(() =>
-    inicializarRespostas(perguntas)
+    inicializarRespostas(perguntas, valoresIniciais)
   )
 
   const totalPreenchidas = Object.values(respostas).filter((v) => v.trim() !== '').length
@@ -1109,19 +1115,35 @@ export default function QuestionarioGeracaoModal({
 
         {/* Body */}
         <div className="overflow-y-auto p-6 space-y-5 flex-1">
-          {perguntas.map((pergunta, index) => (
+          {/* Banner: campos pré-preenchidos do plano */}
+          {valoresIniciais && Object.keys(valoresIniciais).length > 0 && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 flex items-start gap-2">
+              <span className="text-blue-500 text-sm mt-0.5">📋</span>
+              <p className="text-xs text-blue-800">
+                <span className="font-semibold">Campos pré-preenchidos</span> com os dados do seu Plano de Pesquisa. Revise e ajuste se necessário.
+              </p>
+            </div>
+          )}
+          {perguntas.map((pergunta, index) => {
+            const preenchidoDoPlano = !!(valoresIniciais?.[pergunta.id])
+            return (
             <div key={pergunta.id} className="space-y-2">
               <label
                 htmlFor={pergunta.id}
                 className="block text-sm font-medium text-gray-800 leading-snug"
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-semibold text-primary/70 bg-primary/8 rounded-full px-1.5 py-0.5">
                     {index + 1}
                   </span>
                   {pergunta.pergunta}
                   {!pergunta.obrigatoria && (
                     <span className="text-xs text-gray-400 font-normal">(opcional)</span>
+                  )}
+                  {preenchidoDoPlano && (
+                    <span className="text-[10px] font-medium text-blue-600 bg-blue-100 rounded-full px-1.5 py-0.5">
+                      do plano
+                    </span>
                   )}
                 </span>
               </label>
@@ -1134,10 +1156,13 @@ export default function QuestionarioGeracaoModal({
                   onChange={(e) => handleChange(pergunta.id, e.target.value)}
                   placeholder={pergunta.placeholder}
                   className={cn(
-                    'w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900',
-                    'placeholder:text-gray-400 bg-gray-50',
+                    'w-full rounded-xl border px-4 py-2.5 text-sm text-gray-900',
+                    'placeholder:text-gray-400',
                     'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 focus:bg-white',
-                    'transition-colors'
+                    'transition-colors',
+                    preenchidoDoPlano
+                      ? 'border-blue-300 bg-blue-50'
+                      : 'border-gray-200 bg-gray-50'
                   )}
                 />
               )}
@@ -1150,10 +1175,13 @@ export default function QuestionarioGeracaoModal({
                   placeholder={pergunta.placeholder}
                   rows={3}
                   className={cn(
-                    'w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900',
-                    'placeholder:text-gray-400 bg-gray-50 resize-none',
+                    'w-full rounded-xl border px-4 py-2.5 text-sm text-gray-900 resize-none',
+                    'placeholder:text-gray-400',
                     'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 focus:bg-white',
-                    'transition-colors'
+                    'transition-colors',
+                    preenchidoDoPlano
+                      ? 'border-blue-300 bg-blue-50'
+                      : 'border-gray-200 bg-gray-50'
                   )}
                 />
               )}
@@ -1199,7 +1227,8 @@ export default function QuestionarioGeracaoModal({
                 </p>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Footer */}
