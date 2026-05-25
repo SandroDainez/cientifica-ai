@@ -602,8 +602,12 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
         }
 
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: `Erro ${res.status}` }))
-          throw new Error((err as { error?: string }).error ?? `Erro ${res.status}`)
+          const statusCode = res.status
+          const err = await res.json().catch(() => ({})) as { error?: string }
+          if (statusCode === 429) throw new Error('Limite de requisições atingido. Aguarde 1 minuto e tente novamente.')
+          if (statusCode === 504) throw new Error('A IA demorou muito para responder. Tente novamente — documentos longos podem levar até 2 minutos.')
+          if (statusCode >= 500) throw new Error(err.error ?? 'Erro interno no servidor. Tente novamente em instantes.')
+          throw new Error(err.error ?? `Erro ${statusCode}`)
         }
 
         if (!res.body) throw new Error('Sem stream')
@@ -622,12 +626,17 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
           }))
         }
 
+        // Verificar se algo foi realmente gerado
+        if (!accumulated.trim()) {
+          throw new Error('A IA não retornou conteúdo. Tente novamente.')
+        }
+
         setDocsMap(prev => ({
           ...prev,
           [key]: { status: 'gerado', conteudo: accumulated },
         }))
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Erro ao gerar documento.'
+        const msg = err instanceof Error ? err.message : 'Erro ao gerar documento. Tente novamente.'
         setDocsMap(prev => ({
           ...prev,
           [key]: { status: 'erro', conteudo: '', erro: msg },
