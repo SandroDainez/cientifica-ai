@@ -280,6 +280,11 @@ export interface DadosProjeto {
   // Dados coletados pelo pesquisador (inseridos no painel de dados)
   dados_coletados?: string
 
+  // Informações estruturadas do painel de dados
+  n_participantes?: string       // ex: "80", "45 casos e 45 controles"
+  software_analise?: string      // ex: "SPSS 27", "R 4.3", "Excel"
+  taxa_resposta?: string         // ex: "82%", "74 de 90 convidados"
+
   // Controle
   criado_em: string
   confirmado: boolean

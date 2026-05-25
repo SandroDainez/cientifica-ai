@@ -155,6 +155,21 @@ export function buildGerarSecaoPrompt(
     if (p.analise_prevista)       partes.push(`**Análise:** ${p.analise_prevista}`)
     if (p.contexto_geral)         partes.push(`**Contexto:** ${p.contexto_geral}`)
     if (p.justificativa_resumida) partes.push(`**Justificativa:** ${p.justificativa_resumida}`)
+    // Campos estruturados do painel de dados (N, software, taxa)
+    const temDadosEstruturados = p.n_participantes || p.software_analise || p.taxa_resposta
+    if (temDadosEstruturados) {
+      partes.push(`\n## DADOS DA PESQUISA — INFORMAÇÕES REAIS DO ESTUDO`)
+      partes.push(`Use estes dados reais ao escrever Metodologia, Resultados e Discussão:`)
+      if (p.n_participantes) partes.push(`**N de participantes (real):** ${p.n_participantes}`)
+      if (p.taxa_resposta)   partes.push(`**Taxa de resposta:** ${p.taxa_resposta}`)
+      if (p.software_analise) partes.push(`**Software de análise:** ${p.software_analise}`)
+    }
+    if (p.dados_coletados?.trim()) {
+      partes.push(`\n## DADOS REAIS COLETADOS PELO PESQUISADOR — PRIORIDADE MÁXIMA`)
+      partes.push(`O pesquisador inseriu os dados abaixo coletados na sua pesquisa. São dados reais — use-os diretamente nas seções pertinentes (Resultados, Discussão, Conclusão, Metodologia).`)
+      partes.push(`REGRA CRÍTICA: Ao escrever a seção de Resultados ou Discussão, use EXATAMENTE estes dados. Nunca invente números, percentuais ou achados diferentes dos listados abaixo.`)
+      partes.push(p.dados_coletados.trim())
+    }
     partes.push(`CRÍTICO: Use os dados acima onde forem relevantes. Nunca invente hospital, datas ou população diferente do que está aqui.`)
   }
 

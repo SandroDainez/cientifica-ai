@@ -22,6 +22,11 @@ import {
   Check,
   RefreshCw,
   Info,
+  Upload,
+  ImageIcon,
+  Table2,
+  X,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
@@ -1476,15 +1481,34 @@ interface DadosPesquisaPanelProps {
   dadosProjetoAtual: DadosProjeto | null
 }
 
+type ArquivoStatus = 'lendo' | 'extraindo' | 'concluido' | 'erro'
+
+interface ArquivoProcessado {
+  id: string
+  nome: string
+  tipo: string
+  status: ArquivoStatus
+  erro?: string
+}
+
 function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPanelProps) {
   const [texto, setTexto] = useState(dadosProjetoAtual?.dados_coletados ?? '')
+  const [nParticipantes, setNParticipantes] = useState(dadosProjetoAtual?.n_participantes ?? '')
+  const [softwareAnalise, setSoftwareAnalise] = useState(dadosProjetoAtual?.software_analise ?? '')
+  const [taxaResposta, setTaxaResposta] = useState(dadosProjetoAtual?.taxa_resposta ?? '')
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
+  const [arquivos, setArquivos] = useState<ArquivoProcessado[]>([])
+  const [arrastando, setArrastando] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Debounced auto-save
-  function handleChange(val: string) {
-    setTexto(val)
+  function salvarDados(patch: Partial<{
+    dados_coletados: string
+    n_participantes: string
+    software_analise: string
+    taxa_resposta: string
+  }>) {
     setSalvo(false)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
@@ -1494,7 +1518,14 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            dados_projeto: { ...(dadosProjetoAtual ?? {}), dados_coletados: val },
+            dados_projeto: {
+              ...(dadosProjetoAtual ?? {}),
+              dados_coletados: texto,
+              n_participantes: nParticipantes,
+              software_analise: softwareAnalise,
+              taxa_resposta: taxaResposta,
+              ...patch,
+            },
           }),
         })
         setSalvo(true)
@@ -1504,30 +1535,324 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
     }, 1500)
   }
 
+  // Debounced auto-save para o textarea
+  function handleChange(val: string) {
+    setTexto(val)
+    salvarDados({ dados_coletados: val })
+  }
+
+  function handleCampoSimples(campo: 'n_participantes' | 'software_analise' | 'taxa_resposta', val: string) {
+    if (campo === 'n_participantes') setNParticipantes(val)
+    if (campo === 'software_analise') setSoftwareAnalise(val)
+    if (campo === 'taxa_resposta') setTaxaResposta(val)
+    salvarDados({ [campo]: val })
+  }
+
+  function atualizarArquivo(id: string, patch: Partial<ArquivoProcessado>) {
+    setArquivos(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a))
+  }
+
+  function removerArquivo(id: string) {
+    setArquivos(prev => prev.filter(a => a.id !== id))
+  }
+
+  function appendTexto(conteudo: string, nomeArquivo: string) {
+    const separador = `\n\n--- Extraído de: ${nomeArquivo} ---\n`
+    setTexto(prev => {
+      const novo = prev ? prev + separador + conteudo : conteudo
+      handleChange(novo)
+      return novo
+    })
+  }
+
+  async function processarArquivo(file: File) {
+    const id = `${Date.now()}-${Math.random()}`
+    const tipo = file.type || ''
+    const nome = file.name
+    const ext = nome.split('.').pop()?.toLowerCase() ?? ''
+
+    const novo: ArquivoProcessado = { id, nome, tipo, status: 'lendo' }
+    setArquivos(prev => [...prev, novo])
+
+    try {
+      // TXT / CSV — leitura direta no navegador
+      if (tipo.includes('text') || ext === 'txt' || ext === 'csv' || ext === 'tsv') {
+        const conteudo = await file.text()
+        appendTexto(conteudo, nome)
+        atualizarArquivo(id, { status: 'concluido' })
+        return
+      }
+
+      // XLSX / XLS — SheetJS no navegador
+      if (ext === 'xlsx' || ext === 'xls' || ext === 'ods' ||
+          tipo.includes('spreadsheet') || tipo.includes('excel')) {
+        atualizarArquivo(id, { status: 'lendo' })
+        const xlsx = await import('xlsx')
+        const buffer = await file.arrayBuffer()
+        const wb = xlsx.read(buffer, { type: 'array' })
+        const linhas: string[] = []
+        wb.SheetNames.forEach(sheetName => {
+          const ws = wb.Sheets[sheetName]
+          const csv = xlsx.utils.sheet_to_csv(ws)
+          if (csv.trim()) {
+            linhas.push(`[Planilha: ${sheetName}]`)
+            linhas.push(csv.trim())
+          }
+        })
+        const conteudo = linhas.join('\n\n')
+        appendTexto(conteudo, nome)
+        atualizarArquivo(id, { status: 'concluido' })
+        return
+      }
+
+      // Imagens (PNG, JPG, WEBP, GIF) — extração via IA
+      const MIME_IMAGEM = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
+      if (MIME_IMAGEM.includes(tipo) || ['png','jpg','jpeg','webp','gif'].includes(ext)) {
+        atualizarArquivo(id, { status: 'extraindo' })
+        const form = new FormData()
+        form.append('file', file)
+        const res = await fetch('/api/ia/extrair-arquivo', { method: 'POST', body: form })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error ?? 'Erro ao extrair imagem')
+        appendTexto(data.conteudo, nome)
+        atualizarArquivo(id, { status: 'concluido' })
+        return
+      }
+
+      // PDF — orientação ao usuário
+      if (tipo === 'application/pdf' || ext === 'pdf') {
+        atualizarArquivo(id, {
+          status: 'erro',
+          erro: 'PDFs com texto protegido não podem ser lidos automaticamente. Abra o PDF, selecione os dados e cole diretamente na caixa de texto acima.',
+        })
+        return
+      }
+
+      // Tipo não suportado
+      atualizarArquivo(id, {
+        status: 'erro',
+        erro: `Formato não suportado. Use TXT, CSV, XLSX, XLS, PNG, JPG ou WEBP.`,
+      })
+    } catch (err) {
+      atualizarArquivo(id, {
+        status: 'erro',
+        erro: err instanceof Error ? err.message : 'Erro ao processar arquivo.',
+      })
+    }
+  }
+
+  function handleFiles(fileList: FileList | File[]) {
+    const files = Array.from(fileList)
+    files.forEach(f => processarArquivo(f))
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setArrastando(false)
+    if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files)
+  }
+
+  function onDragOver(e: React.DragEvent) { e.preventDefault(); setArrastando(true) }
+  function onDragLeave() { setArrastando(false) }
+
+  function iconeArquivo(tipo: string, ext: string) {
+    if (tipo.includes('image') || ['png','jpg','jpeg','webp','gif'].includes(ext))
+      return <ImageIcon className="h-3.5 w-3.5 text-purple-500" />
+    if (tipo.includes('spreadsheet') || tipo.includes('excel') || ['xlsx','xls','ods','csv'].includes(ext))
+      return <FileSpreadsheet className="h-3.5 w-3.5 text-green-600" />
+    return <FileText className="h-3.5 w-3.5 text-blue-500" />
+  }
+
   return (
-    <div className="space-y-3">
-      <textarea
-        rows={6}
-        value={texto}
-        onChange={e => handleChange(e.target.value)}
-        placeholder={
-          'Cole aqui seus dados, resultados e achados. Exemplos:\n' +
-          '• N=80 participantes responderam (82% de adesão)\n' +
-          '• 65% relataram sobrecarga moderada ou intensa\n' +
-          '• Média de horas extras: 12h/semana (DP=3,2)\n' +
-          '• Correlação carga×qualidade: r=−0,42 (p<0,001)\n' +
-          '\nVocê também pode colar tabelas copiadas do Excel.'
-        }
-        className="w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono"
-      />
+    <div className="space-y-4">
+
+      {/* Perguntas guiadas simples */}
+      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Informações básicas da coleta</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* N de participantes */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              Quantas pessoas participaram?
+            </label>
+            <input
+              type="text"
+              value={nParticipantes}
+              onChange={e => handleCampoSimples('n_participantes', e.target.value)}
+              placeholder="ex: 80, ou 45 casos e 45 controles"
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            />
+          </div>
+          {/* Taxa de resposta */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              Taxa de resposta (opcional)
+            </label>
+            <input
+              type="text"
+              value={taxaResposta}
+              onChange={e => handleCampoSimples('taxa_resposta', e.target.value)}
+              placeholder="ex: 82%, ou 74 de 90 convidados"
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            />
+          </div>
+          {/* Software */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              Software de análise usado
+            </label>
+            <select
+              value={softwareAnalise}
+              onChange={e => handleCampoSimples('software_analise', e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            >
+              <option value="">Selecione...</option>
+              <option value="SPSS">SPSS</option>
+              <option value="R">R</option>
+              <option value="Excel">Excel</option>
+              <option value="GraphPad Prism">GraphPad Prism</option>
+              <option value="Python (pandas/scipy)">Python</option>
+              <option value="Stata">Stata</option>
+              <option value="SAS">SAS</option>
+              <option value="Jamovi">Jamovi</option>
+              <option value="Não aplica (pesquisa bibliográfica)">Não aplica</option>
+            </select>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          A IA usa esses dados automaticamente na seção de Metodologia e Resultados.
+        </p>
+      </div>
+
+      {/* Textarea principal */}
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Resultados e achados (cole aqui ou faça upload)
+        </label>
+        <textarea
+          rows={6}
+          value={texto}
+          onChange={e => handleChange(e.target.value)}
+          placeholder={
+            'Cole aqui seus dados, resultados e achados. Exemplos:\n' +
+            '• 65% relataram sobrecarga moderada ou intensa\n' +
+            '• Média de horas extras: 12h/semana (DP=3,2)\n' +
+            '• Correlação carga×qualidade: r=−0,42 (p<0,001)\n' +
+            '• p<0,05 para todas as comparações\n' +
+            '\nVocê também pode colar tabelas copiadas do Excel ou fazer upload abaixo.'
+          }
+          className="w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono"
+        />
+      </div>
+
+      {/* Status salvamento */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {salvando && <><Loader2 className="h-3 w-3 animate-spin" /> Salvando...</>}
         {!salvando && salvo && <><CheckCircle2 className="h-3 w-3 text-green-600" /> Salvo</>}
-        {!salvando && !salvo && texto && <span className="text-muted-foreground">Salvamento automático ativo</span>}
+        {!salvando && !salvo && texto && <span>Salvamento automático ativo</span>}
       </div>
-      <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 p-3 text-xs text-blue-800 dark:text-blue-200">
-        <span className="font-semibold">Upload de arquivos</span> (PDF, planilha, imagem) está em desenvolvimento.
-        Por enquanto, copie e cole os dados do seu Excel/SPSS/R aqui — a IA vai usar tudo isso ao gerar os Resultados e a Discussão.
+
+      {/* Zona de upload */}
+      <div
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onClick={() => inputRef.current?.click()}
+        className={cn(
+          'relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-colors',
+          arrastando
+            ? 'border-primary bg-primary/5'
+            : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
+        )}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".txt,.csv,.tsv,.xlsx,.xls,.ods,.png,.jpg,.jpeg,.webp,.gif,.pdf"
+          className="hidden"
+          onChange={e => e.target.files && handleFiles(e.target.files)}
+        />
+        <Upload className={cn('h-5 w-5', arrastando ? 'text-primary' : 'text-muted-foreground')} />
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium text-foreground">
+            {arrastando ? 'Solte para processar' : 'Arraste arquivos ou clique para selecionar'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Tabelas Excel/CSV, imagens de gráficos e tabelas — a IA extrai os dados automaticamente
+          </p>
+        </div>
+        {/* Tipo badges */}
+        <div className="flex flex-wrap justify-center gap-1.5 mt-1">
+          {[
+            { icon: <FileSpreadsheet className="h-3 w-3" />, label: 'Excel / CSV', color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+            { icon: <ImageIcon className="h-3 w-3" />, label: 'Imagem (IA extrai)', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+            { icon: <FileText className="h-3 w-3" />, label: 'TXT / CSV', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+            { icon: <Table2 className="h-3 w-3" />, label: 'ODS', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' },
+          ].map(b => (
+            <span key={b.label} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium', b.color)}>
+              {b.icon}{b.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Lista de arquivos em processamento / concluídos */}
+      {arquivos.length > 0 && (
+        <div className="space-y-1.5">
+          {arquivos.map(arq => {
+            const ext = arq.nome.split('.').pop()?.toLowerCase() ?? ''
+            return (
+              <div
+                key={arq.id}
+                className={cn(
+                  'flex items-start gap-2 rounded-lg border px-3 py-2 text-xs',
+                  arq.status === 'concluido' && 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/40',
+                  arq.status === 'erro' && 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/40',
+                  (arq.status === 'lendo' || arq.status === 'extraindo') && 'border-border bg-muted/30',
+                )}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {iconeArquivo(arq.tipo, ext)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{arq.nome}</p>
+                  {arq.status === 'lendo' && (
+                    <span className="flex items-center gap-1 text-muted-foreground mt-0.5">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Lendo arquivo...
+                    </span>
+                  )}
+                  {arq.status === 'extraindo' && (
+                    <span className="flex items-center gap-1 text-purple-700 dark:text-purple-300 mt-0.5">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Extraindo dados com IA...
+                    </span>
+                  )}
+                  {arq.status === 'concluido' && (
+                    <span className="flex items-center gap-1 text-green-700 dark:text-green-400 mt-0.5">
+                      <CheckCircle2 className="h-3 w-3" /> Dados extraídos e adicionados
+                    </span>
+                  )}
+                  {arq.status === 'erro' && (
+                    <span className="text-red-700 dark:text-red-400 mt-0.5 block">{arq.erro}</span>
+                  )}
+                </div>
+                {(arq.status === 'concluido' || arq.status === 'erro') && (
+                  <button
+                    onClick={e => { e.stopPropagation(); removerArquivo(arq.id) }}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Dica de uso */}
+      <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-200">
+        <span className="font-semibold">Como funciona:</span> Tudo o que você colocar aqui — colado ou via upload — será usado automaticamente pela IA ao gerar as seções de Resultados, Discussão e Conclusão. Imagens de tabelas e gráficos são lidas por visão computacional.
       </div>
     </div>
   )
