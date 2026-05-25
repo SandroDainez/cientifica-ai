@@ -5,10 +5,69 @@ import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/format
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
-  HeadingLevel, PageBreak, convertInchesToTwip,
-  LineRuleType, UnderlineType,
+  PageBreak, convertInchesToTwip, LineRuleType,
 } from 'docx'
-import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
+import type { Trabalho, SecaoTrabalho, Referencia, FormatoCitacao } from '@/types'
+
+// ── Configurações por formato de citação ────────────────────────
+//
+// ABNT NBR 14724:2011:  margens 3×3×2×4 cm, espaço 1,5, títulos numerados MAIÚSCULOS
+// APA 7ª Ed:            margens 2,54 cm (1 in) todo lado, espaço duplo, título centralizado bold
+// Vancouver (ICMJE):    margens 2,5 cm todo lado, espaço 1,5, título negrito sem número
+
+interface FormatoConfig {
+  margins: { top: number; right: number; bottom: number; left: number } // inches
+  lineSpacing: number   // twentieths of a point (240 = simples, 360 = 1.5×, 480 = duplo)
+  headingAlign: 'left' | 'center'
+  headingBold: boolean
+  headingUppercase: boolean
+  headingNumbered: boolean
+  refsTitle: string
+  refsTitleAlign: 'left' | 'center'
+}
+
+const FORMATO_CONFIG: Record<FormatoCitacao, FormatoConfig> = {
+  abnt: {
+    margins:          { top: 1.18, right: 1.18, bottom: 0.79, left: 1.57 }, // 3×3×2×4 cm
+    lineSpacing:      360,    // 1,5 linhas
+    headingAlign:     'left',
+    headingBold:      true,
+    headingUppercase: true,   // 1 INTRODUÇÃO
+    headingNumbered:  true,
+    refsTitle:        'REFERÊNCIAS',
+    refsTitleAlign:   'center',
+  },
+  apa: {
+    margins:          { top: 1, right: 1, bottom: 1, left: 1 }, // 2,54 cm (1 in)
+    lineSpacing:      480,    // espaço duplo
+    headingAlign:     'center',
+    headingBold:      true,
+    headingUppercase: false,  // Introduction (Title Case)
+    headingNumbered:  false,
+    refsTitle:        'References',
+    refsTitleAlign:   'center',
+  },
+  vancouver: {
+    margins:          { top: 0.98, right: 0.98, bottom: 0.98, left: 0.98 }, // ~2,5 cm
+    lineSpacing:      360,    // 1,5 linhas (recomendado ICMJE)
+    headingAlign:     'left',
+    headingBold:      true,
+    headingUppercase: false,  // Introduction (sem número)
+    headingNumbered:  false,
+    refsTitle:        'References',
+    refsTitleAlign:   'left',
+  },
+}
+
+/** Converte string para Title Case respeitando conectores em português */
+function toTitleCase(str: string): string {
+  const minusculas = new Set(['a', 'e', 'o', 'da', 'de', 'do', 'das', 'dos', 'em', 'na', 'no', 'nas', 'nos', 'para', 'por', 'com', 'sem', 'and', 'of', 'in', 'on'])
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word, i) => (i === 0 || !minusculas.has(word)) ? word.charAt(0).toUpperCase() + word.slice(1) : word)
+    .join(' ')
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -28,10 +87,11 @@ export async function GET(request: Request) {
 
   if (!tData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
 
-  const trabalho = tData as Trabalho
-  const secoes = (sData ?? []) as SecaoTrabalho[]
+  const trabalho   = tData as Trabalho
+  const secoes     = (sData ?? []) as SecaoTrabalho[]
   const referencias = (rData ?? []) as Referencia[]
-  const fluxo = getFluxo(trabalho.tipo_trabalho)
+  const fluxo      = getFluxo(trabalho.tipo_trabalho)
+  const fmt        = FORMATO_CONFIG[trabalho.formato_citacao] ?? FORMATO_CONFIG.abnt
 
   const secoesOrdenadas = fluxo
     ? fluxo.fases
@@ -41,8 +101,9 @@ export async function GET(request: Request) {
 
   // ── Helpers de estilo ──────────────────────────────────────
   const FONT = 'Times New Roman'
-  const SIZE = 24 // half-points, 12pt
+  const SIZE = 24 // half-points → 12pt
 
+  /** Parágrafo genérico (capa, rodapé, etc.) — espaçamento do formato */
   function paragrafo(text: string, opts: {
     bold?: boolean
     center?: boolean
@@ -55,7 +116,7 @@ export async function GET(request: Request) {
       pageBreakBefore: opts.pageBreakBefore,
       alignment: opts.center ? AlignmentType.CENTER : AlignmentType.JUSTIFIED,
       spacing: {
-        line: opts.spacing ?? 360, // 1.5 line spacing = 360 twentieths
+        line: opts.spacing ?? fmt.lineSpacing,
         lineRule: LineRuleType.AUTO,
         after: opts.indent === false ? 200 : 0,
       },
@@ -73,16 +134,33 @@ export async function GET(request: Request) {
     })
   }
 
+  /** Título de seção adaptado ao formato (ABNT, APA, Vancouver) */
   function secaoHeading(numero: number, nome: string): Paragraph {
+    let textoTitulo: string
+    if (fmt.headingNumbered && fmt.headingUppercase) {
+      textoTitulo = `${numero} ${nome.toUpperCase()}`               // ABNT: 1 INTRODUÇÃO
+    } else if (fmt.headingNumbered) {
+      textoTitulo = `${numero} ${toTitleCase(nome)}`                // (reservado)
+    } else if (fmt.headingUppercase) {
+      textoTitulo = nome.toUpperCase()
+    } else {
+      textoTitulo = toTitleCase(nome)                               // APA/Vancouver: Introduction
+    }
+
     return new Paragraph({
-      alignment: AlignmentType.LEFT,
-      spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 480, after: 240 },
+      alignment: fmt.headingAlign === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT,
+      spacing: {
+        line: fmt.lineSpacing,
+        lineRule: LineRuleType.AUTO,
+        before: fmt.lineSpacing === 480 ? 480 : 480, // quebra visual antes do título
+        after:  fmt.lineSpacing === 480 ? 240 : 240,
+      },
       children: [
         new TextRun({
-          text: `${numero} ${nome.toUpperCase()}`,
+          text: textoTitulo,
           font: FONT,
           size: SIZE,
-          bold: true,
+          bold: fmt.headingBold,
         }),
       ],
     })
@@ -91,18 +169,17 @@ export async function GET(request: Request) {
   function empty(): Paragraph {
     return new Paragraph({
       children: [new TextRun({ text: '', font: FONT, size: SIZE })],
-      spacing: { line: 360, lineRule: LineRuleType.AUTO },
+      spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO },
     })
   }
 
   /**
-   * Converte texto com markdown **bold** e *italic* em TextRuns do docx.
-   * ABNT usa **negrito** para periódicos; APA usa *itálico* para revistas/livros.
+   * Converte **negrito** e *itálico* markdown em TextRuns do docx.
+   * ABNT usa **negrito** para periódicos; APA usa *itálico* para revistas e livros.
    */
   function textRunsFromMarkdown(text: string, opts: { size?: number } = {}): TextRun[] {
     const sz = opts.size ?? SIZE
     const runs: TextRun[] = []
-    // Divide em tokens: **bold**, *italic*, texto normal
     const tokens = text.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*)/)
     for (const token of tokens) {
       if (!token) continue
@@ -120,49 +197,109 @@ export async function GET(request: Request) {
   // ── Montar documento ────────────────────────────────────────
   const children: Paragraph[] = []
 
-  // Capa
-  children.push(
-    empty(),
-    empty(),
-    ...(pData?.instituicao || trabalho.instituicao_destino
-      ? [paragrafo((pData?.instituicao ?? trabalho.instituicao_destino ?? '').toUpperCase(), { center: true, bold: true, indent: false }), empty()]
-      : []),
-    empty(),
-    empty(),
-    ...(pData?.nome
-      ? [paragrafo(pData.nome, { center: true, indent: false }), empty()]
-      : []),
-    empty(),
-    empty(),
-    paragrafo(
-      (trabalho.titulo || 'TÍTULO DO TRABALHO').toUpperCase(),
-      { center: true, bold: true, indent: false, size: 28 }
-    ),
-    empty(),
-    empty(),
-    ...(trabalho.orientador
-      ? [paragrafo(`Orientador(a): ${trabalho.orientador}`, { center: true, indent: false }), empty()]
-      : []),
-    empty(),
-    paragrafo(`${trabalho.area_conhecimento ? trabalho.area_conhecimento + '\n' : ''}${new Date().getFullYear()}`, { center: true, indent: false }),
-  )
+  // ── Capa ────────────────────────────────────────────────────
+  // ABNT: capa estruturada com instituição, autor, título, orientador, ano
+  // APA:  título centralizado, autor, instituição, curso, professor, data
+  // Vancouver: título, autor, instituição (mais simples)
 
-  // Seções
+  if (trabalho.formato_citacao === 'apa') {
+    // APA 7ª Ed — título page
+    children.push(
+      empty(), empty(), empty(),
+      ...(pData?.nome ? [
+        paragrafo(pData.nome, { center: true, indent: false }),
+        empty(),
+      ] : []),
+      paragrafo(
+        (trabalho.titulo || 'Title of Work'),
+        { center: true, bold: true, indent: false, size: 28 }
+      ),
+      empty(),
+      ...(pData?.instituicao || trabalho.instituicao_destino ? [
+        paragrafo(pData?.instituicao ?? trabalho.instituicao_destino ?? '', { center: true, indent: false }),
+      ] : []),
+      ...(trabalho.area_conhecimento ? [
+        paragrafo(trabalho.area_conhecimento, { center: true, indent: false }),
+      ] : []),
+      ...(trabalho.orientador ? [
+        empty(),
+        paragrafo(`Professor: ${trabalho.orientador}`, { center: true, indent: false }),
+      ] : []),
+      empty(),
+      paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
+    )
+  } else if (trabalho.formato_citacao === 'vancouver') {
+    // Vancouver — capa simples
+    children.push(
+      empty(), empty(),
+      ...(pData?.instituicao || trabalho.instituicao_destino ? [
+        paragrafo((pData?.instituicao ?? trabalho.instituicao_destino ?? '').toUpperCase(), { center: true, bold: true, indent: false }),
+        empty(),
+      ] : []),
+      empty(), empty(),
+      ...(pData?.nome ? [
+        paragrafo(pData.nome, { center: true, indent: false }),
+        empty(),
+      ] : []),
+      empty(),
+      paragrafo(
+        toTitleCase(trabalho.titulo || 'Title of Work'),
+        { center: true, bold: true, indent: false, size: 28 }
+      ),
+      empty(), empty(),
+      ...(trabalho.orientador ? [
+        paragrafo(`Supervisor: ${trabalho.orientador}`, { center: true, indent: false }),
+        empty(),
+      ] : []),
+      paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
+    )
+  } else {
+    // ABNT NBR 14724 — capa padrão
+    children.push(
+      empty(), empty(),
+      ...(pData?.instituicao || trabalho.instituicao_destino ? [
+        paragrafo((pData?.instituicao ?? trabalho.instituicao_destino ?? '').toUpperCase(), { center: true, bold: true, indent: false }),
+        empty(),
+      ] : []),
+      empty(), empty(),
+      ...(pData?.nome ? [
+        paragrafo(pData.nome, { center: true, indent: false }),
+        empty(),
+      ] : []),
+      empty(), empty(),
+      paragrafo(
+        (trabalho.titulo || 'TÍTULO DO TRABALHO').toUpperCase(),
+        { center: true, bold: true, indent: false, size: 28 }
+      ),
+      empty(), empty(),
+      ...(trabalho.orientador ? [
+        paragrafo(`Orientador(a): ${trabalho.orientador}`, { center: true, indent: false }),
+        empty(),
+      ] : []),
+      empty(),
+      paragrafo(
+        `${trabalho.area_conhecimento ? trabalho.area_conhecimento + '\n' : ''}${new Date().getFullYear()}`,
+        { center: true, indent: false }
+      ),
+    )
+  }
+
+  // ── Seções ──────────────────────────────────────────────────
   secoesOrdenadas.forEach((secao, i) => {
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    // Parágrafos limpos: sem #, -, 1., mas com **negrito** e *itálico* preservados
+    // Parágrafos limpos — sem markdown estrutural, bold/italic preservados
     const paragrafos = extrairParagrafosParaDocx(secao.conteudo ?? '')
     paragrafos.forEach(p => {
       children.push(new Paragraph({
         alignment: AlignmentType.JUSTIFIED,
         spacing: {
-          line: 360,
+          line: fmt.lineSpacing,
           lineRule: LineRuleType.AUTO,
-          after: 0,
+          after: fmt.lineSpacing === 480 ? 0 : 0, // APA não tem espaço extra entre parágrafos
         },
         indent: { firstLine: convertInchesToTwip(0.5) },
         children: textRunsFromMarkdown(p),
@@ -170,17 +307,28 @@ export async function GET(request: Request) {
     })
   })
 
-  // Referências — ordenação e formatação por formato de citação
+  // ── Referências ─────────────────────────────────────────────
   if (referencias.length > 0) {
     const refsOrdenadas = ordenarReferencias(referencias, trabalho.formato_citacao)
     const isVancouver = trabalho.formato_citacao === 'vancouver'
 
+    // Título da seção de referências
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 480 },
-        children: [new TextRun({ text: 'REFERÊNCIAS', font: FONT, size: SIZE, bold: true })],
+        alignment: fmt.refsTitleAlign === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT,
+        spacing: {
+          line: fmt.lineSpacing,
+          lineRule: LineRuleType.AUTO,
+          before: 0,
+          after: fmt.lineSpacing === 480 ? 480 : 480,
+        },
+        children: [new TextRun({
+          text: fmt.refsTitle,
+          font: FONT,
+          size: SIZE,
+          bold: true,
+        })],
       }),
     )
 
@@ -189,17 +337,17 @@ export async function GET(request: Request) {
       const textoFormatado = formatarReferencia(ref, trabalho.formato_citacao, numero)
 
       if (isVancouver) {
-        // Vancouver: lista numerada — sem recuo pendente
+        // Vancouver: lista numerada, sem recuo pendente
         children.push(new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
-          spacing: { line: 360, lineRule: LineRuleType.AUTO, after: 240 },
+          spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO, after: 240 },
           children: textRunsFromMarkdown(textoFormatado),
         }))
       } else {
-        // ABNT / APA: recuo pendente + bold/italic preservados
+        // ABNT / APA: recuo pendente — bold/italic de periódico preservados
         children.push(new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
-          spacing: { line: 360, lineRule: LineRuleType.AUTO, after: 240 },
+          spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO, after: 240 },
           indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
           children: textRunsFromMarkdown(textoFormatado),
         }))
@@ -207,15 +355,16 @@ export async function GET(request: Request) {
     })
   }
 
+  // ── Gerar arquivo ───────────────────────────────────────────
   const doc = new Document({
     sections: [{
       properties: {
         page: {
           margin: {
-            top: convertInchesToTwip(1.18),    // ~3cm
-            right: convertInchesToTwip(1.18),   // ~3cm
-            bottom: convertInchesToTwip(0.79),  // ~2cm
-            left: convertInchesToTwip(1.57),    // ~4cm
+            top:    convertInchesToTwip(fmt.margins.top),
+            right:  convertInchesToTwip(fmt.margins.right),
+            bottom: convertInchesToTwip(fmt.margins.bottom),
+            left:   convertInchesToTwip(fmt.margins.left),
           },
         },
       },
