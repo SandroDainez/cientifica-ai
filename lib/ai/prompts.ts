@@ -164,11 +164,27 @@ export function buildGerarSecaoPrompt(
       if (p.taxa_resposta)   partes.push(`**Taxa de resposta:** ${p.taxa_resposta}`)
       if (p.software_analise) partes.push(`**Software de análise:** ${p.software_analise}`)
     }
+    // Notas estruturadas do painel de dados — cada bloco vai para a seção certa
+    if (p.notas_contexto?.trim()) {
+      partes.push(`\n## CONTEXTO E JUSTIFICATIVA DO PESQUISADOR`)
+      partes.push(`Use nas seções de Introdução e Justificativa. São informações locais reais que a IA não conhece:`)
+      partes.push(p.notas_contexto.trim())
+    }
+    if (p.notas_metodologia?.trim()) {
+      partes.push(`\n## COMO A COLETA REALMENTE ACONTECEU (notas do pesquisador)`)
+      partes.push(`Use na seção de Metodologia. São detalhes operacionais reais — priorize sobre qualquer suposição:`)
+      partes.push(p.notas_metodologia.trim())
+    }
     if (p.dados_coletados?.trim()) {
-      partes.push(`\n## DADOS REAIS COLETADOS PELO PESQUISADOR — PRIORIDADE MÁXIMA`)
-      partes.push(`O pesquisador inseriu os dados abaixo coletados na sua pesquisa. São dados reais — use-os diretamente nas seções pertinentes (Resultados, Discussão, Conclusão, Metodologia).`)
-      partes.push(`REGRA CRÍTICA: Ao escrever a seção de Resultados ou Discussão, use EXATAMENTE estes dados. Nunca invente números, percentuais ou achados diferentes dos listados abaixo.`)
+      partes.push(`\n## RESULTADOS E ACHADOS REAIS — PRIORIDADE MÁXIMA`)
+      partes.push(`Use nas seções de Resultados, Discussão e Conclusão. São dados reais coletados pelo pesquisador.`)
+      partes.push(`REGRA CRÍTICA: Use EXATAMENTE estes dados. Nunca invente números, percentuais ou achados diferentes dos listados abaixo.`)
       partes.push(p.dados_coletados.trim())
+    }
+    if (p.notas_interpretacao?.trim()) {
+      partes.push(`\n## INTERPRETAÇÃO E IMPRESSÕES DO PESQUISADOR`)
+      partes.push(`Use na Discussão e Conclusão. São as análises e impressões do próprio autor — reflita elas no texto:`)
+      partes.push(p.notas_interpretacao.trim())
     }
     partes.push(`CRÍTICO: Use os dados acima onde forem relevantes. Nunca invente hospital, datas ou população diferente do que está aqui.`)
   }

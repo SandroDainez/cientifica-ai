@@ -283,8 +283,11 @@ export interface DadosProjeto {
   // Análise textual gerada pela IA (PARTE 1 da resposta do planejador)
   analise_orientador?: string
 
-  // Dados coletados pelo pesquisador (inseridos no painel de dados)
-  dados_coletados?: string
+  // Notas estruturadas do pesquisador — cada aba do painel alimenta seções específicas
+  notas_contexto?: string        // contexto local, motivação → Introdução, Justificativa
+  notas_metodologia?: string     // como a coleta realmente aconteceu → Métodos
+  dados_coletados?: string       // resultados, números, achados → Resultados, Discussão, Conclusão
+  notas_interpretacao?: string   // impressões, explicações dos achados → Discussão, Conclusão
 
   // Informações estruturadas do painel de dados
   n_participantes?: string       // ex: "80", "45 casos e 45 controles"

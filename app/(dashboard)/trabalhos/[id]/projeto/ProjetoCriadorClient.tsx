@@ -464,6 +464,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
 
   // Roadmap interaction state
   const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(new Set())
+  // Inline document editing
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editBuffer, setEditBuffer] = useState<Record<string, string>>({})
+  const [refineInput, setRefineInput] = useState<Record<string, string>>({})
+  const [refineLoading, setRefineLoading] = useState<Record<string, boolean>>({})
   const [docsMap, setDocsMap] = useState<DocsMap>(() => {
     if (!documentosInicial) return {}
     const initial: DocsMap = {}
@@ -765,6 +770,64 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
       toast.error('O navegador bloqueou a janela de impressão. Permita pop-ups para este site.')
     }
   }, [])
+
+  // ── Salvar edição manual de documento ────────────────────────────────────
+
+  const handleSalvarEdicao = useCallback(
+    (key: string) => {
+      const conteudo = editBuffer[key]
+      if (conteudo === undefined) return
+      setDocsMap(prev => ({ ...prev, [key]: { status: 'gerado', conteudo } }))
+      setEditingKey(null)
+      void salvarDocumento(key, conteudo)
+    },
+    [editBuffer, salvarDocumento]
+  )
+
+  // ── Refinar documento com IA ──────────────────────────────────────────────
+
+  const handleRefinarDocumento = useCallback(
+    async (key: string, tipoDocumento: TipoDocumento) => {
+      const conteudoAtual = editBuffer[key] ?? docsMap[key]?.conteudo ?? ''
+      const instrucoes = refineInput[key] ?? ''
+      if (!instrucoes.trim()) {
+        toast.error('Descreva o que você quer alterar antes de refinar.')
+        return
+      }
+      setRefineLoading(prev => ({ ...prev, [key]: true }))
+      try {
+        const res = await fetch('/api/ia/refinar-documento', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trabalhoId: trabalho.id, tipoDocumento, conteudo_atual: conteudoAtual, instrucoes }),
+        })
+        if (!res.ok || !res.body) {
+          const err = await res.json().catch(() => ({})) as { error?: string }
+          throw new Error(err.error ?? 'Erro ao refinar')
+        }
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          accumulated += decoder.decode(value, { stream: true })
+          setEditBuffer(prev => ({ ...prev, [key]: accumulated }))
+        }
+        // Auto-salva versão refinada
+        setDocsMap(prev => ({ ...prev, [key]: { status: 'gerado', conteudo: accumulated } }))
+        setRefineInput(prev => ({ ...prev, [key]: '' }))
+        setEditingKey(null)
+        void salvarDocumento(key, accumulated)
+        toast.success('Documento refinado e salvo!')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Erro ao refinar. Tente novamente.')
+      } finally {
+        setRefineLoading(prev => ({ ...prev, [key]: false }))
+      }
+    },
+    [editBuffer, docsMap, refineInput, trabalho.id, salvarDocumento]
+  )
 
   // ── buildDescricao — combina os campos do formulário guiado ────────────────
 
@@ -1510,8 +1573,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
 
                                           <p className="text-xs text-muted-foreground mb-2">{doc.descricao}</p>
 
-                                          {/* Streaming / resultado */}
-                                          {docState && (docState.status === 'gerando' || docState.status === 'gerado') && docState.conteudo && (
+                                          {/* Streaming → exibe durante geração */}
+                                          {docState?.status === 'gerando' && docState.conteudo && (
                                             <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-[32rem] overflow-y-auto">
                                               <pre className="text-xs leading-relaxed whitespace-pre-wrap text-foreground font-sans">
                                                 {docState.conteudo}
@@ -1519,33 +1582,111 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                             </div>
                                           )}
 
-                                          {/* Botões de ação abaixo do conteúdo — mais visíveis */}
+                                          {/* Gerado → modo leitura ou edição */}
                                           {docState?.status === 'gerado' && (
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                              <button
-                                                type="button"
-                                                onClick={() => handleImprimir(docState.conteudo, doc.label, trabalho.titulo ?? '')}
-                                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-                                              >
-                                                <Printer className="h-3.5 w-3.5" /> Imprimir / Salvar PDF
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleDownload(docState.conteudo, doc.label)}
-                                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
-                                              >
-                                                <Download className="h-3.5 w-3.5" /> Baixar .txt (editar no Word)
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleCopy(key, docState.conteudo)}
-                                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
-                                              >
-                                                {copiedKey === key
-                                                  ? <><Check className="h-3.5 w-3.5" /> Copiado!</>
-                                                  : <><Copy className="h-3.5 w-3.5" /> Copiar texto</>}
-                                              </button>
-                                            </div>
+                                            <>
+                                              {editingKey === key ? (
+                                                /* ── Modo edição ── */
+                                                <div className="mt-2 space-y-2">
+                                                  <textarea
+                                                    rows={16}
+                                                    value={editBuffer[key] ?? docState.conteudo}
+                                                    onChange={e => setEditBuffer(prev => ({ ...prev, [key]: e.target.value }))}
+                                                    className="w-full resize-y rounded-md border border-primary bg-background px-3 py-2 text-xs font-mono leading-relaxed shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                                  />
+                                                  {/* Refinar com IA */}
+                                                  <div className="rounded-md border border-border bg-muted/40 p-3 space-y-2">
+                                                    <p className="text-xs font-medium text-foreground">Refinar com IA — descreva o que alterar:</p>
+                                                    <textarea
+                                                      rows={2}
+                                                      value={refineInput[key] ?? ''}
+                                                      onChange={e => setRefineInput(prev => ({ ...prev, [key]: e.target.value }))}
+                                                      placeholder='Ex: "Adicione o nome Dr. João Silva como pesquisador" ou "Inclua cláusula sobre sigilo por 5 anos"'
+                                                      className="w-full resize-none rounded border border-input bg-background px-3 py-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                                                    />
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleRefinarDocumento(key, doc.tipo as TipoDocumento)}
+                                                      disabled={refineLoading[key] || !(refineInput[key]?.trim())}
+                                                      className={cn(
+                                                        'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground transition-opacity',
+                                                        (refineLoading[key] || !refineInput[key]?.trim()) && 'opacity-50 cursor-not-allowed'
+                                                      )}
+                                                    >
+                                                      {refineLoading[key]
+                                                        ? <><Loader2 className="h-3 w-3 animate-spin" /> Refinando...</>
+                                                        : <><RefreshCw className="h-3 w-3" /> Aplicar com IA</>}
+                                                    </button>
+                                                  </div>
+                                                  {/* Save / Cancel */}
+                                                  <div className="flex gap-2">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleSalvarEdicao(key)}
+                                                      className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
+                                                    >
+                                                      <CheckCircle2 className="h-3.5 w-3.5" /> Salvar edição
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setEditingKey(null)
+                                                        setEditBuffer(prev => { const n = { ...prev }; delete n[key]; return n })
+                                                      }}
+                                                      className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                                    >
+                                                      <X className="h-3.5 w-3.5" /> Cancelar
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                /* ── Modo leitura ── */
+                                                <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-[32rem] overflow-y-auto">
+                                                  <pre className="text-xs leading-relaxed whitespace-pre-wrap text-foreground font-sans">
+                                                    {docState.conteudo}
+                                                  </pre>
+                                                </div>
+                                              )}
+
+                                              {/* Botões de ação — só no modo leitura */}
+                                              {editingKey !== key && (
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setEditingKey(key)
+                                                      setEditBuffer(prev => ({ ...prev, [key]: docState.conteudo }))
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                                                  >
+                                                    ✏️ Editar / Refinar com IA
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleImprimir(docState.conteudo, doc.label, trabalho.titulo ?? '')}
+                                                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                                                  >
+                                                    <Printer className="h-3.5 w-3.5" /> Imprimir / Salvar PDF
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDownload(docState.conteudo, doc.label)}
+                                                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                                  >
+                                                    <Download className="h-3.5 w-3.5" /> Baixar .txt
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleCopy(key, docState.conteudo)}
+                                                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                                  >
+                                                    {copiedKey === key
+                                                      ? <><Check className="h-3.5 w-3.5" /> Copiado!</>
+                                                      : <><Copy className="h-3.5 w-3.5" /> Copiar texto</>}
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </>
                                           )}
 
                                           {/* O que fazer com este documento */}
@@ -1798,8 +1939,70 @@ interface ArquivoProcessado {
   erro?: string
 }
 
+type AbaNotas = 'contexto' | 'metodologia' | 'resultados' | 'interpretacao'
+
+const ABA_CONFIG: Record<AbaNotas, { label: string; emoji: string; placeholder: string; dica: string }> = {
+  contexto: {
+    label: 'Contexto',
+    emoji: '📌',
+    placeholder:
+      'Informações do seu contexto local que a IA não sabe:\n' +
+      '• Por que você escolheu este tema (motivação pessoal ou profissional)\n' +
+      '• Características específicas do local de pesquisa\n' +
+      '• Problemas reais observados que justificam o estudo\n' +
+      '• Dados locais/regionais relevantes que você conhece\n\n' +
+      'A IA usará isso para tornar a Introdução e a Justificativa mais precisas e localizadas.',
+    dica: 'Alimenta: Introdução e Justificativa',
+  },
+  metodologia: {
+    label: 'Metodologia',
+    emoji: '🔬',
+    placeholder:
+      'Como a coleta realmente aconteceu (pode diferir do planejado):\n' +
+      '• Período exato de coleta (datas reais)\n' +
+      '• Como os participantes foram abordados\n' +
+      '• Dificuldades operacionais encontradas e como foram resolvidas\n' +
+      '• Critérios de inclusão/exclusão aplicados na prática\n' +
+      '• Qualquer desvio do protocolo original e o motivo\n\n' +
+      'A IA usará isso para escrever a seção de Métodos com precisão.',
+    dica: 'Alimenta: Métodos / Metodologia',
+  },
+  resultados: {
+    label: 'Resultados',
+    emoji: '📊',
+    placeholder:
+      'Seus dados, achados e resultados concretos:\n' +
+      '• 65% relataram sobrecarga moderada ou intensa\n' +
+      '• Média de horas extras: 12h/semana (DP=3,2)\n' +
+      '• Correlação carga×qualidade: r=−0,42 (p<0,001)\n' +
+      '• p<0,05 para todas as comparações\n\n' +
+      'Cole tabelas do Excel ou faça upload abaixo.\n' +
+      'REGRA: a IA usa EXATAMENTE estes números — nunca inventa.',
+    dica: 'Alimenta: Resultados, Discussão e Conclusão',
+  },
+  interpretacao: {
+    label: 'Interpretação',
+    emoji: '💬',
+    placeholder:
+      'Suas impressões e análise dos resultados:\n' +
+      '• O que você acha que explica os achados principais\n' +
+      '• O que surpreendeu você nos resultados\n' +
+      '• Como seus resultados se comparam com o que você já leu na literatura\n' +
+      '• Limitações que você percebeu durante a pesquisa\n' +
+      '• Recomendações práticas que você quer destacar\n\n' +
+      'A IA usará isso para escrever a Discussão e Conclusão com a voz do pesquisador.',
+    dica: 'Alimenta: Discussão e Conclusão',
+  },
+}
+
 function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPanelProps) {
-  const [texto, setTexto] = useState(dadosProjetoAtual?.dados_coletados ?? '')
+  const [abaAtiva, setAbaAtiva] = useState<AbaNotas>('resultados')
+  const [textos, setTextos] = useState<Record<AbaNotas, string>>({
+    contexto:       dadosProjetoAtual?.notas_contexto ?? '',
+    metodologia:    dadosProjetoAtual?.notas_metodologia ?? '',
+    resultados:     dadosProjetoAtual?.dados_coletados ?? '',
+    interpretacao:  dadosProjetoAtual?.notas_interpretacao ?? '',
+  })
   const [nParticipantes, setNParticipantes] = useState(dadosProjetoAtual?.n_participantes ?? '')
   const [softwareAnalise, setSoftwareAnalise] = useState(dadosProjetoAtual?.software_analise ?? '')
   const [taxaResposta, setTaxaResposta] = useState(dadosProjetoAtual?.taxa_resposta ?? '')
@@ -1812,6 +2015,9 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
 
   function salvarDados(patch: Partial<{
     dados_coletados: string
+    notas_contexto: string
+    notas_metodologia: string
+    notas_interpretacao: string
     n_participantes: string
     software_analise: string
     taxa_resposta: string
@@ -1827,10 +2033,13 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
           body: JSON.stringify({
             dados_projeto: {
               ...(dadosProjetoAtual ?? {}),
-              dados_coletados: texto,
-              n_participantes: nParticipantes,
-              software_analise: softwareAnalise,
-              taxa_resposta: taxaResposta,
+              dados_coletados:     textos.resultados,
+              notas_contexto:      textos.contexto,
+              notas_metodologia:   textos.metodologia,
+              notas_interpretacao: textos.interpretacao,
+              n_participantes:     nParticipantes,
+              software_analise:    softwareAnalise,
+              taxa_resposta:       taxaResposta,
               ...patch,
             },
           }),
@@ -1842,10 +2051,23 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
     }, 1500)
   }
 
-  // Debounced auto-save para o textarea
-  function handleChange(val: string) {
-    setTexto(val)
-    salvarDados({ dados_coletados: val })
+  const abaParaCampo: Record<AbaNotas, keyof typeof textos> = {
+    contexto:      'contexto',
+    metodologia:   'metodologia',
+    resultados:    'resultados',
+    interpretacao: 'interpretacao',
+  }
+
+  const abaToCampoSalvar: Record<AbaNotas, 'notas_contexto' | 'notas_metodologia' | 'dados_coletados' | 'notas_interpretacao'> = {
+    contexto:      'notas_contexto',
+    metodologia:   'notas_metodologia',
+    resultados:    'dados_coletados',
+    interpretacao: 'notas_interpretacao',
+  }
+
+  function handleTextoChange(aba: AbaNotas, val: string) {
+    setTextos(prev => ({ ...prev, [abaParaCampo[aba]]: val }))
+    salvarDados({ [abaToCampoSalvar[aba]]: val })
   }
 
   function handleCampoSimples(campo: 'n_participantes' | 'software_analise' | 'taxa_resposta', val: string) {
@@ -1865,10 +2087,13 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
 
   function appendTexto(conteudo: string, nomeArquivo: string) {
     const separador = `\n\n--- Extraído de: ${nomeArquivo} ---\n`
-    setTexto(prev => {
-      const novo = prev ? prev + separador + conteudo : conteudo
-      handleChange(novo)
-      return novo
+    const aba = abaAtiva
+    setTextos(prev => {
+      const campo = abaParaCampo[aba]
+      const atual = prev[campo]
+      const novo = atual ? atual + separador + conteudo : conteudo
+      salvarDados({ [abaToCampoSalvar[aba]]: novo })
+      return { ...prev, [campo]: novo }
     })
   }
 
@@ -2064,32 +2289,56 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
         </p>
       </div>
 
-      {/* Textarea principal */}
-      <div className="space-y-1">
-        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Resultados e achados (cole aqui ou faça upload)
-        </label>
-        <textarea
-          rows={6}
-          value={texto}
-          onChange={e => handleChange(e.target.value)}
-          placeholder={
-            'Cole aqui seus dados, resultados e achados. Exemplos:\n' +
-            '• 65% relataram sobrecarga moderada ou intensa\n' +
-            '• Média de horas extras: 12h/semana (DP=3,2)\n' +
-            '• Correlação carga×qualidade: r=−0,42 (p<0,001)\n' +
-            '• p<0,05 para todas as comparações\n' +
-            '\nVocê também pode colar tabelas copiadas do Excel ou fazer upload abaixo.'
-          }
-          className="w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono"
-        />
-      </div>
+      {/* Abas de notas estruturadas */}
+      <div className="rounded-lg border bg-card overflow-hidden">
+        {/* Tab bar */}
+        <div className="flex border-b bg-muted/40">
+          {(Object.keys(ABA_CONFIG) as AbaNotas[]).map(aba => {
+            const cfg = ABA_CONFIG[aba]
+            const temConteudo = textos[abaParaCampo[aba]].length > 0
+            return (
+              <button
+                key={aba}
+                type="button"
+                onClick={() => setAbaAtiva(aba)}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-medium transition-colors relative',
+                  abaAtiva === aba
+                    ? 'bg-background text-foreground border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                )}
+              >
+                <span>{cfg.emoji}</span>
+                <span className="hidden sm:inline">{cfg.label}</span>
+                {temConteudo && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary absolute top-1.5 right-1.5" />
+                )}
+              </button>
+            )
+          })}
+        </div>
 
-      {/* Status salvamento */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        {salvando && <><Loader2 className="h-3 w-3 animate-spin" /> Salvando...</>}
-        {!salvando && salvo && <><CheckCircle2 className="h-3 w-3 text-green-600" /> Salvo</>}
-        {!salvando && !salvo && texto && <span>Salvamento automático ativo</span>}
+        {/* Conteúdo da aba ativa */}
+        <div className="p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{ABA_CONFIG[abaAtiva].dica}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {salvando && <><Loader2 className="h-3 w-3 animate-spin" /> Salvando...</>}
+              {!salvando && salvo && <><CheckCircle2 className="h-3 w-3 text-green-600" /> Salvo</>}
+            </div>
+          </div>
+          <textarea
+            key={abaAtiva}
+            rows={7}
+            value={textos[abaParaCampo[abaAtiva]]}
+            onChange={e => handleTextoChange(abaAtiva, e.target.value)}
+            placeholder={ABA_CONFIG[abaAtiva].placeholder}
+            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono leading-relaxed"
+          />
+          <p className="text-xs text-muted-foreground">
+            Upload abaixo → conteúdo extraído é adicionado nesta aba ({ABA_CONFIG[abaAtiva].label})
+          </p>
+        </div>
       </div>
 
       {/* Zona de upload */}
