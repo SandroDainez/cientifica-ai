@@ -42,6 +42,7 @@ type Step = 'input' | 'gerando' | 'plano'
 interface ProjetoCriadorClientProps {
   trabalho: Trabalho
   dadosProjetoInicial: DadosProjeto | null
+  documentosInicial?: Record<string, string>   // tipo → conteudo salvo no banco
 }
 
 type DocStatus = 'idle' | 'gerando' | 'gerado' | 'erro'
@@ -430,7 +431,7 @@ const COLETA_LABELS: Record<string, string> = {
 
 // ─── componente principal ─────────────────────────────────────────────────────
 
-export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoCriadorClientProps) {
+export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentosInicial }: ProjetoCriadorClientProps) {
   const router = useRouter()
 
   const [step, setStep] = useState<Step>(dadosProjetoInicial ? 'plano' : 'input')
@@ -450,7 +451,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
   // Roadmap interaction state
   const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(new Set())
-  const [docsMap, setDocsMap] = useState<DocsMap>({})
+  const [docsMap, setDocsMap] = useState<DocsMap>(() => {
+    if (!documentosInicial) return {}
+    const initial: DocsMap = {}
+    for (const [key, conteudo] of Object.entries(documentosInicial)) {
+      if (conteudo) initial[key] = { status: 'gerado', conteudo }
+    }
+    return initial
+  })
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   // Checklist state — merged from planData + local toggles
@@ -493,6 +501,23 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       }
     },
     [planData, trabalho.id]
+  )
+
+  // ── Persiste um documento gerado no banco ────────────────────────────────
+
+  const salvarDocumento = useCallback(
+    async (key: string, conteudo: string) => {
+      try {
+        await fetch(`/api/trabalhos/${trabalho.id}/projeto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentos_projeto: { [key]: conteudo } }),
+        })
+      } catch (err) {
+        console.error('[ProjetoCriador] Erro ao salvar documento:', err)
+      }
+    },
+    [trabalho.id]
   )
 
   // ── Debounced checklist save ──────────────────────────────────────────────
@@ -635,6 +660,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
           ...prev,
           [key]: { status: 'gerado', conteudo: accumulated },
         }))
+
+        // Persiste no banco — silencioso, não bloqueia o fluxo
+        void salvarDocumento(key, accumulated)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erro ao gerar documento. Tente novamente.'
         setDocsMap(prev => ({
@@ -644,7 +672,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
         toast.error(msg)
       }
     },
-    [trabalho.id, planData]
+    [trabalho.id, planData, salvarDocumento]
   )
 
   // ── Copy to clipboard ─────────────────────────────────────────────────────

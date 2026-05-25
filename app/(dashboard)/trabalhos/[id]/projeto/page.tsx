@@ -19,12 +19,15 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
   if (!trabalhoData) redirect('/trabalhos')
 
   const trabalho = trabalhoData as Trabalho
-  const dadosProjeto = (trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto ?? null
+  const dadosTrabalho = (trabalho.dados_trabalho as Record<string, unknown>) ?? {}
+  const dadosProjeto = dadosTrabalho.dados_projeto ?? null
+  const documentosInicial = (dadosTrabalho.documentos_projeto as Record<string, string>) ?? undefined
 
   return (
     <ProjetoCriadorClient
       trabalho={trabalho}
       dadosProjetoInicial={dadosProjeto as DadosProjeto | null}
+      documentosInicial={documentosInicial}
     />
   )
 }
