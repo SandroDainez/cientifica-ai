@@ -511,6 +511,19 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       setChecklistStatus(checkStatus)
 
       setPlanData(dadosProjeto)
+
+      // Auto-save to DB so document generation API works immediately
+      // (documents are generated via API that reads from DB, not local state)
+      try {
+        await fetch(`/api/trabalhos/${trabalho.id}/projeto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dados_projeto: dadosProjeto }),
+        })
+      } catch (saveErr) {
+        console.warn('[ProjetoCriador] Auto-save falhou:', saveErr)
+      }
+
       setStep('plano')
     } catch (err) {
       console.error('Erro ao gerar plano:', err)
