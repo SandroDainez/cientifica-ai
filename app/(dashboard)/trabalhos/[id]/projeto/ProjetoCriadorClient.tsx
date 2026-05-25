@@ -53,13 +53,13 @@ type EtapaStatus = 'pendente' | 'em_andamento' | 'concluido'
 
 function etapaCor(tipo: EtapaRoadmap['tipo']): string {
   switch (tipo) {
-    case 'preparacao': return 'bg-gray-100 border-gray-300 text-gray-700'
-    case 'etica':      return 'bg-orange-50 border-orange-300 text-orange-800'
-    case 'aguardar':   return 'bg-amber-50 border-amber-300 text-amber-800'
-    case 'coleta':     return 'bg-blue-50 border-blue-300 text-blue-800'
-    case 'analise':    return 'bg-purple-50 border-purple-300 text-purple-800'
-    case 'escrita':    return 'bg-green-50 border-green-300 text-green-800'
-    case 'submissao':  return 'bg-indigo-50 border-indigo-300 text-indigo-800'
+    case 'preparacao': return 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100'
+    case 'etica':      return 'bg-orange-50 dark:bg-orange-950/60 border-orange-300 dark:border-orange-700 text-orange-900 dark:text-orange-100'
+    case 'aguardar':   return 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100'
+    case 'coleta':     return 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100'
+    case 'analise':    return 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-100'
+    case 'escrita':    return 'bg-green-50 dark:bg-green-950/60 border-green-300 dark:border-green-700 text-green-900 dark:text-green-100'
+    case 'submissao':  return 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-100'
   }
 }
 
@@ -77,9 +77,9 @@ function etapaIcone(tipo: EtapaRoadmap['tipo']): string {
 
 function urgenciaCor(urgencia: ItemChecklist['urgencia']): string {
   switch (urgencia) {
-    case 'alta':  return 'border-l-red-500 bg-red-50'
-    case 'media': return 'border-l-amber-500 bg-amber-50'
-    case 'baixa': return 'border-l-green-500 bg-green-50'
+    case 'alta':  return 'border-l-red-500 bg-red-50 dark:bg-red-950/40'
+    case 'media': return 'border-l-amber-500 bg-amber-50 dark:bg-amber-950/40'
+    case 'baixa': return 'border-l-green-500 bg-green-50 dark:bg-green-950/40'
   }
 }
 
@@ -93,17 +93,17 @@ function urgenciaLabel(urgencia: ItemChecklist['urgencia']): string {
 
 function urgenciaBadge(urgencia: ItemChecklist['urgencia']): string {
   switch (urgencia) {
-    case 'alta':  return 'bg-red-100 text-red-700'
-    case 'media': return 'bg-amber-100 text-amber-700'
-    case 'baixa': return 'bg-green-100 text-green-700'
+    case 'alta':  return 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+    case 'media': return 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+    case 'baixa': return 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
   }
 }
 
 function etapaStatusBadge(status: EtapaStatus): string {
   switch (status) {
-    case 'pendente':     return 'bg-gray-100 text-gray-600 border-gray-300'
-    case 'em_andamento': return 'bg-blue-100 text-blue-700 border-blue-300'
-    case 'concluido':    return 'bg-green-100 text-green-700 border-green-300'
+    case 'pendente':     return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500'
+    case 'em_andamento': return 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-200 border-blue-300 dark:border-blue-600'
+    case 'concluido':    return 'bg-green-100 dark:bg-green-900/60 text-green-700 dark:text-green-200 border-green-300 dark:border-green-600'
   }
 }
 
@@ -835,18 +835,18 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                 }
                 className="w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono"
               />
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 p-3 text-xs text-blue-800 dark:text-blue-200">
                 <span className="font-semibold">Dica:</span> Quanto mais dados reais você inserir, mais precisa e personalizada será a seção Resultados quando você for escrever no editor.
               </div>
             </div>
           )}
 
           {/* Info box permanente */}
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+          <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 p-3 text-xs text-blue-800 dark:text-blue-200">
             📋 Os dados que você inserir aqui ficam salvos no projeto. Quando for escrever a seção Resultados no editor, o app vai usar esses dados automaticamente.
           </div>
 
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 p-4 text-sm text-blue-800 dark:text-blue-200">
             <span className="font-medium">Dica: </span>
             Quanto mais detalhes você der (onde, com quem, como), mais preciso será o plano. Inclua
             informações sobre o local da pesquisa, o público-alvo e os instrumentos que pretende usar.
@@ -977,14 +977,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
           {/* CEP / Ética */}
           {planData.envolve_seres_humanos && (
-            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+            <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-orange-800">
+                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
                     Aprovação ética obrigatória (CEP/Plataforma Brasil)
                   </p>
-                  <p className="text-sm text-orange-700">
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
                     Sua pesquisa envolve seres humanos. Pela Resolução CNS 466/2012, é obrigatória a
                     aprovação do Comitê de Ética em Pesquisa (CEP) antes do início da coleta de dados.
                     A submissão é feita pela Plataforma Brasil.
@@ -998,7 +998,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                     href="https://plataformabrasil.saude.gov.br"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-orange-700 underline underline-offset-2 hover:text-orange-900 mt-1"
+                    className="inline-flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300 underline underline-offset-2 hover:text-orange-900 dark:hover:text-orange-100 mt-1"
                   >
                     Acessar Plataforma Brasil
                     <ExternalLink className="h-3 w-3" />
@@ -1079,11 +1079,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                               </button>
 
                               {etapa.app_executa ? (
-                                <span className="ml-auto flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                <span className="ml-auto flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/60 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
                                   <Cpu className="h-3 w-3" /> App faz com IA
                                 </span>
                               ) : (
-                                <span className="ml-auto flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                                <span className="ml-auto flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
                                   <User className="h-3 w-3" /> Você faz
                                 </span>
                               )}
@@ -1204,14 +1204,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
                                           {/* O que fazer com este documento */}
                                           {docState?.status === 'gerado' && USO_DOCUMENTO[doc.tipo] && (
-                                            <div className="mt-3 rounded-md bg-blue-50 border border-blue-200 p-3">
+                                            <div className="mt-3 rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 p-3">
                                               <div className="flex items-start gap-2">
-                                                <Info className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                                                 <div>
-                                                  <p className="text-xs font-semibold text-blue-800 mb-0.5">
+                                                  <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-0.5">
                                                     {USO_DOCUMENTO[doc.tipo].acao}
                                                   </p>
-                                                  <p className="text-xs text-blue-700">
+                                                  <p className="text-xs text-blue-700 dark:text-blue-300">
                                                     {USO_DOCUMENTO[doc.tipo].detalhe}
                                                   </p>
                                                 </div>
@@ -1438,7 +1438,7 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
         {!salvando && salvo && <><CheckCircle2 className="h-3 w-3 text-green-600" /> Salvo</>}
         {!salvando && !salvo && texto && <span className="text-muted-foreground">Salvamento automático ativo</span>}
       </div>
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+      <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 p-3 text-xs text-blue-800 dark:text-blue-200">
         <span className="font-semibold">Upload de arquivos</span> (PDF, planilha, imagem) está em desenvolvimento.
         Por enquanto, copie e cole os dados do seu Excel/SPSS/R aqui — a IA vai usar tudo isso ao gerar os Resultados e a Discussão.
       </div>
@@ -1477,7 +1477,7 @@ function DetailCard({ label, value }: { label: string; value: string }) {
 
 function EticaBadge({ label }: { label: string }) {
   return (
-    <span className="rounded-full bg-orange-100 border border-orange-300 px-2.5 py-0.5 text-xs font-medium text-orange-800">
+    <span className="rounded-full bg-orange-100 dark:bg-orange-900/50 border border-orange-300 dark:border-orange-700 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:text-orange-200">
       {label}
     </span>
   )
