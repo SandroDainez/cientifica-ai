@@ -1324,23 +1324,35 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                 {/* Linha vertical */}
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                 <ol className="space-y-4 pl-10">
-                  {planData.roadmap.map((etapaRaw) => {
+                  {(() => {
+                    // Rastreia quais tipos já foram renderizados para evitar duplicação de
+                    // instruções e checklist quando o roadmap tem 2 etapas do mesmo tipo.
+                    const tiposJaRenderizados = new Set<string>()
+                    return planData.roadmap.map((etapaRaw) => {
                     // Normaliza tipo antes de qualquer lógica (corrige erros da IA)
                     const etapa = normalizeEtapa(etapaRaw)
                     // app_executa calculado no frontend — não depende do valor gerado pela IA
                     const appExecuta = computeAppExecuta(etapa)
                     const isExpanded = expandedEtapas.has(etapa.id)
                     const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
-                    const instrucoes = getInstrucoesEtapa(etapa, appExecuta)
+
+                    // Instruções e checklist só aparecem na PRIMEIRA etapa de cada tipo.
+                    // Se houver duas etapas 'coleta', a segunda não repete os mesmos itens.
+                    const isPrimeiraDoTipo = !tiposJaRenderizados.has(etapa.tipo)
+                    tiposJaRenderizados.add(etapa.tipo)
+
+                    const instrucoes = isPrimeiraDoTipo ? getInstrucoesEtapa(etapa, appExecuta) : []
                     // Documentos baseados no appExecuta computado (não em "primeiro de cada tipo")
                     const documentosEtapa = getDocumentosEtapa(etapa, appExecuta, planData)
                     // Link para Plataforma Brasil em etapas de submissão de ética
                     const linkExterno = etapa.tipo === 'etica' && !appExecuta ? 'https://plataformabrasil.saude.gov.br' : null
-                    const etapaChecklistCount = (planData.checklist ?? []).filter(item => {
-                      const tipo = item.etapa_tipo ?? categoriaParaEtapaTipo(item.categoria)
-                      return tipo === etapa.tipo
-                    }).length
-                    const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno || etapaChecklistCount > 0
+                    const etapaChecklistItems = isPrimeiraDoTipo
+                      ? (planData.checklist ?? []).filter(item => {
+                          const tipo = item.etapa_tipo ?? categoriaParaEtapaTipo(item.categoria)
+                          return tipo === etapa.tipo
+                        })
+                      : []
+                    const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno || etapaChecklistItems.length > 0
 
                     return (
                       <li key={etapa.id} className="relative">
@@ -1430,20 +1442,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                 </div>
                               )}
 
-                              {/* Mini-checklist desta etapa */}
-                              {(() => {
-                                const etapaItems = (planData.checklist ?? []).filter(item => {
-                                  const tipo = item.etapa_tipo ?? categoriaParaEtapaTipo(item.categoria)
-                                  return tipo === etapa.tipo
-                                })
-                                if (etapaItems.length === 0) return null
-                                return (
+                              {/* Mini-checklist desta etapa — usa etapaChecklistItems já filtrado acima */}
+                              {etapaChecklistItems.length > 0 && (
                                   <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                                       Tarefas desta etapa
                                     </p>
                                     <div className="space-y-2">
-                                      {etapaItems.map(item => {
+                                      {etapaChecklistItems.map(item => {
                                         const done = checklistStatus[item.id] ?? false
                                         return (
                                           <button
@@ -1490,8 +1496,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                       })}
                                     </div>
                                   </div>
-                                )
-                              })()}
+                              )}
 
                               {/* Link externo — estático por tipo de etapa */}
                               {linkExterno && (
@@ -1752,7 +1757,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                         </div>
                       </li>
                     )
-                  })}
+                  })
+                  })()}
                 </ol>
               </div>
             </div>
