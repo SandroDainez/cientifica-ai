@@ -357,8 +357,9 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 <Link href={`/trabalhos/${trabalho.id}/visualizar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Preview do Documento">
                   <Eye className="h-4 w-4" />
                 </Link>
-                <Link href={`/trabalhos/${trabalho.id}/apresentacao`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Gerar Slides">
+                <Link href={`/trabalhos/${trabalho.id}/apresentacao`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 px-2')} title="Gerar Slides (PowerPoint)">
                   <Presentation className="h-4 w-4" />
+                  <span className="text-xs hidden sm:inline">Slides</span>
                 </Link>
                 <Link href={`/trabalhos/${trabalho.id}/exportar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Exportar">
                   <Download className="h-4 w-4" />

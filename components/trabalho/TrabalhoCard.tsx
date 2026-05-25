@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowRight, Archive, Eye, Download, BookMarked, Map, Trash2 } from 'lucide-react'
+import { ArrowRight, Archive, Eye, Download, BookMarked, Map, Trash2, Presentation } from 'lucide-react'
 import { TipoTrabalhoIcon, getTipoLabel } from './TipoTrabalhoIcon'
 import { StatusBadge } from './StatusBadge'
 import { ProgressBar } from './ProgressBar'
@@ -87,6 +87,14 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <Eye className="h-3.5 w-3.5" />
+          </Link>
+
+          <Link
+            href={`/trabalhos/${trabalho.id}/apresentacao`}
+            title="Gerar Slides"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <Presentation className="h-3.5 w-3.5" />
           </Link>
 
           <Link
