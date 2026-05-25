@@ -880,12 +880,25 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                 {/* Linha vertical */}
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                 <ol className="space-y-4 pl-10">
-                  {planData.roadmap.map((etapa) => {
+                  {(() => {
+                    // Pré-computar qual é a primeira etapa de cada tipo
+                    // (documentos só aparecem na primeira ocorrência de cada tipo)
+                    const tiposVistos = new Set<string>()
+                    const primeiraEtapaPorTipo = new Set<string>()
+                    for (const e of planData.roadmap) {
+                      if (!tiposVistos.has(e.tipo)) {
+                        tiposVistos.add(e.tipo)
+                        primeiraEtapaPorTipo.add(e.id)
+                      }
+                    }
+                    return planData.roadmap.map((etapa) => {
+                    const isFirstOfType = primeiraEtapaPorTipo.has(etapa.id)
                     const isExpanded = expandedEtapas.has(etapa.id)
                     const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
                     const instrucoes = INSTRUCOES_POR_TIPO[etapa.tipo] ?? []
-                    const documentosEtapa = getDocumentosEtapa(etapa.tipo, planData)
-                    const linkExterno = etapa.tipo === 'etica' ? 'https://plataformabrasil.saude.gov.br' : null
+                    // Documentos e link externo só na primeira etapa de cada tipo
+                    const documentosEtapa = isFirstOfType ? getDocumentosEtapa(etapa.tipo, planData) : []
+                    const linkExterno = isFirstOfType && etapa.tipo === 'etica' ? 'https://plataformabrasil.saude.gov.br' : null
                     const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno
 
                     return (
@@ -1110,7 +1123,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                         </div>
                       </li>
                     )
-                  })}
+                  })
+                  })()}
                 </ol>
               </div>
             </div>
