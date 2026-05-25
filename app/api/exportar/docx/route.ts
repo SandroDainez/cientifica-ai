@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
-import { extrairTextoSecao } from '@/lib/ai/utils'
+import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   HeadingLevel, PageBreak, convertInchesToTwip,
@@ -154,10 +154,19 @@ export async function GET(request: Request) {
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    const textoLimpo = extrairTextoSecao(secao.conteudo ?? '')
-    const paragrafos = textoLimpo.split('\n').filter(Boolean)
+    // Parágrafos limpos: sem #, -, 1., mas com **negrito** e *itálico* preservados
+    const paragrafos = extrairParagrafosParaDocx(secao.conteudo ?? '')
     paragrafos.forEach(p => {
-      children.push(paragrafo(p))
+      children.push(new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: {
+          line: 360,
+          lineRule: LineRuleType.AUTO,
+          after: 0,
+        },
+        indent: { firstLine: convertInchesToTwip(0.5) },
+        children: textRunsFromMarkdown(p),
+      }))
     })
   })
 
