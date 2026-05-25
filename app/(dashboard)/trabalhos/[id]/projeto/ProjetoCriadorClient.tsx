@@ -137,14 +137,14 @@ function computeAppExecuta(etapa: EtapaRoadmap): boolean {
     case 'submissao':  return false   // usuário submete
     case 'etica': {
       const t = etapa.titulo.toLowerCase()
-      // Etapas de elaboração de documentos → IA gera
-      if (
-        t.includes('elaborar') || t.includes('redigir') || t.includes('preparar') ||
-        t.includes('protocolo') || t.includes('tcle') ||
-        t.includes('anuência') || t.includes('anuencia')
-      ) return true
-      // Submeter, obter presencialmente, aguardar → usuário
-      return false
+      // Etapas de SUBMISSÃO ou AGUARDA → usuário faz presencialmente
+      if (t.includes('submeter') || t.includes('submiss') || t.includes('enviar')) return false
+      // Etapas de elaboração ou obtenção de documentos → IA gera o template
+      // (elaborar, redigir, obter carta, preparar)
+      return (
+        t.includes('elaborar') || t.includes('redigir') ||
+        t.includes('obter') || t.includes('preparar')
+      )
     }
   }
 }
@@ -155,32 +155,33 @@ function computeAppExecuta(etapa: EtapaRoadmap): boolean {
 function getInstrucoesEtapa(etapa: EtapaRoadmap, appExecuta: boolean): string[] {
   if (etapa.tipo === 'etica') {
     if (appExecuta) {
-      // Etapas de elaboração de documentos CEP
+      const t = etapa.titulo.toLowerCase()
+      // Obter carta de anuência: gerar template + coletar assinatura presencialmente
+      if (t.includes('carta') || t.includes('anuência') || t.includes('anuencia') || t.includes('obter')) {
+        return [
+          'Clique em "Gerar com IA" abaixo para gerar o modelo de Carta de Anuência',
+          'Preencha os campos em [colchetes] com os dados reais da instituição parceira',
+          'Imprima em papel timbrado da sua instituição (ou da coparticipante)',
+          'Apresente ao diretor ou responsável institucional para assinatura e carimbo',
+          'Digitalize em PDF de boa qualidade e guarde uma cópia física em local seguro',
+        ]
+      }
+      // Elaborar protocolo, TCLE e demais documentos CEP
       return [
         'Clique em "Gerar com IA" abaixo para gerar cada documento necessário',
         'Revise cada documento e preencha os campos em [colchetes] com seus dados reais',
         'Salve em PDF e organize numa pasta com o nome do projeto',
-        'Mostre os documentos ao seu orientador antes de submeter',
-        'Após revisão, submeta tudo na Plataforma Brasil como arquivo único ou separado',
+        'Mostre os documentos ao seu orientador antes de submeter ao CEP',
+        'Após a revisão, submeta tudo na Plataforma Brasil como arquivo único ou separado',
       ]
     } else {
-      // Etapas de submissão presencial / obtenção de assinatura
-      const t = etapa.titulo.toLowerCase()
-      if (t.includes('anuência') || t.includes('anuencia') || t.includes('carta')) {
-        return [
-          'Imprima a Carta de Anuência em papel timbrado da sua instituição',
-          'Apresente ao diretor ou responsável institucional para assinatura',
-          'Digitalize (scan) o documento assinado em PDF de boa resolução',
-          'Guarde o original físico junto com os demais documentos do projeto',
-          'Anexe o PDF na Plataforma Brasil junto com o protocolo CEP',
-        ]
-      }
+      // Etapas de submissão → usuário acessa a Plataforma Brasil
       return [
         'Acesse a Plataforma Brasil em plataformabrasil.saude.gov.br',
         'Crie ou acesse sua conta e cadastre o projeto de pesquisa',
-        'Anexe o protocolo de pesquisa, TCLE e carta de anuência da instituição',
-        'Aguarde o número CAAE gerado após a submissão',
-        'Acompanhe o status do parecer — prazo legal é 30 dias',
+        'Anexe o protocolo, o TCLE (Termo de Consentimento Livre e Esclarecido) e a Carta de Anuência',
+        'Aguarde o número CAAE (Cadastro de Apresentações de Avaliação Ética) gerado após a submissão',
+        'Acompanhe o status do parecer — prazo legal é 30 dias (podendo chegar a 60)',
       ]
     }
   }
@@ -203,7 +204,7 @@ function getInstrucoesEtapa(etapa: EtapaRoadmap, appExecuta: boolean): string[] 
       'Treine a equipe de coleta conforme o protocolo aprovado pelo CEP',
       'Aplique o instrumento de coleta seguindo rigorosamente o protocolo',
       'Registre os dados de forma sistemática — planilha ou software específico',
-      'Mantenha os TCLEs assinados arquivados em local seguro',
+      'Mantenha os TCLEs (Termos de Consentimento) assinados arquivados em local seguro por no mínimo 5 anos',
       'Monitore o andamento e corrija desvios do protocolo imediatamente',
     ]
     case 'analise': return [
@@ -249,17 +250,16 @@ function getDocumentosEtapa(
     case 'etica': {
       const docs: DocumentoEtapa[] = []
       const t = etapa.titulo.toLowerCase()
-      // Carta de anuência: apenas na etapa específica
-      if (t.includes('anuência') || t.includes('anuencia') || t.includes('carta')) {
-        docs.push({ tipo: 'carta_anuencia', label: 'Carta de Anuência', descricao: 'Autorização da instituição parceira' })
+      // Etapa específica de carta de anuência → só a carta
+      if (t.includes('carta') || t.includes('anuência') || t.includes('anuencia') || t.includes('obter')) {
+        if (!dadosProjeto || dadosProjeto.precisa_carta_anuencia)
+          docs.push({ tipo: 'carta_anuencia', label: 'Carta de Anuência', descricao: 'Modelo de autorização para coleta a assinatura do responsável institucional' })
       } else {
-        // Elaborar protocolo: protocolo + TCLE
+        // Elaborar protocolo: protocolo CEP + TCLE
         if (!dadosProjeto || dadosProjeto.precisa_cep)
-          docs.push({ tipo: 'protocolo_cep', label: 'Protocolo CEP', descricao: 'Documento formal para submissão ao CEP' })
+          docs.push({ tipo: 'protocolo_cep', label: 'Protocolo CEP', descricao: 'Documento formal para submissão ao CEP via Plataforma Brasil' })
         if (!dadosProjeto || dadosProjeto.precisa_tcle)
-          docs.push({ tipo: 'tcle', label: 'TCLE', descricao: 'Termo de Consentimento Livre e Esclarecido' })
-        if ((!dadosProjeto || dadosProjeto.precisa_carta_anuencia) && !t.includes('protocolo'))
-          docs.push({ tipo: 'carta_anuencia', label: 'Carta de Anuência', descricao: 'Autorização da instituição parceira' })
+          docs.push({ tipo: 'tcle', label: 'TCLE — Termo de Consentimento Livre e Esclarecido', descricao: 'Documento de concordância voluntária do participante' })
       }
       return docs
     }
@@ -1063,9 +1063,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                     A submissão é feita pela Plataforma Brasil.
                   </p>
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {planData.precisa_cep && <EticaBadge label="Aprovação CEP" />}
+                    {planData.precisa_cep && <EticaBadge label="CEP (Comitê de Ética em Pesquisa)" />}
                     {planData.precisa_carta_anuencia && <EticaBadge label="Carta de Anuência" />}
-                    {planData.precisa_tcle && <EticaBadge label="TCLE" />}
+                    {planData.precisa_tcle && <EticaBadge label="TCLE (Termo de Consentimento)" />}
                   </div>
                   <a
                     href="https://plataformabrasil.saude.gov.br"
