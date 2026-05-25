@@ -338,6 +338,19 @@ function extractJsonObject(text: string): string | null {
   return null   // JSON incompleto (truncado)
 }
 
+// ─── Fallback: mapeia categoria → etapa_tipo (planos antigos sem etapa_tipo) ─
+
+function categoriaParaEtapaTipo(categoria: string): EtapaRoadmap['tipo'] | null {
+  switch (categoria) {
+    case 'etica':
+    case 'institucional': return 'etica'
+    case 'metodologia':   return 'preparacao'
+    case 'coleta':        return 'coleta'
+    case 'escrita':       return 'escrita'
+    default:              return null
+  }
+}
+
 // ─── O que fazer com cada documento após gerar ───────────────────────────────
 
 const USO_DOCUMENTO: Record<string, { acao: string; detalhe: string }> = {
@@ -1147,7 +1160,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             <div className="rounded-lg border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-foreground">
-                  Checklist de Preparação
+                  Progresso do Projeto
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {doneChecklist} de {totalChecklist} concluídos
@@ -1348,6 +1361,69 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                 </div>
                               )}
 
+                              {/* Mini-checklist desta etapa */}
+                              {(() => {
+                                const etapaItems = (planData.checklist ?? []).filter(item => {
+                                  const tipo = item.etapa_tipo ?? categoriaParaEtapaTipo(item.categoria)
+                                  return tipo === etapa.tipo
+                                })
+                                if (etapaItems.length === 0) return null
+                                return (
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                      Tarefas desta etapa
+                                    </p>
+                                    <div className="space-y-2">
+                                      {etapaItems.map(item => {
+                                        const done = checklistStatus[item.id] ?? false
+                                        return (
+                                          <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => handleChecklistToggle(item.id)}
+                                            className={cn(
+                                              'w-full text-left rounded-lg border border-l-4 p-3 transition-opacity bg-background',
+                                              urgenciaCor(item.urgencia),
+                                              done && 'opacity-60'
+                                            )}
+                                          >
+                                            <div className="flex items-start gap-3">
+                                              <div className="flex-shrink-0 mt-0.5">
+                                                {done
+                                                  ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                  : <div className="h-4 w-4 rounded border-2 border-current opacity-40" />}
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <span className={cn('text-sm font-medium text-foreground', done && 'line-through')}>
+                                                    {item.item}
+                                                  </span>
+                                                  <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
+                                                    {urgenciaLabel(item.urgencia)}
+                                                  </span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
+                                                {item.link_ajuda && (
+                                                  <a
+                                                    href={item.link_ajuda}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={e => e.stopPropagation()}
+                                                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                                                  >
+                                                    Saiba mais <ExternalLink className="h-3 w-3" />
+                                                  </a>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )
+                              })()}
+
                               {/* Link externo — estático por tipo de etapa */}
                               {linkExterno && (
                                 <a
@@ -1535,64 +1611,66 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             </div>
           )}
 
-          {/* Checklist interativo */}
-          {planData.checklist && planData.checklist.length > 0 && (
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-3">Checklist de Preparação</h3>
-              <div className="space-y-2">
-                {planData.checklist.map((item) => {
-                  const done = checklistStatus[item.id] ?? false
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleChecklistToggle(item.id)}
-                      className={cn(
-                        'w-full text-left rounded-lg border border-l-4 p-3 transition-opacity',
-                        urgenciaCor(item.urgencia),
-                        done && 'opacity-60'
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                          {done ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <div className="h-4 w-4 rounded border-2 border-current opacity-40" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn(
-                              'text-sm font-medium text-foreground',
-                              done && 'line-through'
-                            )}>
-                              {item.item}
-                            </span>
-                            <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
-                              {urgenciaLabel(item.urgencia)}
-                            </span>
+          {/* Checklist órfão — itens sem etapa_tipo e sem categoria mapeável */}
+          {(() => {
+            const orfaos = (planData.checklist ?? []).filter(item => {
+              const tipo = item.etapa_tipo ?? categoriaParaEtapaTipo(item.categoria)
+              return tipo === null
+            })
+            if (orfaos.length === 0) return null
+            return (
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">Outras Tarefas</h3>
+                <div className="space-y-2">
+                  {orfaos.map(item => {
+                    const done = checklistStatus[item.id] ?? false
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleChecklistToggle(item.id)}
+                        className={cn(
+                          'w-full text-left rounded-lg border border-l-4 p-3 transition-opacity',
+                          urgenciaCor(item.urgencia),
+                          done && 'opacity-60'
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {done
+                              ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                              : <div className="h-4 w-4 rounded border-2 border-current opacity-40" />}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
-                          {item.link_ajuda && (
-                            <a
-                              href={item.link_ajuda}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
-                            >
-                              Saiba mais <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn('text-sm font-medium text-foreground', done && 'line-through')}>
+                                {item.item}
+                              </span>
+                              <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
+                                {urgenciaLabel(item.urgencia)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
+                            {item.link_ajuda && (
+                              <a
+                                href={item.link_ajuda}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                              >
+                                Saiba mais <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  )
-                })}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Dados da Pesquisa — para inserir dados coletados */}
           <div>

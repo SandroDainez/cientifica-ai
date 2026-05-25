@@ -200,6 +200,8 @@ export interface ItemChecklist {
   item: string
   descricao: string
   categoria: 'etica' | 'institucional' | 'metodologia' | 'coleta' | 'escrita'
+  /** Fase do roadmap à qual esta tarefa pertence — usado para exibir mini-checklist por etapa */
+  etapa_tipo?: 'preparacao' | 'etica' | 'aguardar' | 'coleta' | 'analise' | 'escrita' | 'submissao'
   urgencia: 'alta' | 'media' | 'baixa'
   link_ajuda?: string
   concluido: boolean

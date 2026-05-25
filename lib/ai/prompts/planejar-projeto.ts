@@ -67,6 +67,7 @@ Ao final, após a linha "===PLANO_JSON===", retorne APENAS um JSON válido com e
       "item": "nome do item",
       "descricao": "o que fazer exatamente",
       "categoria": "etica|institucional|metodologia|coleta|escrita",
+      "etapa_tipo": "preparacao|etica|aguardar|coleta|analise|escrita|submissao",
       "urgencia": "alta|media|baixa",
       "link_ajuda": null,
       "concluido": false
@@ -96,6 +97,9 @@ REGRAS para o roadmap:
 - Gere apenas os campos listados no schema — não adicione campos extras
 
 REGRAS para o checklist:
+- OBRIGATÓRIO: cada item deve ter o campo "etapa_tipo" preenchido com a fase do roadmap à qual a tarefa pertence
+- etapa_tipo deve ser um dos: preparacao, etica, aguardar, coleta, analise, escrita, submissao
+- Distribua os items pelas fases reais: ex. "Elaborar TCLE" → etapa_tipo="etica", "Analisar dados" → etapa_tipo="analise", "Escrever monografia" → etapa_tipo="escrita", "Submeter ao periódico" → etapa_tipo="submissao"
 - Se precisa_cep=true: items de CEP com link_ajuda="https://plataformabrasil.saude.gov.br"
 - Máximo 10 items no checklist
 - Inclua apenas items realmente necessários para o tipo de pesquisa`
