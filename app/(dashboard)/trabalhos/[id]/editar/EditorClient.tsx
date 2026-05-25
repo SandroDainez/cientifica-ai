@@ -373,6 +373,25 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           />
         </div>
 
+        {/* Banner: plano do projeto não criado */}
+        {!((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto) && (
+          <div className="mx-6 mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <span className="text-lg shrink-0">📋</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-900">Crie o Plano do Projeto antes de escrever</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                O plano define o roadmap, os requisitos éticos (CEP) e alimenta a IA com dados reais do seu projeto — o resultado é muito melhor.
+              </p>
+            </div>
+            <Link
+              href={`/trabalhos/${trabalho.id}/projeto`}
+              className="shrink-0 text-xs font-semibold bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors"
+            >
+              Criar plano →
+            </Link>
+          </div>
+        )}
+
         {/* Editor + painel IA */}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-6">

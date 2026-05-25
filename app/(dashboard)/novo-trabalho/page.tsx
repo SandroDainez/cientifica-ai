@@ -78,7 +78,7 @@ export default function NovoTrabalhoPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erro desconhecido')
-      router.push(`/trabalhos/${json.id}/editar`)
+      router.push(`/trabalhos/${json.id}/projeto`)
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro ao criar trabalho')
       setLoading(false)
@@ -310,12 +310,22 @@ export default function NovoTrabalhoPage() {
           </div>
 
           {fluxoSelecionado && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
-              <p className="font-medium mb-1">O que vem a seguir?</p>
-              <p className="text-blue-700">
-                A IA vai te guiar pelas {fluxoSelecionado.fases.length} seções do seu {fluxoSelecionado.nome_completo}.
-                Tempo estimado total: <span className="font-semibold">{fluxoSelecionado.duracao_estimada_horas}h</span>.
-              </p>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800 space-y-2">
+              <p className="font-medium">O que vem a seguir?</p>
+              <div className="space-y-1.5 text-blue-700">
+                <p className="flex gap-2 items-start">
+                  <span className="font-bold shrink-0">1º</span>
+                  <span><span className="font-semibold">Criar o Plano do Projeto</span> — a IA monta o roadmap completo, incluindo etapas de CEP, coleta e cronograma. <span className="font-semibold">Faça isso antes de escrever.</span></span>
+                </p>
+                <p className="flex gap-2 items-start">
+                  <span className="font-bold shrink-0">2º</span>
+                  <span>Com o plano aprovado, escrever as {fluxoSelecionado.fases.length} seções do {fluxoSelecionado.nome_completo} guiadas pela IA.</span>
+                </p>
+                <p className="flex gap-2 items-start">
+                  <span className="font-bold shrink-0">3º</span>
+                  <span>Exportar, gerar slides e se preparar para a defesa. Tempo estimado total: <span className="font-semibold">{fluxoSelecionado.duracao_estimada_horas}h</span>.</span>
+                </p>
+              </div>
             </div>
           )}
 
