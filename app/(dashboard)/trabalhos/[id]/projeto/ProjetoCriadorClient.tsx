@@ -1408,10 +1408,39 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
                                           {/* Streaming / resultado */}
                                           {docState && (docState.status === 'gerando' || docState.status === 'gerado') && docState.conteudo && (
-                                            <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-72 overflow-y-auto">
+                                            <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-[32rem] overflow-y-auto">
                                               <pre className="text-xs leading-relaxed whitespace-pre-wrap text-foreground font-sans">
                                                 {docState.conteudo}
                                               </pre>
+                                            </div>
+                                          )}
+
+                                          {/* Botões de ação abaixo do conteúdo — mais visíveis */}
+                                          {docState?.status === 'gerado' && (
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleImprimir(docState.conteudo, doc.label, trabalho.titulo ?? '')}
+                                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                                              >
+                                                <Printer className="h-3.5 w-3.5" /> Imprimir / Salvar PDF
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDownload(docState.conteudo, doc.label)}
+                                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                              >
+                                                <Download className="h-3.5 w-3.5" /> Baixar .txt (editar no Word)
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleCopy(key, docState.conteudo)}
+                                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
+                                              >
+                                                {copiedKey === key
+                                                  ? <><Check className="h-3.5 w-3.5" /> Copiado!</>
+                                                  : <><Copy className="h-3.5 w-3.5" /> Copiar texto</>}
+                                              </button>
                                             </div>
                                           )}
 
