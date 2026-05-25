@@ -50,66 +50,65 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-1 border-t border-border/60">
-        <span className="text-xs text-muted-foreground">Atualizado {atualizado}</span>
-
-        <div className="flex items-center gap-1">
+      <div className="pt-1 border-t border-border/60 space-y-2">
+        {/* Linha de ações */}
+        <div className="flex items-center justify-between">
           {/* Ícones secundários */}
-          {onArquivar && trabalho.status !== 'arquivado' && (
-            <button
-              onClick={() => onArquivar(trabalho.id)}
-              title="Arquivar"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          <div className="flex items-center gap-0.5">
+            {onArquivar && trabalho.status !== 'arquivado' && (
+              <button
+                onClick={() => onArquivar(trabalho.id)}
+                title="Arquivar"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <Link href={`/trabalhos/${trabalho.id}/referencias`} title="Referências"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
+              <BookMarked className="h-3.5 w-3.5" />
+            </Link>
+            <Link href={`/trabalhos/${trabalho.id}/visualizar`} title="Visualizar"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
+              <Eye className="h-3.5 w-3.5" />
+            </Link>
+            <Link href={`/trabalhos/${trabalho.id}/apresentacao`} title="Gerar Slides"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
+              <Presentation className="h-3.5 w-3.5" />
+            </Link>
+            <Link href={`/trabalhos/${trabalho.id}/exportar`} title="Exportar"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
+              <Download className="h-3.5 w-3.5" />
+            </Link>
+            {onDeletar && (
+              <button onClick={() => onDeletar(trabalho)} title="Excluir trabalho"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Botões principais */}
+          <div className="flex items-center gap-1.5">
+            <Link
+              href={`/trabalhos/${trabalho.id}/projeto`}
+              title="Plano do Projeto — roadmap, checklists e documentos"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
             >
-              <Archive className="h-3.5 w-3.5" />
-            </button>
-          )}
-
-          <Link href={`/trabalhos/${trabalho.id}/referencias`} title="Referências"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
-            <BookMarked className="h-3.5 w-3.5" />
-          </Link>
-          <Link href={`/trabalhos/${trabalho.id}/visualizar`} title="Visualizar"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
-            <Eye className="h-3.5 w-3.5" />
-          </Link>
-          <Link href={`/trabalhos/${trabalho.id}/apresentacao`} title="Gerar Slides"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
-            <Presentation className="h-3.5 w-3.5" />
-          </Link>
-          <Link href={`/trabalhos/${trabalho.id}/exportar`} title="Exportar"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
-            <Download className="h-3.5 w-3.5" />
-          </Link>
-
-          {onDeletar && (
-            <button onClick={() => onDeletar(trabalho)} title="Excluir trabalho"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
-
-          {/* Separador */}
-          <div className="w-px h-4 bg-border/60 mx-0.5" />
-
-          {/* Plano do Projeto — botão visível com label */}
-          <Link
-            href={`/trabalhos/${trabalho.id}/projeto`}
-            title="Plano do Projeto — roadmap, checklists e documentos"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Map className="h-3.5 w-3.5" />
-            <span>Projeto</span>
-          </Link>
-
-          {/* Continuar → editor */}
-          <Link
-            href={`/trabalhos/${trabalho.id}/editar`}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-          >
-            Continuar <ArrowRight className="h-3 w-3" />
-          </Link>
+              <Map className="h-3.5 w-3.5" />
+              Projeto
+            </Link>
+            <Link
+              href={`/trabalhos/${trabalho.id}/editar`}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              Continuar <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
+
+        {/* Timestamp */}
+        <p className="text-xs text-muted-foreground">Atualizado {atualizado}</p>
       </div>
     </div>
   )
