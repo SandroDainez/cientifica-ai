@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { streamText } from '@/lib/ai/stream'
+
+export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho } from '@/types'

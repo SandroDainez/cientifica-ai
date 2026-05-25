@@ -4,6 +4,8 @@ import { getTransversalPrompt } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 
+export const maxDuration = 300
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

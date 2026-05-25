@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { streamText } from '@/lib/ai/stream'
+
+export const maxDuration = 300
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 
 export async function POST(request: Request) {

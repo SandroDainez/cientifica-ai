@@ -5,6 +5,24 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import type { Trabalho, DadosProjeto, TipoDocumento } from '@/types'
 
+// Documentos acadêmicos são longos — aumentar timeout da função Vercel
+export const maxDuration = 300
+
+// Tokens por tipo de documento — documentos estruturados longos precisam de mais
+const MAX_TOKENS_POR_TIPO: Partial<Record<TipoDocumento, number>> = {
+  revisao_literatura:  6000,
+  protocolo_cep:       6000,
+  tcle:                4000,
+  carta_anuencia:      2000,
+  instrumento_coleta:  4000,
+  calculo_amostral:    3000,
+  guia_coleta:         4000,
+  guia_analise:        5000,
+  sugestoes_periodicos: 3000,
+  carta_submissao:     2000,
+  checklist_submissao: 4000,
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -58,5 +76,7 @@ export async function POST(request: Request) {
     trabalho.titulo ?? undefined
   )
 
-  return streamText(system, userPrompt, false)
+  const maxTokens = MAX_TOKENS_POR_TIPO[tipoDocumento] ?? 4000
+
+  return streamText(system, userPrompt, false, maxTokens)
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildSystemPrompt, buildGerarResumoPrompt, buildGerarAbstractPrompt } from '@/lib/ai/prompts'
+
+export const maxDuration = 300
 import { streamText } from '@/lib/ai/stream'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { checkRateLimit } from '@/lib/auth/rate-limit'

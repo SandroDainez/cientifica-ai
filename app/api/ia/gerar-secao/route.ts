@@ -4,6 +4,8 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildSystemPrompt, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { getSystemPromptEspecializado } from '@/lib/ai/prompts-secoes'
 import { streamText } from '@/lib/ai/stream'
+
+export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
