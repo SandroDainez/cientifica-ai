@@ -277,6 +277,9 @@ export interface DadosProjeto {
   // Checklist state persistence
   checklist_status?: Record<string, boolean>   // item.id → concluido
 
+  // Análise textual gerada pela IA (PARTE 1 da resposta do planejador)
+  analise_orientador?: string
+
   // Dados coletados pelo pesquisador (inseridos no painel de dados)
   dados_coletados?: string
 

@@ -690,8 +690,12 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       }
 
       const fullText = streamRef.current
-      const afterDelim = fullText.split('===PLANO_JSON===')[1]
+      const parts = fullText.split('===PLANO_JSON===')
+      const afterDelim = parts[1]
       if (!afterDelim) throw new Error('Plano não foi gerado corretamente. Tente novamente.')
+
+      // Salva o texto da análise (PARTE 1) para persistir no banco
+      const analiseOrientador = parts[0].trim() || undefined
 
       // Extrai o JSON usando bracket-matching (ignora texto antes/depois do objeto)
       const jsonStr = extractJsonObject(afterDelim)
@@ -701,6 +705,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       const dadosProjeto: DadosProjeto = {
         ...parsed,
         descricao_original: desc,
+        analise_orientador: analiseOrientador,
         dados_coletados: temDados && dadosColetados.trim() ? dadosColetados.trim() : undefined,
         criado_em: new Date().toISOString(),
         confirmado: false,
@@ -1429,17 +1434,21 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
             />
           </div>
 
-          {/* Análise gerada (texto da PARTE 1) */}
-          {streamingText && (
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-2">Análise do Orientador Virtual</h3>
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {streamingText.split('===PLANO_JSON===')[0].trim()}
-                </p>
+          {/* Análise gerada (texto da PARTE 1) — persiste via planData */}
+          {(planData.analise_orientador || streamingText) && (() => {
+            const textoAnalise = planData.analise_orientador
+              ?? streamingText.split('===PLANO_JSON===')[0].trim()
+            return textoAnalise ? (
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-2">Análise do Orientador Virtual</h3>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {textoAnalise}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            ) : null
+          })()}
 
           {/* Ações */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
