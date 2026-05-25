@@ -276,6 +276,9 @@ export interface DadosProjeto {
   // Checklist state persistence
   checklist_status?: Record<string, boolean>   // item.id → concluido
 
+  // Dados coletados pelo pesquisador (inseridos no painel de dados)
+  dados_coletados?: string
+
   // Controle
   criado_em: string
   confirmado: boolean

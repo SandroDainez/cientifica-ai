@@ -329,6 +329,15 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
   const [step, setStep] = useState<Step>(dadosProjetoInicial ? 'plano' : 'input')
   const [descricao, setDescricao] = useState('')
+
+  // Guided form fields
+  const [tema, setTema] = useState('')
+  const [populacao, setPopulacao] = useState('')
+  const [local, setLocal] = useState('')
+  const [nivel, setNivel] = useState<string>('')
+  const [temDados, setTemDados] = useState(false)
+  const [dadosColetados, setDadosColetados] = useState('')
+
   const [streamingText, setStreamingText] = useState('')
   const [planData, setPlanData] = useState<DadosProjeto | null>(dadosProjetoInicial)
   const [salvando, setSalvando] = useState(false)
@@ -535,10 +544,23 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
     }
   }, [])
 
+  // ── buildDescricao — combina os campos do formulário guiado ────────────────
+
+  function buildDescricao(): string {
+    let d = tema.trim()
+    if (populacao.trim()) d += `\n\nParticipantes/população: ${populacao.trim()}`
+    if (local.trim()) d += `\nLocal onde será feita: ${local.trim()}`
+    if (nivel) d += `\nNível acadêmico do pesquisador: ${nivel}`
+    if (temDados && dadosColetados.trim()) d += `\n\nDados já coletados pelo pesquisador:\n${dadosColetados.trim()}`
+    return d
+  }
+
   // ── Geração do plano ──────────────────────────────────────────────────────
 
   async function handleGerarPlano() {
-    if (descricao.trim().length < 30) return
+    if (tema.trim().length < 20) return
+    const desc = buildDescricao()
+    setDescricao(desc)
     setStep('gerando')
     setStreamingText('')
     streamRef.current = ''
@@ -547,7 +569,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       const res = await fetch('/api/ia/planejar-projeto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descricao: descricao.trim(), trabalhoId: trabalho.id }),
+        body: JSON.stringify({ descricao: desc, trabalhoId: trabalho.id }),
       })
 
       if (!res.ok) {
@@ -578,7 +600,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       const parsed = JSON.parse(jsonStr) as Omit<DadosProjeto, 'descricao_original' | 'criado_em' | 'confirmado'>
       const dadosProjeto: DadosProjeto = {
         ...parsed,
-        descricao_original: descricao.trim(),
+        descricao_original: desc,
+        dados_coletados: temDados && dadosColetados.trim() ? dadosColetados.trim() : undefined,
         criado_em: new Date().toISOString(),
         confirmado: false,
       }
@@ -689,25 +712,138 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
               Planeje seu projeto de pesquisa
             </h2>
             <p className="text-sm text-muted-foreground">
-              Descreva sua ideia e a IA cria o plano completo — incluindo CEP, coleta e cronograma
+              Responda às perguntas abaixo — a IA cria o plano completo, incluindo CEP, roadmap e cronograma
             </p>
           </div>
 
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-foreground" htmlFor="descricao">
-              Descreva sua ideia de pesquisa
+          {/* Campo 1 — Tema principal (obrigatório) */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground" htmlFor="tema">
+              O que você quer pesquisar? <span className="text-red-500">*</span>
             </label>
+            <p className="text-xs text-muted-foreground -mt-1">Tema ou problema principal</p>
             <textarea
-              id="descricao"
-              rows={7}
-              value={descricao}
-              onChange={e => setDescricao(e.target.value)}
-              placeholder="Ex: Quero estudar o impacto da carga de trabalho dos enfermeiros na qualidade do cuidado em UTIs adultas do hospital onde trabalho. Pretendo aplicar um questionário validado (NAS) para 40 enfermeiros e correlacionar com indicadores de segurança do paciente..."
+              id="tema"
+              rows={4}
+              value={tema}
+              onChange={e => setTema(e.target.value)}
+              placeholder="Ex: Quero estudar o impacto da carga de trabalho dos enfermeiros na qualidade do cuidado em UTIs. / Quero avaliar se o uso de redes sociais afeta a autoestima de adolescentes. / Quero analisar os prontuários de pacientes com diabetes tipo 2 em uma UBS."
               className="w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
             />
             <p className="text-xs text-muted-foreground">
-              {descricao.length} caracteres{descricao.length < 30 ? ` — mínimo de 30` : ''}
+              {tema.length} caracteres{tema.length < 20 ? ` — mínimo de 20` : ''}
             </p>
+          </div>
+
+          {/* Campo 2 — Participantes/objeto */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground" htmlFor="populacao">
+              Com quem ou sobre o quê?
+            </label>
+            <p className="text-xs text-muted-foreground -mt-1">Participantes ou objeto de estudo</p>
+            <input
+              id="populacao"
+              type="text"
+              value={populacao}
+              onChange={e => setPopulacao(e.target.value)}
+              placeholder="Ex: Enfermeiros de UTI adulta, 40-80 profissionais / Adolescentes de 14-18 anos de escolas públicas / Prontuários de 2019-2023"
+              className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Campo 3 — Local */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground" htmlFor="local">
+              Onde vai ser feita?
+            </label>
+            <p className="text-xs text-muted-foreground -mt-1">Local da pesquisa</p>
+            <input
+              id="local"
+              type="text"
+              value={local}
+              onChange={e => setLocal(e.target.value)}
+              placeholder="Ex: Hospital universitário de São Paulo / 5 escolas municipais de BH / Arquivo médico de uma UBS"
+              className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Campo 4 — Nível acadêmico */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground" htmlFor="nivel">
+              Qual é o seu nível acadêmico?
+            </label>
+            <select
+              id="nivel"
+              value={nivel}
+              onChange={e => setNivel(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            >
+              <option value="">Selecione...</option>
+              <option value="Graduação (TCC)">Graduação (TCC)</option>
+              <option value="Especialização / Residência">Especialização / Residência</option>
+              <option value="Mestrado">Mestrado</option>
+              <option value="Doutorado">Doutorado</option>
+              <option value="Profissional da área (sem vínculo acadêmico atual)">Profissional da área (sem vínculo acadêmico atual)</option>
+            </select>
+          </div>
+
+          {/* Campo 5 — Tem dados? */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Você já tem dados coletados?</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTemDados(false)}
+                className={cn(
+                  'flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+                  !temDados
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-background text-foreground hover:bg-muted'
+                )}
+              >
+                Ainda não tenho
+              </button>
+              <button
+                type="button"
+                onClick={() => setTemDados(true)}
+                className={cn(
+                  'flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+                  temDados
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-background text-foreground hover:bg-muted'
+                )}
+              >
+                Já tenho dados
+              </button>
+            </div>
+          </div>
+
+          {/* Campo 6 — Dados coletados (condicional) */}
+          {temDados && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground" htmlFor="dadosColetados">
+                Quais foram os principais resultados?
+              </label>
+              <p className="text-xs text-muted-foreground -mt-1">Seus dados e resultados principais</p>
+              <textarea
+                id="dadosColetados"
+                rows={5}
+                value={dadosColetados}
+                onChange={e => setDadosColetados(e.target.value)}
+                placeholder={
+                  'Cole aqui seus achados:\nEx: N=80 enfermeiros responderam\n65% relataram sobrecarga moderada/intensa\nMédia de horas extras: 12h/semana\nCorrelação com qualidade do cuidado: r=-0.42 (p<0.001)'
+                }
+                className="w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono"
+              />
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                <span className="font-semibold">Dica:</span> Quanto mais dados reais você inserir, mais precisa e personalizada será a seção Resultados quando você for escrever no editor.
+              </div>
+            </div>
+          )}
+
+          {/* Info box permanente */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+            📋 Os dados que você inserir aqui ficam salvos no projeto. Quando for escrever a seção Resultados no editor, o app vai usar esses dados automaticamente.
           </div>
 
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
@@ -718,11 +854,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
           <button
             onClick={handleGerarPlano}
-            disabled={descricao.trim().length < 30}
+            disabled={tema.trim().length < 20}
             className={cn(
               buttonVariants({ size: 'lg' }),
               'w-full gap-2',
-              descricao.trim().length < 30 && 'opacity-50 cursor-not-allowed'
+              tema.trim().length < 20 && 'opacity-50 cursor-not-allowed'
             )}
           >
             <ClipboardList className="h-5 w-5" />
@@ -1189,6 +1325,18 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
             </div>
           )}
 
+          {/* Dados da Pesquisa — para inserir dados coletados */}
+          <div>
+            <h3 className="text-base font-semibold text-foreground mb-1">Dados da Pesquisa</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Cole aqui seus dados coletados, resultados, tabelas ou achados. O editor usará essas informações ao gerar a seção Resultados.
+            </p>
+            <DadosPesquisaPanel
+              trabalhoId={trabalho.id}
+              dadosProjetoAtual={planData}
+            />
+          </div>
+
           {/* Análise gerada (texto da PARTE 1) */}
           {streamingText && (
             <div>
@@ -1235,6 +1383,68 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 }
 
 // ─── sub-componentes ──────────────────────────────────────────────────────────
+
+interface DadosPesquisaPanelProps {
+  trabalhoId: string
+  dadosProjetoAtual: DadosProjeto | null
+}
+
+function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPanelProps) {
+  const [texto, setTexto] = useState(dadosProjetoAtual?.dados_coletados ?? '')
+  const [salvando, setSalvando] = useState(false)
+  const [salvo, setSalvo] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounced auto-save
+  function handleChange(val: string) {
+    setTexto(val)
+    setSalvo(false)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      setSalvando(true)
+      try {
+        await fetch(`/api/trabalhos/${trabalhoId}/projeto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dados_projeto: { ...(dadosProjetoAtual ?? {}), dados_coletados: val },
+          }),
+        })
+        setSalvo(true)
+      } finally {
+        setSalvando(false)
+      }
+    }, 1500)
+  }
+
+  return (
+    <div className="space-y-3">
+      <textarea
+        rows={6}
+        value={texto}
+        onChange={e => handleChange(e.target.value)}
+        placeholder={
+          'Cole aqui seus dados, resultados e achados. Exemplos:\n' +
+          '• N=80 participantes responderam (82% de adesão)\n' +
+          '• 65% relataram sobrecarga moderada ou intensa\n' +
+          '• Média de horas extras: 12h/semana (DP=3,2)\n' +
+          '• Correlação carga×qualidade: r=−0,42 (p<0,001)\n' +
+          '\nVocê também pode colar tabelas copiadas do Excel.'
+        }
+        className="w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground font-mono"
+      />
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {salvando && <><Loader2 className="h-3 w-3 animate-spin" /> Salvando...</>}
+        {!salvando && salvo && <><CheckCircle2 className="h-3 w-3 text-green-600" /> Salvo</>}
+        {!salvando && !salvo && texto && <span className="text-muted-foreground">Salvamento automático ativo</span>}
+      </div>
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+        <span className="font-semibold">Upload de arquivos</span> (PDF, planilha, imagem) está em desenvolvimento.
+        Por enquanto, copie e cole os dados do seu Excel/SPSS/R aqui — a IA vai usar tudo isso ao gerar os Resultados e a Discussão.
+      </div>
+    </div>
+  )
+}
 
 function InfoCard({
   label,
