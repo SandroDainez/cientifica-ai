@@ -394,11 +394,31 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       }))
 
       try {
-        const res = await fetch('/api/ia/gerar-documento-projeto', {
+        let res = await fetch('/api/ia/gerar-documento-projeto', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ trabalhoId: trabalho.id, tipoDocumento }),
         })
+
+        // Se o plano não está no banco (foi gerado mas não salvo), salva e tenta de novo
+        if (res.status === 400) {
+          const errBody = await res.json().catch(() => ({ error: '' })) as { error?: string }
+          if (errBody.error?.includes('Projeto não encontrado') && planData) {
+            await fetch(`/api/trabalhos/${trabalho.id}/projeto`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dados_projeto: planData }),
+            })
+            // Retry após salvar
+            res = await fetch('/api/ia/gerar-documento-projeto', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ trabalhoId: trabalho.id, tipoDocumento }),
+            })
+          } else {
+            throw new Error(errBody.error ?? `Erro ${res.status}`)
+          }
+        }
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: `Erro ${res.status}` }))
@@ -434,7 +454,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
         toast.error(msg)
       }
     },
-    [trabalho.id]
+    [trabalho.id, planData]
   )
 
   // ── Copy to clipboard ─────────────────────────────────────────────────────
