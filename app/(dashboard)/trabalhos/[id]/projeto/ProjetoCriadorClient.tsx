@@ -121,6 +121,33 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
   }
 }
 
+// ─── Extrai o primeiro objeto JSON completo de um texto ──────────────────────
+// Usa bracket-matching com awareness de strings — ignora texto antes/depois.
+
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+
+  let depth = 0
+  let inString = false
+  let escape = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (escape)           { escape = false; continue }
+    if (ch === '\\' && inString) { escape = true;  continue }
+    if (ch === '"')       { inString = !inString;  continue }
+    if (inString)         continue
+
+    if (ch === '{')       depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) return text.substring(start, i + 1)
+    }
+  }
+  return null   // JSON incompleto (truncado)
+}
+
 const TIPO_LABELS: Record<string, string> = {
   tcc: 'TCC',
   artigo_original: 'Artigo Original',
@@ -366,10 +393,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       }
 
       const fullText = streamRef.current
-      const jsonMatch = fullText.match(/===PLANO_JSON===\s*([\s\S]+)/)
-      if (!jsonMatch) throw new Error('Resposta sem plano estruturado. Tente novamente.')
+      const afterDelim = fullText.split('===PLANO_JSON===')[1]
+      if (!afterDelim) throw new Error('Plano não foi gerado corretamente. Tente novamente.')
 
-      const parsed = JSON.parse(jsonMatch[1].trim()) as Omit<DadosProjeto, 'descricao_original' | 'criado_em' | 'confirmado'>
+      // Extrai o JSON usando bracket-matching (ignora texto antes/depois do objeto)
+      const jsonStr = extractJsonObject(afterDelim)
+      if (!jsonStr) throw new Error('O plano ficou incompleto. Tente novamente — pode ser necessário simplificar a descrição.')
+
+      const parsed = JSON.parse(jsonStr) as Omit<DadosProjeto, 'descricao_original' | 'criado_em' | 'confirmado'>
       const dadosProjeto: DadosProjeto = {
         ...parsed,
         descricao_original: descricao.trim(),

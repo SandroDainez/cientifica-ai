@@ -4,7 +4,8 @@ import { aiClient, currentModel } from './client'
 export function streamText(
   systemPrompt: string,
   userPrompt: string,
-  fast = false
+  fast = false,
+  maxTokens = 8192
 ): Response {
   const model = fast ? currentModel.fast : currentModel.smart
 
@@ -19,7 +20,7 @@ export function streamText(
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.7,
-          max_tokens: 4096,
+          max_tokens: maxTokens,
         })
 
         for await (const chunk of completion) {
