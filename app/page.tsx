@@ -9,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/server'
 import { AppMockup } from '@/components/landing/AppMockup'
+import { AnimatedDemo } from '@/components/landing/AnimatedDemo'
 
 // ── Dados ──────────────────────────────────────────────────────
 
@@ -310,6 +311,14 @@ export default async function HomePage() {
             ))}
           </div>
 
+          {/* Demo animado — simula um mini tutorial do fluxo */}
+          <div className="mt-20">
+            <div className="text-center mb-8">
+              <p className="text-sm font-semibold text-gray-900 mb-1">Veja na prática</p>
+              <p className="text-sm text-muted-foreground">Demo interativo com os 4 passos do fluxo real</p>
+            </div>
+            <AnimatedDemo />
+          </div>
         </div>
       </section>
 
