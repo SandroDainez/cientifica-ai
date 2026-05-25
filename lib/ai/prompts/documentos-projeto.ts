@@ -246,6 +246,75 @@ O instrumento deve conter:
 Produza o instrumento completo, numerado e pronto para aplicação.`
 }
 
+function buildCalculoAmostral(dados: DadosProjeto): string {
+  return `${dadosResumo(dados)}
+
+Gere um Cálculo Amostral completo, detalhado e justificado para a pesquisa descrita acima.
+
+O documento deve conter:
+
+1. CONTEXTO E JUSTIFICATIVA DO CÁLCULO
+   Explique por que o cálculo amostral é necessário: garantir poder estatístico suficiente para detectar diferenças reais, evitar sub ou superdimensionamento da amostra, e atender à exigência do CEP.
+
+2. PARÂMETROS UTILIZADOS
+   Defina e justifique cada parâmetro com base no tipo de estudo (${dados.delineamento}):
+   - Nível de significância (α): geralmente 0,05 → erro tipo I de 5%
+   - Poder estatístico (1-β): geralmente 0,80 (80%) ou 0,90 (90%) → justifique
+   - Tamanho de efeito esperado: pequeno (d=0,2), médio (d=0,5) ou grande (d=0,8) — baseado na literatura para este tema
+   - Proporções esperadas ou diferença mínima detectável (conforme o delineamento)
+   - Perdas e recusas esperadas: acréscimo de 10-20% ao N calculado
+
+3. FÓRMULA UTILIZADA
+   Apresente a fórmula estatística adequada ao delineamento:
+   - Para comparação de dois grupos independentes: fórmula para teste t independente
+   - Para estudo transversal/prevalência: fórmula de proporção populacional
+   - Para correlação: fórmula baseada no r esperado
+   - Para outros delineamentos: adapte conforme necessário
+   Mostre a fórmula em notação matemática clara.
+
+4. CÁLCULO PASSO A PASSO
+   Substitua os valores na fórmula e mostre o cálculo passo a passo.
+   Resultado: N mínimo por grupo (se aplicável) e N total.
+   Adicione a margem de perdas/recusas: N final recomendado.
+
+5. VERIFICAÇÃO POR SOFTWARE
+   Forneça o código para calcular e verificar o N nos seguintes softwares:
+
+   **R (pacote pwr):**
+   \`\`\`r
+   # Instale se necessário: install.packages("pwr")
+   library(pwr)
+   # [código específico para este delineamento]
+   \`\`\`
+
+   **G*Power (software gratuito):**
+   Passo a passo para verificar no G*Power 3.1:
+   - Test family: [família de testes]
+   - Statistical test: [teste específico]
+   - Type of power analysis: [tipo]
+   - Input parameters: [valores]
+
+   **Python (scipy/statsmodels):**
+   \`\`\`python
+   # [código equivalente]
+   \`\`\`
+
+6. RESULTADO FINAL E RECOMENDAÇÃO
+   **N mínimo calculado:** [valor]
+   **Acréscimo para perdas (X%):** [valor]
+   **N total recomendado para coleta:** [valor]
+
+   Compare com a amostra estimada no plano (${dados.amostra_estimada}) e comente se é adequada, subdimensionada ou superdimensionada.
+
+7. TEXTO PRONTO PARA A SEÇÃO DE MÉTODOS
+   Forneça um parágrafo completo e formatado para inserir na seção "Casuística e Métodos" do manuscrito, descrevendo o cálculo amostral em linguagem científica.
+
+8. REFERÊNCIAS DO CÁLCULO
+   Cite as referências metodológicas utilizadas (Cohen, 1988; ou outra referência padrão para o método), em formato ABNT.
+
+Produza o documento completo, com todos os cálculos realizados e o texto pronto para uso no manuscrito e no protocolo CEP.`
+}
+
 function buildGuiaColeta(dados: DadosProjeto): string {
   return `${dadosResumo(dados)}
 
@@ -537,6 +606,9 @@ export function buildDocumentoPrompt(
       break
     case 'instrumento_coleta':
       user = buildInstrumentoColeta(dados)
+      break
+    case 'calculo_amostral':
+      user = buildCalculoAmostral(dados)
       break
     case 'guia_coleta':
       user = buildGuiaColeta(dados)

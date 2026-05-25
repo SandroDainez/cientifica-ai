@@ -159,8 +159,8 @@ function computeAppExecuta(etapa: EtapaRoadmap): boolean {
     case 'preparacao': return true    // IA sempre faz (revisão de literatura)
     case 'escrita':    return true    // IA sempre faz (editor gera seções)
     case 'aguardar':   return false   // usuário acompanha
-    case 'coleta':     return false   // usuário coleta
-    case 'analise':    return false   // usuário analisa
+    case 'coleta':     return true    // IA gera instrumento, guia e cálculo amostral
+    case 'analise':    return true    // IA gera guia de análise estatística
     case 'submissao':  return false   // usuário submete
     case 'etica': {
       const t = etapa.titulo.toLowerCase()
@@ -228,18 +228,17 @@ function getInstrucoesEtapa(etapa: EtapaRoadmap, appExecuta: boolean): string[] 
       'Se o parecer for aprovado, avance para a próxima etapa',
     ]
     case 'coleta': return [
-      'Treine a equipe de coleta conforme o protocolo aprovado pelo CEP',
-      'Aplique o instrumento de coleta seguindo rigorosamente o protocolo',
-      'Registre os dados de forma sistemática — planilha ou software específico',
-      'Mantenha os TCLEs (Termos de Consentimento) assinados arquivados em local seguro por no mínimo 5 anos',
-      'Monitore o andamento e corrija desvios do protocolo imediatamente',
+      'Gere abaixo o Instrumento de Coleta personalizado para sua pesquisa — questionário com todas as questões e escalas adequadas',
+      'Gere o Guia Operacional de Coleta — roteiro passo a passo de como abordar participantes, coletar o TCLE e aplicar o instrumento',
+      'Gere o Cálculo Amostral — justificativa estatística do número de participantes com poder e nível de significância',
+      'Com esses documentos prontos, imprima o instrumento (1 cópia por participante, sem nome — use número de ID)',
+      'Aplique após assinatura do TCLE e guarde os dados digitalizados com backup em dois locais',
     ]
     case 'analise': return [
-      'Organize e limpe o banco de dados antes de iniciar a análise',
-      'Verifique a distribuição dos dados e os pressupostos dos testes',
-      'Aplique os testes estatísticos conforme planejado na metodologia',
-      'Documente todas as decisões analíticas e os softwares usados',
-      'Interprete os resultados à luz dos objetivos e da literatura',
+      'Gere o Guia de Análise Estatística personalizado — testes específicos para seu delineamento, com código para R ou SPSS',
+      'O guia inclui: limpeza dos dados, análise descritiva, verificação de premissas, testes inferenciais e interpretação',
+      'Siga o passo a passo do guia ou encaminhe-o a um estatístico com seus dados — muitas universidades oferecem assessoria gratuita',
+      'Após a análise, insira os resultados no painel "Dados da Pesquisa" para que a IA use-os ao gerar os Resultados e a Discussão',
     ]
     case 'escrita': return [
       'Use o editor do Científica AI para gerar cada seção com auxílio de IA',
@@ -292,11 +291,12 @@ function getDocumentosEtapa(
     }
     case 'coleta':
       return [
-        { tipo: 'instrumento_coleta', label: 'Instrumento de Coleta', descricao: 'Questionário ou formulário de dados' },
-        { tipo: 'guia_coleta', label: 'Guia de Coleta', descricao: 'Manual operacional para a equipe' },
+        { tipo: 'instrumento_coleta', label: 'Instrumento de Coleta', descricao: 'Questionário completo com questões, escalas e codificação para análise' },
+        { tipo: 'calculo_amostral', label: 'Cálculo Amostral', descricao: 'Justificativa estatística do N necessário com poder e significância' },
+        { tipo: 'guia_coleta', label: 'Guia Operacional de Coleta', descricao: 'Roteiro passo a passo para abordar participantes e aplicar o instrumento' },
       ]
     case 'analise':
-      return [{ tipo: 'guia_analise', label: 'Guia de Análise', descricao: 'Roteiro estatístico com código e interpretação' }]
+      return [{ tipo: 'guia_analise', label: 'Guia de Análise Estatística', descricao: 'Testes específicos para seu delineamento com código R/SPSS e interpretação' }]
     case 'submissao':
       return [
         { tipo: 'sugestoes_periodicos', label: 'Sugestões de Periódicos', descricao: 'Revistas adequadas com Qualis, JCR e URLs' },
@@ -355,16 +355,20 @@ const USO_DOCUMENTO: Record<string, { acao: string; detalhe: string }> = {
     detalhe: 'Colete a assinatura ANTES de aplicar o questionário. Guarde em local seguro por pelo menos 5 anos.',
   },
   instrumento_coleta: {
-    acao: 'Imprima uma cópia por participante — use número sequencial, nunca o nome',
-    detalhe: 'Preencha em campo. Ao final do dia, revise cada questionário e digitalize em planilha.',
+    acao: 'Imprima uma cópia por participante — use número sequencial de ID, nunca o nome',
+    detalhe: 'Revise cada questionário antes de o participante ir embora. Ao final do dia, digitalize em planilha com os mesmos IDs do TCLE.',
+  },
+  calculo_amostral: {
+    acao: 'Inclua este cálculo na seção de Métodos do trabalho e no protocolo CEP',
+    detalhe: 'O cálculo amostral justifica o N necessário para detectar o efeito esperado com poder estatístico adequado. É exigido pelo CEP e pelos periódicos.',
   },
   guia_coleta: {
     acao: 'Leve para campo e use como checklist a cada dia de coleta',
     detalhe: 'Distribua para todos os pesquisadores/auxiliares que vão aplicar o instrumento.',
   },
   guia_analise: {
-    acao: 'Siga o passo a passo no software indicado — ou envie este guia a um estatístico',
-    detalhe: 'Se não tiver familiaridade com estatística, encaminhe este guia a um estatístico com seus dados. Muitas universidades oferecem serviço gratuito de assessoria estatística.',
+    acao: 'Siga o passo a passo no software indicado — ou encaminhe a um estatístico',
+    detalhe: 'O guia contém o código pronto para R ou SPSS. Se não tiver familiaridade com estatística, envie este guia ao estatístico junto com seus dados. Muitas universidades oferecem assessoria gratuita.',
   },
   sugestoes_periodicos: {
     acao: 'Escolha 1 periódico e leia o Guia de Autores antes de formatar o artigo',
