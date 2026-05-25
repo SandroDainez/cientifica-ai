@@ -24,8 +24,15 @@ export default async function ExportarPage({ params }: Props) {
 
   const trabalho = tData as Trabalho
 
-  // Paywall: trabalho não liberado → mostra tela de pagamento
-  if (!trabalho.liberado) {
+  // Busca perfil do usuário para verificar acesso beta
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('acesso_beta')
+    .eq('id', user.id)
+    .single()
+
+  // Paywall: pula se o trabalho está liberado OU se usuário tem acesso beta
+  if (!trabalho.liberado && !profile?.acesso_beta) {
     return <Paywall trabalhoId={trabalho.id} tituloTrabalho={trabalho.titulo} />
   }
 

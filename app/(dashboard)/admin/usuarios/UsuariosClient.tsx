@@ -16,6 +16,7 @@ interface Usuario {
   instituicao?: string
   totalTrabalhos: number
   banned: boolean
+  acesso_beta: boolean
 }
 
 export function UsuariosClient({ usuarios: inicial }: { usuarios: Usuario[] }) {
@@ -27,6 +28,28 @@ export function UsuariosClient({ usuarios: inicial }: { usuarios: Usuario[] }) {
     u.nome?.toLowerCase().includes(busca.toLowerCase()) ||
     u.email?.toLowerCase().includes(busca.toLowerCase())
   )
+
+  async function toggleBeta(id: string, beta: boolean) {
+    setLoadingId(id)
+    try {
+      const res = await fetch(`/api/admin/usuarios/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: beta ? 'revogar_beta' : 'liberar_beta' }),
+      })
+      if (!res.ok) throw new Error()
+
+      setUsuarios(prev => prev.map(u =>
+        u.id === id ? { ...u, acesso_beta: !u.acesso_beta } : u
+      ))
+      toast.success(beta ? 'Acesso beta revogado.' : 'Acesso beta liberado.')
+    } catch (err) {
+      console.error('[UsuariosAdmin] Erro beta:', err)
+      toast.error('Erro ao alterar acesso beta.')
+    } finally {
+      setLoadingId(null)
+    }
+  }
 
   async function toggleBloquear(id: string, banido: boolean) {
     setLoadingId(id)
@@ -70,13 +93,14 @@ export function UsuariosClient({ usuarios: inicial }: { usuarios: Usuario[] }) {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Trabalhos</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Cadastro</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Beta</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     Nenhum usuário encontrado.
                   </td>
                 </tr>
@@ -110,6 +134,29 @@ export function UsuariosClient({ usuarios: inicial }: { usuarios: Usuario[] }) {
                         <CheckCircle className="h-3 w-3" /> Ativo
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      {u.acesso_beta ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-900/50 text-green-300">Beta ativo</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted/50 text-muted-foreground">Sem beta</span>
+                      )}
+                      <button
+                        onClick={() => toggleBeta(u.id, u.acesso_beta)}
+                        disabled={loadingId === u.id}
+                        className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                          u.acesso_beta
+                            ? 'text-red-400 hover:bg-red-900/20'
+                            : 'text-green-400 hover:bg-green-900/20'
+                        }`}
+                      >
+                        {loadingId === u.id
+                          ? <Loader2 className="h-3 w-3 animate-spin inline" />
+                          : u.acesso_beta ? 'Revogar' : 'Liberar beta'
+                        }
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">

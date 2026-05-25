@@ -14,7 +14,7 @@ export async function PATCH(
   }
 
   const { id } = await params
-  const { acao } = await request.json() as { acao: 'bloquear' | 'desbloquear' }
+  const { acao } = await request.json() as { acao: 'bloquear' | 'desbloquear' | 'liberar_beta' | 'revogar_beta' }
 
   const admin = createAdminClient()
 
@@ -24,10 +24,16 @@ export async function PATCH(
       ban_duration: '876600h',
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  } else {
+  } else if (acao === 'desbloquear') {
     const { error } = await admin.auth.admin.updateUserById(id, {
       ban_duration: 'none',
     })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (acao === 'liberar_beta') {
+    const { error } = await admin.from('profiles').update({ acesso_beta: true }).eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (acao === 'revogar_beta') {
+    const { error } = await admin.from('profiles').update({ acesso_beta: false }).eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

@@ -9,7 +9,7 @@ export default async function AdminUsuariosPage() {
   // Busca todos os perfis
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, nome, email, created_at, nivel_academico, instituicao')
+    .select('id, nome, email, created_at, nivel_academico, instituicao, acesso_beta')
     .order('created_at', { ascending: false })
 
   // Busca contagem de trabalhos por usuário
@@ -40,6 +40,7 @@ export default async function AdminUsuariosPage() {
     instituicao: p.instituicao,
     totalTrabalhos: workCountByUser[p.id] ?? 0,
     banned: bannedIds.has(p.id),
+    acesso_beta: p.acesso_beta ?? false,
   }))
 
   return (
