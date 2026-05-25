@@ -394,8 +394,9 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
             ]}
             actions={
               <div className="flex items-center gap-0.5">
-                <Link href={`/trabalhos/${trabalho.id}/projeto`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Projeto de Pesquisa">
-                  <Map className="h-4 w-4" />
+                <Link href={`/trabalhos/${trabalho.id}/projeto`} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')} title="Plano do Projeto — roadmap, checklists e documentos">
+                  <Map className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Plano do Projeto</span>
                 </Link>
                 <Link href={`/trabalhos/${trabalho.id}/referencias`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Referências">
                   <BookMarked className="h-4 w-4" />
@@ -448,6 +449,36 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
             </Link>
           </div>
         )}
+
+        {/* Banner: plano existe — lembrete de que pode retornar a qualquer momento */}
+        {Boolean((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto) && (() => {
+          const dados = (trabalho.dados_trabalho as Record<string, unknown>)
+          const plano = dados.dados_projeto as Record<string, unknown>
+          const checklist = (plano?.checklist ?? []) as Array<{ id: string; concluido: boolean }>
+          const checklistStatus = (plano?.checklist_status ?? {}) as Record<string, boolean>
+          const pendentes = checklist.filter(item => !(checklistStatus[item.id] ?? item.concluido)).length
+          const temDocumentos = dados.documentos_projeto && Object.keys(dados.documentos_projeto as object).length > 0
+
+          return (
+            <div className="mx-6 mt-3 rounded-lg border border-blue-200 bg-blue-50/60 dark:border-blue-800 dark:bg-blue-950/20 px-4 py-2.5 flex items-center gap-3">
+              <Map className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <div className="flex-1 min-w-0 text-xs text-blue-800 dark:text-blue-200">
+                <span className="font-medium">Plano do Projeto ativo</span>
+                {pendentes > 0
+                  ? <> — <span className="font-semibold text-amber-700 dark:text-amber-400">{pendentes} tarefa{pendentes > 1 ? 's' : ''} pendente{pendentes > 1 ? 's' : ''}</span> no roadmap</>
+                  : temDocumentos
+                    ? <> — documentos gerados disponíveis para edição</>
+                    : <> — roadmap, checklists e geração de documentos disponíveis</>}
+              </div>
+              <Link
+                href={`/trabalhos/${trabalho.id}/projeto`}
+                className="shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline underline-offset-2 whitespace-nowrap"
+              >
+                Ver Plano →
+              </Link>
+            </div>
+          )
+        })()}
 
         {/* Editor + painel IA */}
         <div className="flex flex-1 overflow-hidden">

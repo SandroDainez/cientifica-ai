@@ -54,15 +54,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
         <span className="text-xs text-muted-foreground">Atualizado {atualizado}</span>
 
         <div className="flex items-center gap-1">
-          {/* Projeto de Pesquisa */}
-          <Link
-            href={`/trabalhos/${trabalho.id}/projeto`}
-            title="Plano do Projeto"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-          >
-            <Map className="h-3.5 w-3.5" />
-          </Link>
-
+          {/* Ícones secundários */}
           {onArquivar && trabalho.status !== 'arquivado' && (
             <button
               onClick={() => onArquivar(trabalho.id)}
@@ -73,55 +65,47 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
             </button>
           )}
 
-          <Link
-            href={`/trabalhos/${trabalho.id}/referencias`}
-            title="Referências"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-          >
+          <Link href={`/trabalhos/${trabalho.id}/referencias`} title="Referências"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
             <BookMarked className="h-3.5 w-3.5" />
           </Link>
-
-          <Link
-            href={`/trabalhos/${trabalho.id}/visualizar`}
-            title="Visualizar"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-          >
+          <Link href={`/trabalhos/${trabalho.id}/visualizar`} title="Visualizar"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
             <Eye className="h-3.5 w-3.5" />
           </Link>
-
-          <Link
-            href={`/trabalhos/${trabalho.id}/apresentacao`}
-            title="Gerar Slides"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-          >
+          <Link href={`/trabalhos/${trabalho.id}/apresentacao`} title="Gerar Slides"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
             <Presentation className="h-3.5 w-3.5" />
           </Link>
-
-          <Link
-            href={`/trabalhos/${trabalho.id}/exportar`}
-            title="Exportar"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-          >
+          <Link href={`/trabalhos/${trabalho.id}/exportar`} title="Exportar"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
             <Download className="h-3.5 w-3.5" />
           </Link>
 
-          {/* Separador */}
-          <div className="w-px h-4 bg-border/60 mx-0.5" />
-
-          {/* Deletar */}
           {onDeletar && (
-            <button
-              onClick={() => onDeletar(trabalho)}
-              title="Excluir trabalho"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            >
+            <button onClick={() => onDeletar(trabalho)} title="Excluir trabalho"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
 
+          {/* Separador */}
+          <div className="w-px h-4 bg-border/60 mx-0.5" />
+
+          {/* Plano do Projeto — botão visível com label */}
+          <Link
+            href={`/trabalhos/${trabalho.id}/projeto`}
+            title="Plano do Projeto — roadmap, checklists e documentos"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/60 transition-colors"
+          >
+            <Map className="h-3.5 w-3.5" />
+            <span>Plano</span>
+          </Link>
+
+          {/* Continuar → editor */}
           <Link
             href={`/trabalhos/${trabalho.id}/editar`}
-            className="flex items-center gap-1 ml-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
           >
             Continuar <ArrowRight className="h-3 w-3" />
           </Link>
