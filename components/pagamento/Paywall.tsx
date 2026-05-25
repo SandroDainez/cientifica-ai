@@ -47,11 +47,11 @@ export function Paywall({ trabalhoId, tituloTrabalho }: PaywallProps) {
           </p>
         </div>
 
-        {/* Card preço */}
+        {/* Card preço — glass tem fundo sempre escuro, texto sempre branco */}
         <div className="glass rounded-2xl p-6 text-center glow-teal space-y-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Valor único</p>
-          <p className="text-4xl font-bold text-foreground">{PRECO}</p>
-          <p className="text-xs text-muted-foreground">Acesso completo a este trabalho · Download ilimitado</p>
+          <p className="text-xs text-white/60 uppercase tracking-widest">Valor único</p>
+          <p className="text-4xl font-bold text-white">{PRECO}</p>
+          <p className="text-xs text-white/60">Acesso completo a este trabalho · Download ilimitado</p>
         </div>
 
         {/* Passo a passo */}

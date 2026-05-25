@@ -23,7 +23,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
       </div>
 
       {/* Card central */}
-      <div className="w-full max-w-md glass rounded-2xl shadow-2xl p-8 animate-slide-up">
+      <div className="w-full max-w-md glass-light rounded-2xl shadow-2xl p-8 animate-slide-up border border-border bg-card">
         {children}
       </div>
 
