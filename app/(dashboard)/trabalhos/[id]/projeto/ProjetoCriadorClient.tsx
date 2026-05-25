@@ -820,7 +820,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                             )}
                           >
                             <div className="flex flex-wrap items-start gap-2 mb-1">
-                              <span className="font-medium text-sm">{etapa.titulo}</span>
+                              <span className="font-semibold text-base">{etapa.titulo}</span>
 
                               {etapa.bloqueante && (
                                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wide">
@@ -862,27 +862,27 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                               )}
                             </div>
 
-                            <p className="text-xs leading-relaxed mb-2">{etapa.descricao}</p>
+                            <p className="text-sm leading-relaxed mb-2 text-foreground/80">{etapa.descricao}</p>
 
-                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
                             </span>
                           </button>
 
                           {/* Conteúdo expandido */}
                           {isExpanded && hasDetails && (
-                            <div className="border-t border-current/10 px-4 pb-4 pt-3 space-y-4">
+                            <div className="border-t border-current/20 px-4 pb-4 pt-3 space-y-4 text-foreground">
 
                               {/* Instruções detalhadas — determinadas estaticamente no frontend */}
                               {instrucoes.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-2">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                                     Como fazer
                                   </p>
-                                  <ol className="space-y-1.5">
+                                  <ol className="space-y-2">
                                     {instrucoes.map((instrucao, idx) => (
-                                      <li key={idx} className="flex gap-2 text-xs leading-relaxed">
-                                        <span className="flex-shrink-0 font-bold opacity-50">{idx + 1}.</span>
+                                      <li key={idx} className="flex gap-2 text-sm leading-relaxed text-foreground">
+                                        <span className="flex-shrink-0 font-semibold text-muted-foreground w-4">{idx + 1}.</span>
                                         <span>{instrucao}</span>
                                       </li>
                                     ))}
@@ -896,9 +896,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                   href={linkExterno}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100"
+                                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
                                 >
-                                  <ExternalLink className="h-3 w-3" />
+                                  <ExternalLink className="h-3.5 w-3.5" />
                                   Acessar Plataforma Brasil
                                 </a>
                               )}
@@ -906,7 +906,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                               {/* Documentos IA — determinados estaticamente por tipo de etapa */}
                               {documentosEtapa.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-2">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                                     Documentos
                                   </p>
                                   <div className="space-y-3">
@@ -915,11 +915,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                       const docState = docsMap[key]
 
                                       return (
-                                        <div key={doc.tipo} className="rounded-md bg-background/60 border border-current/10 p-3">
+                                        <div key={doc.tipo} className="rounded-md bg-background border border-border p-3">
                                           <div className="flex items-start justify-between gap-2 mb-1">
                                             <div className="flex items-center gap-1.5">
-                                              <FileText className="h-3.5 w-3.5 opacity-60 flex-shrink-0" />
-                                              <span className="text-xs font-medium">{doc.label}</span>
+                                              <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                              <span className="text-sm font-medium text-foreground">{doc.label}</span>
                                             </div>
 
                                             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -927,7 +927,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                                 <button
                                                   type="button"
                                                   onClick={() => handleCopy(key, docState.conteudo)}
-                                                  className="inline-flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 bg-background border border-current/20 opacity-70 hover:opacity-100 transition-opacity"
+                                                  className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors"
                                                 >
                                                   {copiedKey === key
                                                     ? <><Check className="h-3 w-3" /> Copiado</>
@@ -940,7 +940,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                                 onClick={() => handleGerarDocumento(etapa.id, doc.tipo as TipoDocumento)}
                                                 disabled={docState?.status === 'gerando'}
                                                 className={cn(
-                                                  'inline-flex items-center gap-1 text-[10px] rounded px-2 py-0.5 font-medium transition-opacity',
+                                                  'inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 font-medium transition-opacity',
                                                   'bg-primary text-primary-foreground hover:opacity-90',
                                                   docState?.status === 'gerando' && 'opacity-50 cursor-not-allowed'
                                                 )}
@@ -956,19 +956,19 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                             </div>
                                           </div>
 
-                                          <p className="text-[11px] opacity-60 mb-2">{doc.descricao}</p>
+                                          <p className="text-xs text-muted-foreground mb-2">{doc.descricao}</p>
 
                                           {/* Streaming / resultado */}
                                           {docState && (docState.status === 'gerando' || docState.status === 'gerado') && docState.conteudo && (
-                                            <div className="mt-2 rounded border border-current/10 bg-background/80 p-3 max-h-72 overflow-y-auto">
-                                              <pre className="text-[11px] leading-relaxed whitespace-pre-wrap text-foreground font-sans">
+                                            <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-72 overflow-y-auto">
+                                              <pre className="text-xs leading-relaxed whitespace-pre-wrap text-foreground font-sans">
                                                 {docState.conteudo}
                                               </pre>
                                             </div>
                                           )}
 
                                           {docState?.status === 'erro' && (
-                                            <p className="mt-1 text-[11px] text-red-600">
+                                            <p className="mt-1 text-xs text-red-600">
                                               {docState.erro ?? 'Erro ao gerar. Tente novamente.'}
                                             </p>
                                           )}
