@@ -282,14 +282,25 @@ const USO_DOCUMENTO: Record<string, { acao: string; detalhe: string }> = {
 
 // ─── Próximo passo após completar cada tipo de etapa ─────────────────────────
 
-const PROXIMO_PASSO: Record<EtapaRoadmap['tipo'], string> = {
-  preparacao: 'Quando tiver o projeto definido, avance para a etapa de ética (CEP) se sua pesquisa envolver pessoas.',
-  etica: 'Após submeter na Plataforma Brasil, aguarde o parecer. O prazo legal é de 30 dias, mas pode levar até 60.',
-  aguardar: 'Aprovação em mãos? Avance para a coleta de dados. Reprovação? Responda às pendências dentro do prazo.',
-  coleta: 'Dados coletados e digitados em planilha? Avance para a análise estatística.',
-  analise: 'Com os resultados em mãos (tabelas e gráficos), use o editor do app para escrever cada seção do trabalho.',
-  escrita: 'Revise com seu orientador antes de submeter. Peça também revisão de um colega da área.',
-  submissao: 'Após a submissão, anote o número de protocolo e aguarde a resposta dos revisores.',
+function getProximoPasso(tipo: EtapaRoadmap['tipo'], dadosProjeto: DadosProjeto): string {
+  switch (tipo) {
+    case 'preparacao':
+      return dadosProjeto.envolve_seres_humanos
+        ? 'Quando tiver o projeto definido, avance para a etapa de ética (CEP) — obrigatória para pesquisas com seres humanos.'
+        : 'Quando tiver o projeto definido, avance para a etapa de busca bibliográfica ou coleta de dados.'
+    case 'etica':
+      return 'Após submeter na Plataforma Brasil, aguarde o parecer. O prazo legal é de 30 dias, mas pode levar até 60.'
+    case 'aguardar':
+      return 'Aprovação em mãos? Avance para a coleta de dados. Reprovação? Responda às pendências dentro do prazo indicado pelo CEP.'
+    case 'coleta':
+      return 'Dados coletados e digitados em planilha? Avance para a análise estatística.'
+    case 'analise':
+      return 'Com os resultados em mãos (tabelas e gráficos), use o editor do app para escrever cada seção do trabalho.'
+    case 'escrita':
+      return 'Revise com seu orientador antes de submeter. Peça também revisão de um colega da área.'
+    case 'submissao':
+      return 'Após a submissão, anote o número de protocolo e aguarde a resposta dos revisores/banca.'
+  }
 }
 
 const TIPO_LABELS: Record<string, string> = {
@@ -1086,16 +1097,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                               )}
 
                               {/* Próximo passo */}
-                              {PROXIMO_PASSO[etapa.tipo] && (
-                                <div className="rounded-md bg-muted/60 border border-border p-3">
-                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                                    Próximo passo
-                                  </p>
-                                  <p className="text-sm text-foreground">
-                                    {PROXIMO_PASSO[etapa.tipo]}
-                                  </p>
-                                </div>
-                              )}
+                              <div className="rounded-md bg-muted/60 border border-border p-3">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                  Próximo passo
+                                </p>
+                                <p className="text-sm text-foreground">
+                                  {getProximoPasso(etapa.tipo, planData)}
+                                </p>
+                              </div>
                             </div>
                           )}
                         </div>
