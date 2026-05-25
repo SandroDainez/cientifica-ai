@@ -123,6 +123,28 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
   }
 }
 
+// ─── Normaliza o tipo de etapa — corrige erros de geração da IA ──────────────
+// A IA às vezes tipifica etapas de ética como "preparacao".
+// Baseado no título, corrigimos o tipo antes de qualquer outra lógica.
+
+function normalizeEtapa(etapa: EtapaRoadmap): EtapaRoadmap {
+  if (etapa.tipo !== 'preparacao') return etapa   // só corrige preparacao indevido
+  const t = etapa.titulo.toLowerCase()
+  // Etapas de ética com tipo errado → corrigir para 'etica'
+  if (
+    t.includes('protocolo') ||
+    t.includes('cep') ||
+    t.includes('plataforma brasil') ||
+    t.includes('anuência') ||
+    t.includes('anuencia') ||
+    t.includes('tcle') ||
+    (t.includes('submeter') && (t.includes('cep') || t.includes('comitê')))
+  ) {
+    return { ...etapa, tipo: 'etica' as const }
+  }
+  return etapa
+}
+
 // ─── Calcula app_executa deterministicamente no frontend ─────────────────────
 // Não confia no valor gerado pela IA — define pela lógica de negócio.
 // Para etica: usa heurística de título (elaborar doc → app; submeter/obter → usuário).
@@ -1089,7 +1111,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                 {/* Linha vertical */}
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                 <ol className="space-y-4 pl-10">
-                  {planData.roadmap.map((etapa) => {
+                  {planData.roadmap.map((etapaRaw) => {
+                    // Normaliza tipo antes de qualquer lógica (corrige erros da IA)
+                    const etapa = normalizeEtapa(etapaRaw)
                     // app_executa calculado no frontend — não depende do valor gerado pela IA
                     const appExecuta = computeAppExecuta(etapa)
                     const isExpanded = expandedEtapas.has(etapa.id)

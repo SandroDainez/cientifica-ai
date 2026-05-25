@@ -76,14 +76,20 @@ Ao final, após a linha "===PLANO_JSON===", retorne APENAS um JSON válido com e
 
 REGRAS para o roadmap:
 - NUNCA use placeholders como {app_name}, {nome_app} ou similares — quando precisar mencionar o app, use "Científica AI"
-- Etapas tipo=preparacao: app_executa=true (o Científica AI gera revisão de literatura e orienta o planejamento)
-- Etapas tipo=etica que envolvem elaborar documentos (protocolo, TCLE, carta): app_executa=true (o app gera os documentos)
+- ATENÇÃO: tipo=preparacao é EXCLUSIVO para a primeira etapa de revisão de literatura e planejamento. NÃO use preparacao para protocolo CEP, TCLE, anuência ou qualquer etapa de ética.
+- Etapas tipo=preparacao: apenas revisão bibliográfica e delineamento inicial. app_executa=true.
+- Etapas tipo=etica: OBRIGATÓRIO para TODAS as etapas relacionadas a CEP, Plataforma Brasil, TCLE, protocolo de pesquisa, carta de anuência, submissão ética.
+- Etapas tipo=etica que elaboram documentos (protocolo, TCLE, carta): app_executa=true
 - Etapas tipo=etica que envolvem submissão ou espera presencial: app_executa=false
-- Se precisa_cep=true: inclua etapas "Elaborar protocolo de pesquisa" (etica, app_executa=true), "Obter carta de anuência" (etica, app_executa=false), "Submeter ao CEP via Plataforma Brasil" (bloqueante=true, app_executa=false), "Aguardar aprovação do CEP" (tipo=aguardar, duracao="30-60 dias", app_executa=false), "Iniciar coleta de dados"
-- Etapas tipo=coleta: app_executa=false (coleta física o usuário faz), mas o app gera instrumentos de coleta
-- Etapas tipo=analise: app_executa=false (análise o usuário ou estatístico faz), mas o app gera guia de análise
+- Se precisa_cep=true: inclua EXATAMENTE estas etapas:
+  1. "Elaborar protocolo de pesquisa" → tipo=etica, app_executa=true
+  2. "Obter carta de anuência da instituição" → tipo=etica, app_executa=true
+  3. "Submeter ao CEP via Plataforma Brasil" → tipo=etica, bloqueante=true, app_executa=false
+  4. "Aguardar aprovação do CEP" → tipo=aguardar, duracao="30-60 dias", app_executa=false
+- Etapas tipo=coleta: app_executa=false (coleta física o usuário faz)
+- Etapas tipo=analise: app_executa=false (análise o usuário ou estatístico faz)
 - A etapa de escrita (tipo=escrita): app_executa=true, descricao deve mencionar que o Científica AI gera com IA (nunca use {app_name} ou outros placeholders — escreva "Científica AI" diretamente)
-- Etapas tipo=submissao: app_executa=false (usuário submete manualmente), mas o app gera os documentos de submissão
+- Etapas tipo=submissao: app_executa=false (usuário submete manualmente)
 - Se tipo_coleta=primaria: inclua etapas de coleta e análise
 - Se tipo_coleta=bibliografica: inclua etapas de busca bibliográfica
 - Sempre inclua uma etapa de submissão ao periódico/banca como última etapa
