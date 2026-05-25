@@ -96,10 +96,10 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
           <Link
             href={`/trabalhos/${trabalho.id}/projeto`}
             title="Plano do Projeto — roadmap, checklists e documentos"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/60 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
           >
             <Map className="h-3.5 w-3.5" />
-            <span>Plano</span>
+            <span>Projeto</span>
           </Link>
 
           {/* Continuar → editor */}
