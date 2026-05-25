@@ -17,7 +17,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           <GraduationCap className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white">Científica AI</h1>
+          <h1 className="text-xl font-bold text-foreground">Científica AI</h1>
           <p className="text-xs text-muted-foreground">Do tema à defesa, com inteligência</p>
         </div>
       </div>

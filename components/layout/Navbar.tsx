@@ -56,7 +56,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-bold text-white text-base">Científica AI</span>
+              <span className="font-bold text-foreground text-base">Científica AI</span>
               <span className="text-[10px] text-muted-foreground hidden sm:block">Do tema à defesa</span>
             </div>
           </Link>
