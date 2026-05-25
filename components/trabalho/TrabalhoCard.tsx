@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowRight, Archive, Eye, Download, BookMarked } from 'lucide-react'
+import { ArrowRight, Archive, Eye, Download, BookMarked, Map, Trash2 } from 'lucide-react'
 import { TipoTrabalhoIcon, getTipoLabel } from './TipoTrabalhoIcon'
 import { StatusBadge } from './StatusBadge'
 import { ProgressBar } from './ProgressBar'
@@ -11,9 +11,10 @@ interface TrabalhoCardProps {
   trabalho: Trabalho
   totalFases: number
   onArquivar?: (id: string) => void
+  onDeletar?: (trabalho: Trabalho) => void
 }
 
-export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardProps) {
+export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: TrabalhoCardProps) {
   const progresso = totalFases > 0
     ? Math.round((trabalho.fases_concluidas.length / totalFases) * 100)
     : 0
@@ -53,6 +54,15 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
         <span className="text-xs text-muted-foreground">Atualizado {atualizado}</span>
 
         <div className="flex items-center gap-1">
+          {/* Projeto de Pesquisa */}
+          <Link
+            href={`/trabalhos/${trabalho.id}/projeto`}
+            title="Plano do Projeto"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <Map className="h-3.5 w-3.5" />
+          </Link>
+
           {onArquivar && trabalho.status !== 'arquivado' && (
             <button
               onClick={() => onArquivar(trabalho.id)}
@@ -62,6 +72,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
               <Archive className="h-3.5 w-3.5" />
             </button>
           )}
+
           <Link
             href={`/trabalhos/${trabalho.id}/referencias`}
             title="Referências"
@@ -69,6 +80,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
           >
             <BookMarked className="h-3.5 w-3.5" />
           </Link>
+
           <Link
             href={`/trabalhos/${trabalho.id}/visualizar`}
             title="Visualizar"
@@ -76,6 +88,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
+
           <Link
             href={`/trabalhos/${trabalho.id}/exportar`}
             title="Exportar"
@@ -83,6 +96,21 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar }: TrabalhoCardP
           >
             <Download className="h-3.5 w-3.5" />
           </Link>
+
+          {/* Separador */}
+          <div className="w-px h-4 bg-border/60 mx-0.5" />
+
+          {/* Deletar */}
+          {onDeletar && (
+            <button
+              onClick={() => onDeletar(trabalho)}
+              title="Excluir trabalho"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+
           <Link
             href={`/trabalhos/${trabalho.id}/editar`}
             className="flex items-center gap-1 ml-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"

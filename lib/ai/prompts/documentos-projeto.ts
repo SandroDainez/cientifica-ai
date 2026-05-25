@@ -1,0 +1,511 @@
+import type { TipoDocumento, DadosProjeto } from '@/types'
+
+const SYSTEM_PROMPT =
+  'Você é um especialista em pesquisa científica brasileira, com domínio em normas ABNT, ' +
+  'regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos, ' +
+  'formais e prontos para uso.'
+
+function dadosResumo(dados: DadosProjeto): string {
+  return `
+DADOS DO PROJETO:
+- Título provisório: ${dados.titulo_provisorio}
+- Pergunta de pesquisa: ${dados.pergunta_pesquisa}
+- Objetivo geral: ${dados.objetivo_geral}
+- Delineamento: ${dados.delineamento}
+- População-alvo: ${dados.populacao_alvo}
+- Amostra estimada: ${dados.amostra_estimada}
+- Local previsto: ${dados.local_previsto}
+- Período previsto: ${dados.periodo_previsto}
+- Instrumentos previstos: ${dados.instrumentos_previstos}
+- Análise prevista: ${dados.analise_prevista}
+- Justificativa: ${dados.justificativa_resumida}
+- Contexto geral: ${dados.contexto_geral}
+`.trim()
+}
+
+function buildProtocoloCep(dados: DadosProjeto, titulo?: string): string {
+  return `${dadosResumo(dados)}
+
+Gere um Protocolo de Pesquisa completo para submissão ao Comitê de Ética em Pesquisa (CEP) via Plataforma Brasil, seguindo rigorosamente a Resolução CNS 466/2012 e a Norma Operacional CNS 001/2013.
+
+O protocolo deve conter as seguintes seções obrigatórias, com conteúdo completo e adequado ao projeto descrito acima:
+
+1. IDENTIFICAÇÃO DO PROJETO
+   - Título completo: ${titulo ?? dados.titulo_provisorio}
+   - Pesquisador responsável: [NOME DO PESQUISADOR]
+   - Instituição proponente: [NOME DA INSTITUIÇÃO]
+   - Instituição co-participante (se houver): [NOME DA INSTITUIÇÃO CO-PARTICIPANTE]
+   - Local de realização: ${dados.local_previsto}
+   - Período de execução: ${dados.periodo_previsto}
+   - Financiamento: [FONTE DE FINANCIAMENTO OU "Recursos próprios"]
+
+2. INTRODUÇÃO E JUSTIFICATIVA
+   Redija com base no contexto e justificativa do projeto (mínimo 400 palavras).
+
+3. OBJETIVOS
+   3.1 Objetivo Geral
+   3.2 Objetivos Específicos (liste pelo menos 3)
+
+4. METODOLOGIA
+   4.1 Tipo de estudo e delineamento
+   4.2 Local e período
+   4.3 População e critérios de inclusão/exclusão
+   4.4 Amostragem (cálculo amostral e justificativa)
+   4.5 Instrumentos e técnicas de coleta de dados
+   4.6 Procedimentos de coleta
+   4.7 Análise de dados
+
+5. ASPECTOS ÉTICOS
+   5.1 Riscos e desconfortos previstos e medidas de minimização
+   5.2 Benefícios diretos e indiretos
+   5.3 Formas de garantia de sigilo e confidencialidade
+   5.4 Procedimento de obtenção do TCLE
+   5.5 Armazenamento e destino dos dados após a pesquisa
+   5.6 Critérios para suspensão ou encerramento da pesquisa
+
+6. CRONOGRAMA
+   Tabela com fases, atividades e meses (${dados.periodo_previsto})
+
+7. ORÇAMENTO DETALHADO
+   Tabela de recursos humanos, materiais, deslocamentos e outros
+
+8. REFERÊNCIAS BIBLIOGRÁFICAS
+   Mínimo 10 referências relevantes no formato ABNT
+
+Produza o documento completo, formal, em português brasileiro, pronto para ser copiado e inserido na Plataforma Brasil.`
+}
+
+function buildCartaAnuencia(dados: DadosProjeto, titulo?: string): string {
+  return `${dadosResumo(dados)}
+
+Gere uma Carta de Anuência Institucional completa e formal para que [NOME DO PESQUISADOR], [CARGO/FUNÇÃO] da [INSTITUIÇÃO DO PESQUISADOR], solicite autorização para realizar a pesquisa intitulada "${titulo ?? dados.titulo_provisorio}" nas dependências de [NOME DA INSTITUIÇÃO COPARTICIPANTE].
+
+A carta deve:
+- Ser endereçada ao Ilmo. Sr./Sra. [NOME DO DIRETOR/RESPONSÁVEL], [CARGO], da [NOME DA INSTITUIÇÃO]
+- Apresentar o pesquisador e sua vinculação institucional
+- Descrever claramente o objetivo da pesquisa (use o objetivo geral do projeto)
+- Explicar os procedimentos que serão realizados na instituição: ${dados.instrumentos_previstos}
+- Informar o período de coleta de dados: ${dados.periodo_previsto}
+- Mencionar a população envolvida: ${dados.populacao_alvo}
+- Destacar que a pesquisa está em processo de aprovação pelo CEP
+- Afirmar compromisso com a Resolução CNS 466/2012 e sigilo dos dados
+- Informar que haverá devolução dos resultados à instituição
+- Incluir campo para assinatura do responsável institucional autorizando a pesquisa
+- Usar linguagem formal e respeitosa
+- Incluir local, data e campos de assinatura do pesquisador e do representante institucional
+
+Formate como carta oficial brasileira (com cabeçalho, corpo, fechamento e campos de assinatura).`
+}
+
+function buildTcle(dados: DadosProjeto, titulo?: string): string {
+  return `${dadosResumo(dados)}
+
+Gere um Termo de Consentimento Livre e Esclarecido (TCLE) completo, seguindo as diretrizes da Resolução CNS 466/2012 e orientações do CONEP, para a pesquisa intitulada "${titulo ?? dados.titulo_provisorio}".
+
+O TCLE deve conter obrigatoriamente:
+
+1. CABEÇALHO
+   - Título da pesquisa
+   - Nome do pesquisador responsável: [NOME DO PESQUISADOR]
+   - Instituição: [NOME DA INSTITUIÇÃO]
+   - Contatos: [TELEFONE] | [E-MAIL]
+
+2. CONVITE
+   Texto de convite claro e acessível (linguagem simples, nível médio de escolaridade), explicando que a participação é voluntária.
+
+3. OBJETIVOS DA PESQUISA
+   Explique o objetivo geral em linguagem acessível (sem jargão técnico).
+
+4. PROCEDIMENTOS
+   Descreva em detalhes o que será pedido ao participante:
+   - Quais instrumentos serão aplicados: ${dados.instrumentos_previstos}
+   - Tempo estimado de participação
+   - Local e forma de realização
+
+5. RISCOS
+   Liste os riscos e desconfortos previstos (cansaço, constrangimento, etc.) e as medidas de minimização.
+
+6. BENEFÍCIOS
+   Benefícios diretos ao participante e à sociedade.
+
+7. VOLUNTARIEDADE E DIREITO DE RECUSA
+   Esclareça que a participação é voluntária e que o participante pode retirar o consentimento a qualquer momento sem prejuízo.
+
+8. CONFIDENCIALIDADE E PRIVACIDADE
+   Garantia de sigilo, anonimização dos dados, quem terá acesso, prazo de guarda dos dados (mínimo 5 anos conforme Res. CNS 466/2012).
+
+9. RESSARCIMENTO E INDENIZAÇÃO
+   Se houver algum custo, será ressarcido; em caso de dano, haverá indenização conforme previsto em lei.
+
+10. CONTATO DO PESQUISADOR E DO CEP
+    - Pesquisador: [NOME], [TELEFONE], [E-MAIL]
+    - CEP da Instituição: [NOME DO CEP], [TELEFONE], [E-MAIL], [ENDEREÇO]
+    - CONEP (para casos de conflito): [telefone CONEP]
+
+11. DECLARAÇÃO DE CONSENTIMENTO
+    "Eu, _______________________, RG nº ______________, declaro ter sido informado(a) e concordo em participar, como voluntário(a), da pesquisa acima descrita."
+    - Campos: nome completo, RG, data, assinatura do participante
+    - Assinatura do pesquisador responsável
+    - Caso o participante não saiba assinar: testemunha
+
+12. DUAS VIAS
+    Nota informando que o TCLE é emitido em duas vias, uma para o participante e outra para o pesquisador.
+
+Use linguagem clara, direta e empática. O documento deve ser completo e pronto para uso.`
+}
+
+function buildInstrumentoColeta(dados: DadosProjeto): string {
+  return `${dadosResumo(dados)}
+
+Gere um instrumento de coleta de dados completo e validado para a pesquisa descrita acima.
+
+Instrumento: ${dados.instrumentos_previstos}
+Delineamento: ${dados.delineamento}
+População-alvo: ${dados.populacao_alvo}
+Análise prevista: ${dados.analise_prevista}
+
+O instrumento deve conter:
+
+1. CABEÇALHO DO INSTRUMENTO
+   - Título da pesquisa
+   - Número de identificação do participante (ID, sem nome)
+   - Data de coleta
+   - Nome do entrevistador/aplicador (se aplicável)
+
+2. SEÇÃO A — DADOS SOCIODEMOGRÁFICOS
+   Variáveis relevantes para a população-alvo: idade, sexo, escolaridade, tempo de atuação (se profissional), e outras pertinentes.
+   Para cada variável: opções de resposta claras e código numérico para análise.
+
+3. SEÇÃO B — VARIÁVEIS PRINCIPAIS
+   Crie questões específicas relacionadas à pergunta de pesquisa: "${dados.pergunta_pesquisa}"
+   - Se escalas validadas forem aplicáveis (ex: Likert 1-5, escala visual analógica), utilize-as
+   - Inclua instruções de preenchimento para cada seção
+   - Numere todas as questões sequencialmente
+
+4. SEÇÃO C — DESFECHOS SECUNDÁRIOS (se aplicável)
+   Variáveis secundárias relevantes ao objetivo da pesquisa.
+
+5. ESPAÇO PARA OBSERVAÇÕES DO PESQUISADOR
+
+6. INSTRUÇÕES DE PREENCHIMENTO
+   Instruções claras ao entrevistador/aplicador sobre como preencher corretamente cada seção.
+
+7. CÓDIGO DE ANÁLISE
+   Tabela de codificação de variáveis para análise no software ${dados.analise_prevista}.
+
+Produza o instrumento completo, numerado e pronto para aplicação.`
+}
+
+function buildGuiaColeta(dados: DadosProjeto): string {
+  return `${dadosResumo(dados)}
+
+Gere um Guia Operacional de Coleta de Dados detalhado e passo a passo para o projeto de pesquisa descrito acima.
+
+O guia deve ser prático, claro e seguir a seguinte estrutura:
+
+1. INTRODUÇÃO E OBJETIVO DO GUIA
+   Explique a finalidade deste guia e quem deve usá-lo.
+
+2. PRÉ-REQUISITOS ANTES DE IR A CAMPO
+   Lista de verificação (checklist) com tudo o que o pesquisador deve providenciar antes da coleta:
+   - Aprovação do CEP (número do parecer)
+   - Materiais impressos necessários (quantos TCLEs, quantos questionários)
+   - Equipamentos (gravador, tablet, canetas, etc.)
+   - Contatos dos responsáveis na instituição
+   - Crachá/identificação do pesquisador
+
+3. PROCEDIMENTO PADRÃO DE ABORDAGEM DO PARTICIPANTE
+   Script de abordagem passo a passo:
+   - Como se apresentar
+   - Como explicar a pesquisa em linguagem leiga
+   - Como apresentar e coletar o TCLE
+   - Como aplicar o instrumento: ${dados.instrumentos_previstos}
+   - Tempo estimado por participante
+   - Como proceder em caso de recusa
+
+4. DURANTE A COLETA
+   - Onde sentar/posicionar o participante
+   - Ambiente adequado (privacidade, silêncio)
+   - Como registrar respostas ambíguas
+   - Como lidar com perguntas do participante
+   - Como proceder se o participante desistir no meio
+
+5. CRITÉRIOS DE INCLUSÃO E EXCLUSÃO NA PRÁTICA
+   Como identificar na prática quem incluir: ${dados.populacao_alvo}
+
+6. CONTROLE DE QUALIDADE DOS DADOS
+   - Como revisar o questionário antes de o participante ir embora
+   - O que fazer com instrumentos incompletos
+   - Como numerar e organizar os instrumentos coletados
+
+7. ARMAZENAMENTO E TRANSPORTE DOS DADOS
+   - Onde guardar os instrumentos físicos (local seguro, acesso restrito)
+   - Como digitalizar os dados (prazo, responsável)
+   - Backup dos dados digitais
+
+8. REGISTRO DIÁRIO DE CAMPO
+   Modelo de registro diário: data, local, número de abordagens, inclusões, recusas, intercorrências.
+
+9. CRONOGRAMA OPERACIONAL DE COLETA
+   Tabela com semanas, locais, metas de participantes e responsáveis.
+
+10. CONTATOS DE EMERGÊNCIA
+    - Pesquisador responsável
+    - Orientador
+    - Responsável na instituição coparticipante
+
+Produza o guia completo, formal e pronto para uso em campo.`
+}
+
+function buildGuiaAnalise(dados: DadosProjeto): string {
+  return `${dadosResumo(dados)}
+
+Gere um Guia de Análise Estatística completo para o projeto de pesquisa descrito acima.
+
+Análise prevista: ${dados.analise_prevista}
+Delineamento: ${dados.delineamento}
+Amostra estimada: ${dados.amostra_estimada}
+
+O guia deve conter:
+
+1. VISÃO GERAL DA ESTRATÉGIA ANALÍTICA
+   Descrição geral da abordagem estatística adequada ao delineamento e pergunta de pesquisa.
+
+2. SOFTWARE E VERSÃO RECOMENDADOS
+   Indique o(s) software(s) mais adequados para esta análise (R, SPSS, Stata, Python/pandas+scipy, etc.) com justificativa. Inclua versão mínima recomendada e como citar no artigo.
+
+3. PREPARAÇÃO E LIMPEZA DOS DADOS
+   3.1 Importação dos dados (formato: .csv, .xlsx, .sav)
+   3.2 Identificação e tratamento de dados ausentes (missing data): critérios de exclusão, imputação
+   3.3 Detecção de outliers: métodos (boxplot, Z-score, Grubbs) e decisão
+   3.4 Transformação de variáveis (recodificação, criação de escores compostos)
+   3.5 Verificação da consistência dos dados
+
+4. ANÁLISE DESCRITIVA
+   - Variáveis contínuas: média, desvio-padrão, mediana, IQR, mínimo, máximo
+   - Variáveis categóricas: frequências absolutas e relativas (%)
+   - Tabela 1: características da amostra
+
+5. VERIFICAÇÃO DE PREMISSAS
+   - Normalidade: testes de Shapiro-Wilk (n<50) ou Kolmogorov-Smirnov (n≥50), histograma, Q-Q plot
+   - Homocedasticidade: Levene ou Bartlett
+   - Independência das observações
+
+6. TESTES ESTATÍSTICOS PRINCIPAIS
+   Liste os testes específicos para cada objetivo, com:
+   - Nome do teste e variante (ex: t de Student independente, bilateral)
+   - Variáveis envolvidas
+   - Nível de significância (α = 0,05)
+   - Tamanho de efeito a reportar (d de Cohen, r, η², OR, RR, etc.)
+   - Código de exemplo no software recomendado
+
+7. ANÁLISES COMPLEMENTARES (se aplicável)
+   - Análise de regressão (linear/logística): variáveis incluídas, método de seleção, diagnóstico do modelo
+   - Análises de subgrupo
+   - Análise de sensibilidade
+
+8. INTERPRETAÇÃO DOS RESULTADOS
+   - O que cada resultado estatístico significa clinicamente/praticamente
+   - Como reportar no artigo: "A média de X foi Y (DP=Z), e o grupo A diferiu significativamente do grupo B (t(df)=valor, p=valor, d=valor)"
+   - Modelo de tabelas de resultados
+
+9. PODER ESTATÍSTICO E TAMANHO AMOSTRAL
+   Verificação post-hoc do poder (1-β) com base na amostra obtida (${dados.amostra_estimada}).
+
+10. CHECKLIST FINAL PRÉ-SUBMISSÃO DE RESULTADOS
+    Lista do que verificar antes de incluir os resultados no manuscrito.
+
+Produza o guia completo, didático e pronto para uso por um pesquisador com nível intermediário em estatística.`
+}
+
+function buildSugestoesPeriodicos(dados: DadosProjeto): string {
+  return `${dadosResumo(dados)}
+
+Com base nos dados do projeto de pesquisa acima, sugira de 6 a 8 periódicos científicos adequados para submissão do manuscrito resultante.
+
+Inclua uma mix equilibrado de:
+- Periódicos brasileiros indexados (SciELO, LILACS) com ISSN
+- Periódicos internacionais com alto fator de impacto (Web of Science, Scopus)
+
+Para cada periódico, forneça obrigatoriamente:
+
+**[NOME DO PERIÓDICO]**
+- ISSN: XXXX-XXXX (impresso) / XXXX-XXXX (eletrônico)
+- Editora/Sociedade:
+- Fator de Impacto (JCR/CiteScore): [valor e ano]
+- Qualis CAPES (área mais relevante):
+- Escopo e foco: (2-3 frases sobre o que o periódico publica)
+- Tipos de artigo aceitos: original, revisão, relato de caso, etc.
+- Idioma de submissão: Português / Inglês / Ambos
+- Tempo médio de revisão:
+- Taxa de aceitação aproximada:
+- Custo de publicação (APC): gratuito / R$XX ou US$XX (se for open access pago)
+- URL para submissão: https://...
+- Por que é adequado para esta pesquisa: (1-2 frases específicas)
+
+Ordene do mais ao menos recomendado. Ao final, acrescente uma seção "DICAS PARA ESCOLHA DO PERIÓDICO" com 3-4 orientações práticas baseadas neste projeto específico.`
+}
+
+function buildCartaSubmissao(dados: DadosProjeto, titulo?: string): string {
+  return `${dadosResumo(dados)}
+
+Gere uma Carta de Apresentação (Cover Letter) completa em inglês e português para submissão do manuscrito resultante desta pesquisa a um periódico científico.
+
+Título do manuscrito: ${titulo ?? dados.titulo_provisorio}
+
+A carta deve:
+
+**VERSÃO EM INGLÊS (Cover Letter)**
+
+Dear Editor-in-Chief,
+
+[Parágrafo 1 — Apresentação do manuscrito]
+- Título do trabalho
+- Tipo de artigo (original research, review, case report, etc.)
+- Nome do periódico para o qual está sendo submetido
+- Declaração de que o artigo é original e inédito
+
+[Parágrafo 2 — Contexto e relevância]
+- Por que este tema é importante (2-3 frases baseadas na justificativa do projeto)
+- Gap de conhecimento que o estudo preenche
+- Principal achado ou contribuição (sem revelar resultados ainda)
+
+[Parágrafo 3 — Adequação ao periódico]
+- Por que o estudo se alinha ao escopo e ao público-alvo deste periódico
+- Potencial de impacto para os leitores
+
+[Parágrafo 4 — Declarações obrigatórias]
+- Todos os autores aprovaram a versão final
+- Não há conflito de interesses (ou declarar se houver)
+- O estudo foi aprovado pelo Comitê de Ética (mencionar número do parecer: [NÚMERO DO PARECER CEP])
+- TCLE obtido de todos os participantes (se aplicável)
+- Não está sendo avaliado simultaneamente em outro periódico
+
+[Fechamento]
+Assinatura do autor correspondente: [NOME DO AUTOR CORRESPONDENTE]
+Afiliação: [INSTITUIÇÃO]
+E-mail: [E-MAIL]
+Telefone: [TELEFONE]
+ORCID: [ORCID]
+
+---
+
+**VERSÃO EM PORTUGUÊS (tradução)**
+
+[Mesma estrutura, traduzida adequadamente]
+
+Produza ambas as versões completas e prontas para uso.`
+}
+
+function buildChecklistSubmissao(dados: DadosProjeto): string {
+  return `${dadosResumo(dados)}
+
+Gere um Checklist Completo de Pré-Submissão para periódico científico, adequado ao tipo de estudo descrito acima (${dados.delineamento}).
+
+O checklist deve estar organizado por categorias, com cada item em formato de caixa de seleção ([ ]) e uma explicação breve. Inclua a justificativa de cada item para que o pesquisador entenda por que é importante.
+
+**CATEGORIA 1 — MANUSCRITO PRINCIPAL**
+[ ] Título: conciso, descritivo, sem abreviações, ≤ 15 palavras
+[ ] Título corrido (running title): ≤ 50 caracteres
+[ ] Autores: todos os nomes completos, afiliações numeradas, autor correspondente identificado
+[ ] Contribuição dos autores (CRediT taxonomy): Conceptualization, Methodology, Writing, etc.
+[ ] Resumo estruturado: Objetivo, Método, Resultados, Conclusão — dentro do limite de palavras
+[ ] Palavras-chave: 3-6 termos, preferencialmente do MeSH/DeCS
+[ ] Texto principal: estrutura IMRaD completa (Introdução, Métodos, Resultados, Discussão, Conclusão)
+[ ] Contagem de palavras dentro do limite do periódico
+[ ] Tabelas: numeradas em ordem de citação, título acima, notas abaixo, sem linhas verticais
+[ ] Figuras: resolução mínima 300 dpi, formato TIFF ou EPS, legendas em arquivo separado
+[ ] Abreviações: todas definidas na primeira ocorrência
+[ ] Unidades: Sistema Internacional (SI)
+
+**CATEGORIA 2 — MÉTODOS E DADOS**
+[ ] Protocolo de estudo registrado (ClinicalTrials.gov, ReBEC, PROSPERO): número de registro incluído
+[ ] CONSORT/STROBE/PRISMA/CARE/AGREE checklist preenchido (específico para o delineamento: ${dados.delineamento})
+[ ] Tamanho amostral: cálculo descrito e justificado (${dados.amostra_estimada})
+[ ] Análise estatística: software citado com versão, todos os testes declarados, nível α definido
+[ ] Dados disponíveis: declaração de disponibilidade de dados (repositório ou "disponível mediante solicitação")
+
+**CATEGORIA 3 — ÉTICA E CONFORMIDADE**
+[ ] Número do parecer do CEP: [NÚMERO] — Data: [DATA]
+[ ] Declaração de aprovação ética incluída nos Métodos
+[ ] TCLE: obtido e referido no manuscrito
+[ ] Anonimização dos participantes confirmada
+[ ] Conflito de interesses: declaração de todos os autores (incluir formulário ICMJE se exigido)
+[ ] Fonte de financiamento: declarada (ou "sem financiamento")
+[ ] Aprovação de uso de imagens/dados institucionais (se aplicável)
+
+**CATEGORIA 4 — FORMATAÇÃO E NORMAS DO PERIÓDICO**
+[ ] Guia de autores do periódico lido integralmente
+[ ] Formatação: fonte, espaçamento, margens conforme as normas do periódico
+[ ] Citações: estilo correto (Vancouver/ABNT/APA) conforme normas do periódico
+[ ] Referências: todas citadas no texto, todas na lista, limite de referências respeitado
+[ ] Idioma revisado por falante nativo ou serviço de revisão de inglês (se submissão em inglês)
+[ ] Arquivo anonimizado para revisão cega (blind review): nomes de autores removidos
+
+**CATEGORIA 5 — ARQUIVOS PARA SUBMISSÃO**
+[ ] Carta de apresentação (Cover Letter) redigida e personalizada para o periódico
+[ ] Arquivo principal do manuscrito (Word .docx ou LaTeX)
+[ ] Tabelas em arquivo separado (se exigido)
+[ ] Figuras em arquivos individuais com resolução adequada
+[ ] Material suplementar organizado e referenciado no texto
+[ ] Declarações de contribuição dos autores, conflito de interesses e financiamento
+[ ] Checklist de reportagem (CONSORT/STROBE/etc.) preenchido
+[ ] Formulários específicos do periódico (se houver)
+
+**CATEGORIA 6 — VERIFICAÇÃO FINAL**
+[ ] Releitura completa do manuscrito por todos os autores
+[ ] Verificação de plágio (Turnitin, iThenticate) — índice de similaridade < 15%
+[ ] DOI ou URL de todas as referências verificados
+[ ] Datas de acesso de sites atualizadas
+[ ] Número de versão do manuscrito registrado localmente
+
+**DICAS ESPECÍFICAS PARA ESTE PROJETO**
+Com base no delineamento (${dados.delineamento}) e na análise prevista (${dados.analise_prevista}), liste 3-4 cuidados adicionais que este estudo específico precisa ter na submissão.
+
+Formate o checklist de forma clara e pronta para impressão ou uso digital.`
+}
+
+export function buildDocumentoPrompt(
+  tipo: TipoDocumento,
+  dados: DadosProjeto,
+  trabalhoTitulo?: string
+): { system: string; user: string } {
+  let user: string
+
+  switch (tipo) {
+    case 'protocolo_cep':
+      user = buildProtocoloCep(dados, trabalhoTitulo)
+      break
+    case 'carta_anuencia':
+      user = buildCartaAnuencia(dados, trabalhoTitulo)
+      break
+    case 'tcle':
+      user = buildTcle(dados, trabalhoTitulo)
+      break
+    case 'instrumento_coleta':
+      user = buildInstrumentoColeta(dados)
+      break
+    case 'guia_coleta':
+      user = buildGuiaColeta(dados)
+      break
+    case 'guia_analise':
+      user = buildGuiaAnalise(dados)
+      break
+    case 'sugestoes_periodicos':
+      user = buildSugestoesPeriodicos(dados)
+      break
+    case 'carta_submissao':
+      user = buildCartaSubmissao(dados, trabalhoTitulo)
+      break
+    case 'checklist_submissao':
+      user = buildChecklistSubmissao(dados)
+      break
+    default: {
+      const _exhaustive: never = tipo
+      void _exhaustive
+      user = `Gere um documento completo para o tipo "${tipo}" com base nos dados do projeto.`
+    }
+  }
+
+  return { system: SYSTEM_PROMPT, user }
+}

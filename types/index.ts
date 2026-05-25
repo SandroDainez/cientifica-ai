@@ -205,6 +205,23 @@ export interface ItemChecklist {
   concluido: boolean
 }
 
+export type TipoDocumento =
+  | 'protocolo_cep'
+  | 'carta_anuencia'
+  | 'tcle'
+  | 'instrumento_coleta'
+  | 'guia_coleta'
+  | 'guia_analise'
+  | 'sugestoes_periodicos'
+  | 'carta_submissao'
+  | 'checklist_submissao'
+
+export interface DocumentoEtapa {
+  tipo: TipoDocumento
+  label: string
+  descricao: string
+}
+
 export interface EtapaRoadmap {
   id: string
   titulo: string
@@ -214,6 +231,10 @@ export interface EtapaRoadmap {
   app_executa: boolean   // true = o app faz, false = o usuário precisa fazer
   obrigatoria: boolean
   bloqueante: boolean   // se true, próximas etapas dependem desta
+  instrucoes_detalhadas?: string[]    // bullet-point instructions for the user
+  documentos?: DocumentoEtapa[]       // documents AI can generate for this step
+  link_externo?: string               // e.g. Plataforma Brasil URL
+  status?: 'pendente' | 'em_andamento' | 'concluido'
 }
 
 export interface DadosProjeto {
@@ -251,6 +272,9 @@ export interface DadosProjeto {
   checklist: ItemChecklist[]
   alertas: string[]
   tempo_total_estimado: string
+
+  // Checklist state persistence
+  checklist_status?: Record<string, boolean>   // item.id → concluido
 
   // Controle
   criado_em: string

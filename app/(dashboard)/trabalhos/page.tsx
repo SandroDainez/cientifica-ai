@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { PlusCircle, Search, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { TrabalhoCard } from '@/components/trabalho/TrabalhoCard'
+import { TrabalhosListClient } from '@/components/trabalho/TrabalhosListClient'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buttonVariants } from '@/components/ui/button'
@@ -118,18 +118,12 @@ export default async function TrabalhosPage({ searchParams }: PageProps) {
           )}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {lista.map(trabalho => {
-            const fluxo = getFluxo(trabalho.tipo_trabalho)
-            return (
-              <TrabalhoCard
-                key={trabalho.id}
-                trabalho={trabalho}
-                totalFases={fluxo?.fases.length ?? 1}
-              />
-            )
-          })}
-        </div>
+        <TrabalhosListClient
+          trabalhos={lista.map(trabalho => ({
+            trabalho,
+            totalFases: getFluxo(trabalho.tipo_trabalho)?.fases.length ?? 1,
+          }))}
+        />
       )}
     </div>
   )

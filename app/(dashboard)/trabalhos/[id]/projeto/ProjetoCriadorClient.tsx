@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -14,11 +14,17 @@ import {
   ExternalLink,
   Loader2,
   ClipboardList,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
-import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist } from '@/types'
+import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento } from '@/types'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +34,18 @@ interface ProjetoCriadorClientProps {
   trabalho: Trabalho
   dadosProjetoInicial: DadosProjeto | null
 }
+
+type DocStatus = 'idle' | 'gerando' | 'gerado' | 'erro'
+
+interface DocState {
+  status: DocStatus
+  conteudo: string
+  erro?: string
+}
+
+type DocsMap = Record<string, DocState>   // key: `${etapaId}_${tipoDoc}`
+
+type EtapaStatus = 'pendente' | 'em_andamento' | 'concluido'
 
 // ─── helpers de cor ───────────────────────────────────────────────────────────
 
@@ -79,6 +97,30 @@ function urgenciaBadge(urgencia: ItemChecklist['urgencia']): string {
   }
 }
 
+function etapaStatusBadge(status: EtapaStatus): string {
+  switch (status) {
+    case 'pendente':     return 'bg-gray-100 text-gray-600 border-gray-300'
+    case 'em_andamento': return 'bg-blue-100 text-blue-700 border-blue-300'
+    case 'concluido':    return 'bg-green-100 text-green-700 border-green-300'
+  }
+}
+
+function etapaStatusLabel(status: EtapaStatus): string {
+  switch (status) {
+    case 'pendente':     return 'Pendente'
+    case 'em_andamento': return 'Em andamento'
+    case 'concluido':    return 'Concluído'
+  }
+}
+
+function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
+  switch (status) {
+    case 'pendente':     return 'em_andamento'
+    case 'em_andamento': return 'concluido'
+    case 'concluido':    return 'pendente'
+  }
+}
+
 const TIPO_LABELS: Record<string, string> = {
   tcc: 'TCC',
   artigo_original: 'Artigo Original',
@@ -108,9 +150,190 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
   const [streamingText, setStreamingText] = useState('')
   const [planData, setPlanData] = useState<DadosProjeto | null>(dadosProjetoInicial)
   const [salvando, setSalvando] = useState(false)
-  const streamRef = useRef<string>('')
 
-  // ── Geração ────────────────────────────────────────────────────────────────
+  // Roadmap interaction state
+  const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(new Set())
+  const [docsMap, setDocsMap] = useState<DocsMap>({})
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  // Checklist state — merged from planData + local toggles
+  const [checklistStatus, setChecklistStatus] = useState<Record<string, boolean>>(() => {
+    if (!dadosProjetoInicial) return {}
+    const saved = dadosProjetoInicial.checklist_status ?? {}
+    const fromItems: Record<string, boolean> = {}
+    for (const item of dadosProjetoInicial.checklist ?? []) {
+      fromItems[item.id] = saved[item.id] ?? item.concluido
+    }
+    return fromItems
+  })
+
+  // Etapa statuses — local state derived from planData
+  const [etapaStatuses, setEtapaStatuses] = useState<Record<string, EtapaStatus>>(() => {
+    if (!dadosProjetoInicial) return {}
+    const statuses: Record<string, EtapaStatus> = {}
+    for (const etapa of dadosProjetoInicial.roadmap ?? []) {
+      statuses[etapa.id] = etapa.status ?? 'pendente'
+    }
+    return statuses
+  })
+
+  const streamRef = useRef<string>('')
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Persist partial dados_projeto ─────────────────────────────────────────
+
+  const persistDadosProjeto = useCallback(
+    async (partial: Partial<DadosProjeto>) => {
+      if (!planData) return
+      try {
+        await fetch(`/api/trabalhos/${trabalho.id}/projeto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dados_projeto: { ...planData, ...partial } }),
+        })
+      } catch (err) {
+        console.error('[ProjetoCriador] Erro ao salvar parcial:', err)
+      }
+    },
+    [planData, trabalho.id]
+  )
+
+  // ── Debounced checklist save ──────────────────────────────────────────────
+
+  const debouncedSaveChecklist = useCallback(
+    (newStatus: Record<string, boolean>) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => {
+        void persistDadosProjeto({ checklist_status: newStatus })
+      }, 1000)
+    },
+    [persistDadosProjeto]
+  )
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
+  // ── Checklist toggle ──────────────────────────────────────────────────────
+
+  const handleChecklistToggle = useCallback(
+    (itemId: string) => {
+      setChecklistStatus(prev => {
+        const newStatus = { ...prev, [itemId]: !prev[itemId] }
+        debouncedSaveChecklist(newStatus)
+        return newStatus
+      })
+    },
+    [debouncedSaveChecklist]
+  )
+
+  // ── Etapa status cycle ────────────────────────────────────────────────────
+
+  const handleEtapaStatusChange = useCallback(
+    (etapaId: string) => {
+      setEtapaStatuses(prev => {
+        const current = prev[etapaId] ?? 'pendente'
+        const next = nextEtapaStatus(current)
+        const newStatuses = { ...prev, [etapaId]: next }
+
+        // Save updated roadmap to DB
+        if (planData) {
+          const updatedRoadmap = planData.roadmap.map(e =>
+            e.id === etapaId ? { ...e, status: next } : e
+          )
+          void persistDadosProjeto({ roadmap: updatedRoadmap })
+        }
+
+        return newStatuses
+      })
+    },
+    [planData, persistDadosProjeto]
+  )
+
+  // ── Toggle expanded etapa ─────────────────────────────────────────────────
+
+  const toggleEtapa = useCallback((etapaId: string) => {
+    setExpandedEtapas(prev => {
+      const next = new Set(prev)
+      if (next.has(etapaId)) {
+        next.delete(etapaId)
+      } else {
+        next.add(etapaId)
+      }
+      return next
+    })
+  }, [])
+
+  // ── Document generation ───────────────────────────────────────────────────
+
+  const handleGerarDocumento = useCallback(
+    async (etapaId: string, tipoDocumento: TipoDocumento) => {
+      const key = `${etapaId}_${tipoDocumento}`
+      setDocsMap(prev => ({
+        ...prev,
+        [key]: { status: 'gerando', conteudo: '' },
+      }))
+
+      try {
+        const res = await fetch('/api/ia/gerar-documento-projeto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trabalhoId: trabalho.id, tipoDocumento }),
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: `Erro ${res.status}` }))
+          throw new Error((err as { error?: string }).error ?? `Erro ${res.status}`)
+        }
+
+        if (!res.body) throw new Error('Sem stream')
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          accumulated += decoder.decode(value, { stream: true })
+          setDocsMap(prev => ({
+            ...prev,
+            [key]: { status: 'gerando', conteudo: accumulated },
+          }))
+        }
+
+        setDocsMap(prev => ({
+          ...prev,
+          [key]: { status: 'gerado', conteudo: accumulated },
+        }))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Erro ao gerar documento.'
+        setDocsMap(prev => ({
+          ...prev,
+          [key]: { status: 'erro', conteudo: '', erro: msg },
+        }))
+        toast.error(msg)
+      }
+    },
+    [trabalho.id]
+  )
+
+  // ── Copy to clipboard ─────────────────────────────────────────────────────
+
+  const handleCopy = useCallback(async (key: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(k => (k === key ? null : k)), 2000)
+    } catch {
+      toast.error('Não foi possível copiar.')
+    }
+  }, [])
+
+  // ── Geração do plano ──────────────────────────────────────────────────────
 
   async function handleGerarPlano() {
     if (descricao.trim().length < 30) return
@@ -127,7 +350,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `Erro ${res.status}` }))
-        throw new Error(err.error ?? `Erro ${res.status}`)
+        throw new Error((err as { error?: string }).error ?? `Erro ${res.status}`)
       }
 
       if (!res.body) throw new Error('Sem stream')
@@ -142,18 +365,30 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
         setStreamingText(streamRef.current)
       }
 
-      // Extrai o JSON da resposta
       const fullText = streamRef.current
       const jsonMatch = fullText.match(/===PLANO_JSON===\s*([\s\S]+)/)
       if (!jsonMatch) throw new Error('Resposta sem plano estruturado. Tente novamente.')
 
-      const parsed = JSON.parse(jsonMatch[1].trim())
+      const parsed = JSON.parse(jsonMatch[1].trim()) as Omit<DadosProjeto, 'descricao_original' | 'criado_em' | 'confirmado'>
       const dadosProjeto: DadosProjeto = {
         ...parsed,
         descricao_original: descricao.trim(),
         criado_em: new Date().toISOString(),
         confirmado: false,
       }
+
+      // Init local status state from new plan
+      const statuses: Record<string, EtapaStatus> = {}
+      for (const etapa of dadosProjeto.roadmap ?? []) {
+        statuses[etapa.id] = etapa.status ?? 'pendente'
+      }
+      setEtapaStatuses(statuses)
+
+      const checkStatus: Record<string, boolean> = {}
+      for (const item of dadosProjeto.checklist ?? []) {
+        checkStatus[item.id] = item.concluido
+      }
+      setChecklistStatus(checkStatus)
 
       setPlanData(dadosProjeto)
       setStep('plano')
@@ -170,7 +405,15 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
     if (!planData) return
     setSalvando(true)
     try {
-      const dadosProjetoFinal: DadosProjeto = { ...planData, confirmado: true }
+      const dadosProjetoFinal: DadosProjeto = {
+        ...planData,
+        checklist_status: checklistStatus,
+        roadmap: planData.roadmap.map(e => ({
+          ...e,
+          status: etapaStatuses[e.id] ?? e.status ?? 'pendente',
+        })),
+        confirmado: true,
+      }
 
       const res = await fetch(`/api/trabalhos/${trabalho.id}/projeto`, {
         method: 'POST',
@@ -187,6 +430,12 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
       setSalvando(false)
     }
   }
+
+  // ── Progresso do checklist ────────────────────────────────────────────────
+
+  const totalChecklist = planData?.checklist?.length ?? 0
+  const doneChecklist = Object.values(checklistStatus).filter(Boolean).length
+  const progressPct = totalChecklist > 0 ? Math.round((doneChecklist / totalChecklist) * 100) : 0
 
   // ─── Layout base ────────────────────────────────────────────────────────────
 
@@ -242,7 +491,6 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
             </p>
           </div>
 
-          {/* Dica */}
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
             <span className="font-medium">Dica: </span>
             Quanto mais detalhes você der (onde, com quem, como), mais preciso será o plano. Inclua
@@ -308,6 +556,27 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
               <h2 className="text-lg font-bold text-green-900">{planData.titulo_provisorio}</h2>
             </div>
           </div>
+
+          {/* Progress bar */}
+          {totalChecklist > 0 && (
+            <div className="rounded-lg border bg-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-foreground">
+                  Checklist de Preparação
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {doneChecklist} de {totalChecklist} concluídos
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{progressPct}% completo</p>
+            </div>
+          )}
 
           {/* Alertas */}
           {planData.alertas && planData.alertas.length > 0 && (
@@ -384,7 +653,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
             </div>
           )}
 
-          {/* Roadmap */}
+          {/* Roadmap expandível */}
           {planData.roadmap && planData.roadmap.length > 0 && (
             <div>
               <h3 className="text-base font-semibold text-foreground mb-4">Roadmap do Projeto</h3>
@@ -392,86 +661,256 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                 {/* Linha vertical */}
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                 <ol className="space-y-4 pl-10">
-                  {planData.roadmap.map((etapa) => (
-                    <li key={etapa.id} className="relative">
-                      {/* Marcador */}
-                      <span className="absolute -left-6 flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border text-sm">
-                        {etapaIcone(etapa.tipo)}
-                      </span>
+                  {planData.roadmap.map((etapa) => {
+                    const isExpanded = expandedEtapas.has(etapa.id)
+                    const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
+                    const hasDetails =
+                      (etapa.instrucoes_detalhadas && etapa.instrucoes_detalhadas.length > 0) ||
+                      (etapa.documentos && etapa.documentos.length > 0) ||
+                      !!etapa.link_externo
 
-                      <div className={cn('rounded-lg border p-4', etapaCor(etapa.tipo))}>
-                        <div className="flex flex-wrap items-start gap-2 mb-1">
-                          <span className="font-medium text-sm">{etapa.titulo}</span>
+                    return (
+                      <li key={etapa.id} className="relative">
+                        {/* Marcador */}
+                        <span className="absolute -left-6 flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border text-sm">
+                          {etapaIcone(etapa.tipo)}
+                        </span>
 
-                          {etapa.bloqueante && (
-                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wide">
-                              Bloqueio
-                            </span>
-                          )}
+                        <div className={cn('rounded-lg border', etapaCor(etapa.tipo))}>
+                          {/* Header da etapa — clicável para expandir */}
+                          <button
+                            type="button"
+                            onClick={() => hasDetails && toggleEtapa(etapa.id)}
+                            className={cn(
+                              'w-full text-left p-4',
+                              hasDetails && 'cursor-pointer'
+                            )}
+                          >
+                            <div className="flex flex-wrap items-start gap-2 mb-1">
+                              <span className="font-medium text-sm">{etapa.titulo}</span>
 
-                          {etapa.app_executa ? (
-                            <span className="ml-auto flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                              <Cpu className="h-3 w-3" /> App faz com IA
+                              {etapa.bloqueante && (
+                                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wide">
+                                  Bloqueio
+                                </span>
+                              )}
+
+                              {/* Status badge — clicável para ciclar */}
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleEtapaStatusChange(etapa.id)
+                                }}
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80',
+                                  etapaStatusBadge(etapaStatus)
+                                )}
+                              >
+                                {etapaStatusLabel(etapaStatus)}
+                              </button>
+
+                              {etapa.app_executa ? (
+                                <span className="ml-auto flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                  <Cpu className="h-3 w-3" /> App faz com IA
+                                </span>
+                              ) : (
+                                <span className="ml-auto flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                                  <User className="h-3 w-3" /> Você faz
+                                </span>
+                              )}
+
+                              {hasDetails && (
+                                <span className="text-current opacity-50">
+                                  {isExpanded
+                                    ? <ChevronUp className="h-4 w-4" />
+                                    : <ChevronDown className="h-4 w-4" />}
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-xs leading-relaxed mb-2">{etapa.descricao}</p>
+
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
                             </span>
-                          ) : (
-                            <span className="ml-auto flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                              <User className="h-3 w-3" /> Você faz
-                            </span>
+                          </button>
+
+                          {/* Conteúdo expandido */}
+                          {isExpanded && hasDetails && (
+                            <div className="border-t border-current/10 px-4 pb-4 pt-3 space-y-4">
+
+                              {/* Instruções detalhadas */}
+                              {etapa.instrucoes_detalhadas && etapa.instrucoes_detalhadas.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-2">
+                                    Como fazer
+                                  </p>
+                                  <ol className="space-y-1.5">
+                                    {etapa.instrucoes_detalhadas.map((instrucao, idx) => (
+                                      <li key={idx} className="flex gap-2 text-xs leading-relaxed">
+                                        <span className="flex-shrink-0 font-bold opacity-50">{idx + 1}.</span>
+                                        <span>{instrucao}</span>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                </div>
+                              )}
+
+                              {/* Link externo */}
+                              {etapa.link_externo && (
+                                <a
+                                  href={etapa.link_externo}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Acessar link relacionado
+                                </a>
+                              )}
+
+                              {/* Documentos IA */}
+                              {etapa.documentos && etapa.documentos.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-2">
+                                    Documentos
+                                  </p>
+                                  <div className="space-y-3">
+                                    {etapa.documentos.map(doc => {
+                                      const key = `${etapa.id}_${doc.tipo}`
+                                      const docState = docsMap[key]
+
+                                      return (
+                                        <div key={doc.tipo} className="rounded-md bg-background/60 border border-current/10 p-3">
+                                          <div className="flex items-start justify-between gap-2 mb-1">
+                                            <div className="flex items-center gap-1.5">
+                                              <FileText className="h-3.5 w-3.5 opacity-60 flex-shrink-0" />
+                                              <span className="text-xs font-medium">{doc.label}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                              {docState?.status === 'gerado' && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleCopy(key, docState.conteudo)}
+                                                  className="inline-flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 bg-background border border-current/20 opacity-70 hover:opacity-100 transition-opacity"
+                                                >
+                                                  {copiedKey === key
+                                                    ? <><Check className="h-3 w-3" /> Copiado</>
+                                                    : <><Copy className="h-3 w-3" /> Copiar</>}
+                                                </button>
+                                              )}
+
+                                              <button
+                                                type="button"
+                                                onClick={() => handleGerarDocumento(etapa.id, doc.tipo as TipoDocumento)}
+                                                disabled={docState?.status === 'gerando'}
+                                                className={cn(
+                                                  'inline-flex items-center gap-1 text-[10px] rounded px-2 py-0.5 font-medium transition-opacity',
+                                                  'bg-primary text-primary-foreground hover:opacity-90',
+                                                  docState?.status === 'gerando' && 'opacity-50 cursor-not-allowed'
+                                                )}
+                                              >
+                                                {docState?.status === 'gerando' ? (
+                                                  <><Loader2 className="h-3 w-3 animate-spin" /> Gerando...</>
+                                                ) : docState?.status === 'gerado' ? (
+                                                  <><RefreshCw className="h-3 w-3" /> Regerar</>
+                                                ) : (
+                                                  <>Gerar com IA</>
+                                                )}
+                                              </button>
+                                            </div>
+                                          </div>
+
+                                          <p className="text-[11px] opacity-60 mb-2">{doc.descricao}</p>
+
+                                          {/* Streaming / resultado */}
+                                          {docState && (docState.status === 'gerando' || docState.status === 'gerado') && docState.conteudo && (
+                                            <div className="mt-2 rounded border border-current/10 bg-background/80 p-3 max-h-72 overflow-y-auto">
+                                              <pre className="text-[11px] leading-relaxed whitespace-pre-wrap text-foreground font-sans">
+                                                {docState.conteudo}
+                                              </pre>
+                                            </div>
+                                          )}
+
+                                          {docState?.status === 'erro' && (
+                                            <p className="mt-1 text-[11px] text-red-600">
+                                              {docState.erro ?? 'Erro ao gerar. Tente novamente.'}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
-
-                        <p className="text-xs leading-relaxed mb-2">{etapa.descricao}</p>
-
-                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    )
+                  })}
                 </ol>
               </div>
             </div>
           )}
 
-          {/* Checklist */}
+          {/* Checklist interativo */}
           {planData.checklist && planData.checklist.length > 0 && (
             <div>
               <h3 className="text-base font-semibold text-foreground mb-3">Checklist de Preparação</h3>
               <div className="space-y-2">
-                {planData.checklist.map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'rounded-lg border border-l-4 p-3',
-                      urgenciaCor(item.urgencia)
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded border-2 border-current opacity-40" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-foreground">{item.item}</span>
-                          <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
-                            {urgenciaLabel(item.urgencia)}
-                          </span>
+                {planData.checklist.map((item) => {
+                  const done = checklistStatus[item.id] ?? false
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleChecklistToggle(item.id)}
+                      className={cn(
+                        'w-full text-left rounded-lg border border-l-4 p-3 transition-opacity',
+                        urgenciaCor(item.urgencia),
+                        done && 'opacity-60'
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {done ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <div className="h-4 w-4 rounded border-2 border-current opacity-40" />
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
-                        {item.link_ajuda && (
-                          <a
-                            href={item.link_ajuda}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
-                          >
-                            Saiba mais <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={cn(
+                              'text-sm font-medium text-foreground',
+                              done && 'line-through'
+                            )}>
+                              {item.item}
+                            </span>
+                            <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
+                              {urgenciaLabel(item.urgencia)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
+                          {item.link_ajuda && (
+                            <a
+                              href={item.link_ajuda}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                            >
+                              Saiba mais <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
