@@ -8,6 +8,8 @@ import {
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/server'
+import { AppMockup } from '@/components/landing/AppMockup'
+import { AnimatedDemo } from '@/components/landing/AnimatedDemo'
 
 // ── Dados ──────────────────────────────────────────────────────
 
@@ -203,47 +205,77 @@ export default async function HomePage() {
       </header>
 
       {/* ── Hero ───────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 pt-20 pb-16 text-center">
-        <HeroBadge>
-          <Sparkles className="h-3.5 w-3.5" />
-          IA Generativa · ABNT · Vancouver · APA
-        </HeroBadge>
+      <section className="mx-auto max-w-6xl px-6 pt-16 pb-12">
+        {/* Duas colunas em desktop */}
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
-        <h1 className="mt-6 text-5xl sm:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
-          Do tema à defesa,<br />
-          <span className="text-primary">com inteligência artificial</span>
-        </h1>
+          {/* Coluna de texto */}
+          <div className="text-center lg:text-left">
+            <HeroBadge>
+              <Sparkles className="h-3.5 w-3.5" />
+              IA Generativa · ABNT · Vancouver · APA
+            </HeroBadge>
 
-        <p className="mt-5 text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Escreva TCCs, artigos, dissertações e teses em etapas guiadas.
-          A IA gera, valida e formata seguindo rigorosamente as normas ABNT, Vancouver e APA.
-        </p>
+            <h1 className="mt-6 text-4xl sm:text-5xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
+              Do tema à defesa,<br />
+              <span className="text-primary">com inteligência<br className="hidden sm:block" /> artificial</span>
+            </h1>
 
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          {logado ? (
-            <Link href="/dashboard" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
-              <LayoutDashboard className="h-4 w-4" />
-              Ir ao painel <ArrowRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <>
-              <Link href="/cadastro" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
-                Começar agora — é grátis <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/login" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'text-base px-8')}>
-                Já tenho conta
-              </Link>
-            </>
-          )}
+            <p className="mt-5 text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto lg:mx-0">
+              Escreva TCCs, artigos, dissertações e teses em etapas guiadas.
+              A IA gera, valida e formata seguindo as normas ABNT, Vancouver e APA.
+            </p>
+
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+              {logado ? (
+                <Link href="/dashboard" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
+                  <LayoutDashboard className="h-4 w-4" />
+                  Ir ao painel <ArrowRight className="h-4 w-4" />
+                </Link>
+              ) : (
+                <>
+                  <Link href="/cadastro" className={cn(buttonVariants({ size: 'lg' }), 'text-base px-8 gap-2')}>
+                    Começar agora — é grátis <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link href="/login" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'text-base px-8')}>
+                    Já tenho conta
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {!logado && (
+              <p className="mt-4 text-xs text-muted-foreground text-center lg:text-left">
+                Sem cartão de crédito · Escreva grátis · Pague R$ 197 só para exportar
+              </p>
+            )}
+
+            {/* Mini stats */}
+            <div className="mt-8 flex items-center gap-6 justify-center lg:justify-start">
+              <div className="text-center lg:text-left">
+                <p className="text-2xl font-bold text-gray-900">10</p>
+                <p className="text-xs text-muted-foreground">tipos de trabalho</p>
+              </div>
+              <div className="h-8 w-px bg-gray-200" />
+              <div className="text-center lg:text-left">
+                <p className="text-2xl font-bold text-gray-900">3</p>
+                <p className="text-xs text-muted-foreground">normas de citação</p>
+              </div>
+              <div className="h-8 w-px bg-gray-200" />
+              <div className="text-center lg:text-left">
+                <p className="text-2xl font-bold text-gray-900">100%</p>
+                <p className="text-xs text-muted-foreground">dados privados</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Mockup do app — oculto em telas pequenas */}
+          <div className="hidden lg:block">
+            <AppMockup />
+          </div>
         </div>
 
-        {!logado && (
-        <p className="mt-4 text-xs text-muted-foreground">
-          Sem cartão de crédito · Escreva grátis · Pague R$ 197 só para exportar
-        </p>
-        )}
-
-        {/* Tipos suportados */}
+        {/* Tipos suportados — abaixo das duas colunas */}
         <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto">
           {TIPOS.map(({ icon: Icon, label, color, bg }) => (
             <div key={label} className="flex items-center gap-2.5 bg-gray-50 border rounded-xl px-4 py-3 text-left">
@@ -254,7 +286,7 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">10 tipos de trabalho científico suportados</p>
+        <p className="mt-3 text-xs text-muted-foreground text-center">10 tipos de trabalho científico suportados</p>
       </section>
 
       {/* ── Como funciona ──────────────────────────────────── */}
@@ -277,6 +309,15 @@ export default async function HomePage() {
                 <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* Demo animado — funciona como "mini vídeo tutorial" */}
+          <div className="mt-20">
+            <div className="text-center mb-8">
+              <p className="text-sm font-semibold text-gray-900 mb-1">Veja na prática</p>
+              <p className="text-sm text-muted-foreground">Demo interativo com os 4 passos do fluxo real</p>
+            </div>
+            <AnimatedDemo />
           </div>
         </div>
       </section>
