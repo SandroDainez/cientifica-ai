@@ -58,10 +58,7 @@ Ao final, após a linha "===PLANO_JSON===", retorne APENAS um JSON válido com e
       "duracao_estimada": "ex: 1-2 semanas",
       "app_executa": false,
       "obrigatoria": true,
-      "bloqueante": false,
-      "instrucoes_detalhadas": ["passo 1 prático", "passo 2 prático", "passo 3 prático"],
-      "documentos": [{"tipo": "protocolo_cep", "label": "Protocolo CEP", "descricao": "Documento formal de submissão ao CEP"}],
-      "link_externo": null
+      "bloqueante": false
     }
   ],
   "checklist": [
@@ -83,15 +80,7 @@ REGRAS para o roadmap:
 - Se tipo_coleta=bibliografica: inclua etapas de busca bibliográfica
 - A etapa de escrita (tipo=escrita): app_executa=true, descricao deve mencionar que o app gera com IA
 - Sempre inclua uma etapa de submissão ao periódico/banca como última etapa
-- Toda etapa DEVE ter instrucoes_detalhadas com 3 a 5 itens práticos e acionáveis
-- Para etapas tipo=etica: documentos deve incluir protocolo_cep; se precisa_tcle=true também incluir tcle; se precisa_carta_anuencia=true também incluir carta_anuencia; link_externo="https://plataformabrasil.saude.gov.br"
-- Para etapas tipo=coleta: documentos deve incluir instrumento_coleta e guia_coleta
-- Para etapas tipo=analise: documentos deve incluir guia_analise
-- Para etapas tipo=submissao: documentos deve incluir sugestoes_periodicos, carta_submissao e checklist_submissao
-- Para etapas tipo=preparacao: documentos pode ser [] (vazio)
-- Para etapas tipo=aguardar: documentos deve ser [] (vazio)
-- Para etapas tipo=escrita: documentos pode ser [] (vazio), pois o app cuida da geração
-- O campo link_externo deve ser null quando não houver link relevante
+- Gere apenas os campos listados no schema — não adicione campos extras
 
 REGRAS para o checklist:
 - Se precisa_cep=true: items de CEP com link_ajuda="https://plataformabrasil.saude.gov.br"

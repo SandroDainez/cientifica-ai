@@ -24,7 +24,7 @@ import {
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
-import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento } from '@/types'
+import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento, DocumentoEtapa } from '@/types'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 
@@ -118,6 +118,95 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
     case 'pendente':     return 'em_andamento'
     case 'em_andamento': return 'concluido'
     case 'concluido':    return 'pendente'
+  }
+}
+
+// ─── Instruções estáticas por tipo de etapa ───────────────────────────────────
+// Determinadas no frontend — não precisam ser geradas pela IA, evitando JSON enorme.
+
+const INSTRUCOES_POR_TIPO: Record<EtapaRoadmap['tipo'], string[]> = {
+  preparacao: [
+    'Defina claramente a questão de pesquisa e os objetivos do estudo',
+    'Revise a literatura existente para identificar lacunas e embasamento',
+    'Consulte seu orientador sobre a viabilidade e escopo do projeto',
+    'Liste os recursos necessários: tempo, acesso a dados, equipamentos',
+    'Elabore um cronograma preliminar com marcos realistas',
+  ],
+  etica: [
+    'Acesse a Plataforma Brasil em plataformabrasil.saude.gov.br',
+    'Crie ou acesse sua conta e cadastre o projeto de pesquisa',
+    'Anexe o protocolo de pesquisa, TCLE e carta de anuência da instituição',
+    'Aguarde o número CAAE gerado após a submissão',
+    'Acompanhe o status do parecer — prazo legal é 30 dias',
+  ],
+  aguardar: [
+    'Acompanhe o status na Plataforma Brasil regularmente',
+    'Em caso de pendência, responda dentro do prazo indicado pelo CEP',
+    'Aproveite o período para finalizar os instrumentos de coleta',
+    'Se o parecer for aprovado, avance para a próxima etapa',
+  ],
+  coleta: [
+    'Treine a equipe de coleta conforme o protocolo aprovado pelo CEP',
+    'Aplique o instrumento de coleta seguindo rigorosamente o protocolo',
+    'Registre os dados de forma sistemática — planilha ou software específico',
+    'Mantenha os TCLEs assinados arquivados em local seguro',
+    'Monitore o andamento e corrija desvios do protocolo imediatamente',
+  ],
+  analise: [
+    'Organize e limpe o banco de dados antes de iniciar a análise',
+    'Verifique a distribuição dos dados e os pressupostos dos testes',
+    'Aplique os testes estatísticos conforme planejado na metodologia',
+    'Documente todas as decisões analíticas e os softwares usados',
+    'Interprete os resultados à luz dos objetivos e da literatura',
+  ],
+  escrita: [
+    'Use o editor do Científica AI para gerar cada seção com auxílio de IA',
+    'Revise e adapte o conteúdo gerado inserindo seus dados reais coletados',
+    'Siga as normas ABNT/Vancouver/APA conforme o formato do trabalho',
+    'Valide cada seção antes de avançar para a próxima',
+    'Peça feedback do orientador ao final de cada capítulo principal',
+  ],
+  submissao: [
+    'Selecione o periódico ou banca adequada ao escopo do trabalho',
+    'Leia atentamente as normas de submissão do periódico/instituição',
+    'Prepare todos os documentos exigidos: carta, declarações, formulários',
+    'Submeta o manuscrito e anote o número de protocolo/protocolo de defesa',
+    'Aguarde e responda às revisões ou perguntas da banca/revisores',
+  ],
+}
+
+// ─── Documentos disponíveis por tipo de etapa ─────────────────────────────────
+
+function getDocumentosEtapa(
+  tipo: EtapaRoadmap['tipo'],
+  dadosProjeto?: DadosProjeto | null
+): DocumentoEtapa[] {
+  switch (tipo) {
+    case 'etica': {
+      const docs: DocumentoEtapa[] = []
+      if (!dadosProjeto || dadosProjeto.precisa_cep)
+        docs.push({ tipo: 'protocolo_cep', label: 'Protocolo CEP', descricao: 'Documento formal para submissão ao CEP' })
+      if (!dadosProjeto || dadosProjeto.precisa_tcle)
+        docs.push({ tipo: 'tcle', label: 'TCLE', descricao: 'Termo de Consentimento Livre e Esclarecido' })
+      if (!dadosProjeto || dadosProjeto.precisa_carta_anuencia)
+        docs.push({ tipo: 'carta_anuencia', label: 'Carta de Anuência', descricao: 'Autorização da instituição parceira' })
+      return docs
+    }
+    case 'coleta':
+      return [
+        { tipo: 'instrumento_coleta', label: 'Instrumento de Coleta', descricao: 'Questionário ou formulário de dados' },
+        { tipo: 'guia_coleta', label: 'Guia de Coleta', descricao: 'Manual operacional para a equipe' },
+      ]
+    case 'analise':
+      return [{ tipo: 'guia_analise', label: 'Guia de Análise', descricao: 'Roteiro estatístico com código e interpretação' }]
+    case 'submissao':
+      return [
+        { tipo: 'sugestoes_periodicos', label: 'Sugestões de Periódicos', descricao: 'Revistas adequadas com Qualis, JCR e URLs' },
+        { tipo: 'carta_submissao', label: 'Carta de Submissão', descricao: 'Cover letter para o editor do periódico' },
+        { tipo: 'checklist_submissao', label: 'Checklist de Submissão', descricao: 'Verificação completa antes de enviar' },
+      ]
+    default:
+      return []
   }
 }
 
@@ -695,10 +784,10 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                   {planData.roadmap.map((etapa) => {
                     const isExpanded = expandedEtapas.has(etapa.id)
                     const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
-                    const hasDetails =
-                      (etapa.instrucoes_detalhadas && etapa.instrucoes_detalhadas.length > 0) ||
-                      (etapa.documentos && etapa.documentos.length > 0) ||
-                      !!etapa.link_externo
+                    const instrucoes = INSTRUCOES_POR_TIPO[etapa.tipo] ?? []
+                    const documentosEtapa = getDocumentosEtapa(etapa.tipo, planData)
+                    const linkExterno = etapa.tipo === 'etica' ? 'https://plataformabrasil.saude.gov.br' : null
+                    const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno
 
                     return (
                       <li key={etapa.id} className="relative">
@@ -771,14 +860,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                           {isExpanded && hasDetails && (
                             <div className="border-t border-current/10 px-4 pb-4 pt-3 space-y-4">
 
-                              {/* Instruções detalhadas */}
-                              {etapa.instrucoes_detalhadas && etapa.instrucoes_detalhadas.length > 0 && (
+                              {/* Instruções detalhadas — determinadas estaticamente no frontend */}
+                              {instrucoes.length > 0 && (
                                 <div>
                                   <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-2">
                                     Como fazer
                                   </p>
                                   <ol className="space-y-1.5">
-                                    {etapa.instrucoes_detalhadas.map((instrucao, idx) => (
+                                    {instrucoes.map((instrucao, idx) => (
                                       <li key={idx} className="flex gap-2 text-xs leading-relaxed">
                                         <span className="flex-shrink-0 font-bold opacity-50">{idx + 1}.</span>
                                         <span>{instrucao}</span>
@@ -788,27 +877,27 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial }: ProjetoC
                                 </div>
                               )}
 
-                              {/* Link externo */}
-                              {etapa.link_externo && (
+                              {/* Link externo — estático por tipo de etapa */}
+                              {linkExterno && (
                                 <a
-                                  href={etapa.link_externo}
+                                  href={linkExterno}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100"
                                 >
                                   <ExternalLink className="h-3 w-3" />
-                                  Acessar link relacionado
+                                  Acessar Plataforma Brasil
                                 </a>
                               )}
 
-                              {/* Documentos IA */}
-                              {etapa.documentos && etapa.documentos.length > 0 && (
+                              {/* Documentos IA — determinados estaticamente por tipo de etapa */}
+                              {documentosEtapa.length > 0 && (
                                 <div>
                                   <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-2">
                                     Documentos
                                   </p>
                                   <div className="space-y-3">
-                                    {etapa.documentos.map(doc => {
+                                    {documentosEtapa.map(doc => {
                                       const key = `${etapa.id}_${doc.tipo}`
                                       const docState = docsMap[key]
 
