@@ -1,9 +1,32 @@
 import type { TipoDocumento, DadosProjeto } from '@/types'
 
-const SYSTEM_PROMPT =
-  'Você é um especialista em pesquisa científica brasileira, com domínio em normas ABNT, ' +
-  'regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos, ' +
-  'formais e prontos para uso.'
+const SYSTEM_PROMPT = `Você é um especialista em pesquisa científica brasileira com profundo domínio em normas ABNT, regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos e prontos para uso.
+
+REGRA CRÍTICA — HUMANIZAÇÃO DO TEXTO:
+Detectores de IA (GPTZero, Turnitin, Originality.ai) identificam dois padrões específicos no texto:
+
+BURSTINESS — variação de comprimento de frases:
+Textos de IA têm frases de comprimento uniforme (15-20 palavras cada). Textos humanos alternam abruptamente.
+REGRA OBRIGATÓRIA: a cada 2-3 frases longas (mais de 20 palavras), escreva 1 frase curta com menos de 8 palavras. Exemplo de ritmo correto: "A análise de dados em ensaios clínicos randomizados exige atenção redobrada à aleatorização e ao cegamento dos avaliadores para minimizar vieses sistemáticos. Isso parece óbvio. Mas a maioria dos pesquisadores de primeira viagem subestima o impacto dos dados ausentes sobre o poder estatístico da análise principal."
+
+PERPLEXIDADE — imprevisibilidade lexical:
+IA escolhe sempre a palavra mais provável. Humanos surpreendem com dados contraintuitivos, ressalvas inesperadas, analogias incomuns, ou perguntas retóricas.
+REGRA OBRIGATÓRIA: cada seção deve ter pelo menos 1 elemento que quebre a expectativa do leitor.
+
+EXPRESSÕES COMPLETAMENTE PROIBIDAS (delação imediata de IA):
+"É importante ressaltar", "Cabe destacar", "Nesse contexto", "Diante do exposto",
+"De tal forma que", "Tendo em vista", "No que tange", "Com relação a",
+"Outrossim", "Destarte", "Assim sendo", "Vale salientar", "É possível observar",
+"Conclui-se que", "Em suma", "Sendo assim", "Ante o exposto",
+"Salienta-se que", "Evidencia-se que", "Conforme supracitado", "Mormente".
+
+VARIAÇÃO ESTRUTURAL OBRIGATÓRIA:
+• Misture parágrafos de prosa corrida com listas e tabelas — não escreva tudo em bullets
+• Inclua pelo menos uma "Nota prática:" ou "Atenção:" com dica concreta
+• Varie o comprimento dos parágrafos: alguns com 5 linhas, outros com 1
+• Inclua ressalvas reais ("embora seja tentador...", "a exceção ocorre quando...", "isso só funciona se...")
+• Em documentos técnicos: alterne seções de código/fórmulas com explicação em prosa conversacional
+• Use exemplos com valores numéricos concretos e outputs reais de software`
 
 function buildRevisaoLiteratura(dados: DadosProjeto, titulo?: string): string {
   return `${dadosResumo(dados)}
@@ -50,9 +73,7 @@ A revisão deve conter:
    diretrizes de sociedades médicas, dados de ministérios. Para cada referência,
    adicione uma linha: "Relevância: [por que esta referência é importante para o estudo]"
 
-IMPORTANTE: Escreva em português brasileiro, linguagem acadêmica formal.
-Ao usar dados ou afirmações específicas, sinalize com "(verificar referência)" para que
-o pesquisador saiba o que precisa confirmar nas fontes originais.`
+IMPORTANTE: Escreva em português brasileiro com linguagem acadêmica, mas com ritmo variado — alterne parágrafos densos com parágrafos curtos de 1-2 frases. Inclua pelo menos uma ressalva ou dado contraintuitivo por seção. Ao usar dados ou afirmações específicas, sinalize com "(verificar referência)" para que o pesquisador saiba o que confirmar nas fontes originais. Evite estrutura roboticamente uniforme: parágrafos de tamanhos diferentes, sem usar as mesmas expressões de transição mais de uma vez.`
 }
 
 function dadosResumo(dados: DadosProjeto): string {
@@ -378,75 +399,68 @@ Produza o guia completo, formal e pronto para uso em campo.`
 
 function buildGuiaAnalise(dados: DadosProjeto): string {
   const softwareEscolhido = dados.software_analise
-    ? `O pesquisador escolheu usar: **${dados.software_analise}**. Todo o código e passo a passo deve ser para esse software especificamente.`
-    : 'O pesquisador ainda não definiu o software. Recomende o mais adequado para este delineamento e forneça código para ele.'
+    ? `O pesquisador escolheu: **${dados.software_analise}**. Todos os exemplos de código e passo a passo devem ser para esse software.`
+    : 'O pesquisador ainda não definiu o software. Recomende o mais adequado e justifique a escolha.'
 
   return `${dadosResumo(dados)}
 
-Gere um Guia de Análise Estatística completo para o projeto de pesquisa descrito acima.
+Gere um Guia de Análise Estatística para o projeto acima.
 
 Análise prevista: ${dados.analise_prevista}
 Delineamento: ${dados.delineamento}
 Amostra estimada: ${dados.amostra_estimada}
 ${dados.n_participantes ? `N real coletado: ${dados.n_participantes}` : ''}
 ${dados.taxa_resposta ? `Taxa de resposta: ${dados.taxa_resposta}` : ''}
-
 SOFTWARE: ${softwareEscolhido}
 
-O guia deve conter:
+FORMATO EXIGIDO — MISTURE PROSA COM ESTRUTURA:
+Cada seção deve alternar entre parágrafos de prosa explicativa e listas/código. Não escreva tudo em bullets. Um guia técnico escrito por humano tem ritmo: explica em prosa → mostra o código → comenta o resultado em prosa → avisa sobre armadilhas. Siga esse padrão.
 
-1. VISÃO GERAL DA ESTRATÉGIA ANALÍTICA
-   Descrição geral da abordagem estatística adequada ao delineamento e pergunta de pesquisa.
-   Explique em linguagem acessível quais testes serão usados e por quê.
+Para cada seção, inclua pelo menos:
+- Um parágrafo de prosa curto explicando o raciocínio por trás da decisão analítica
+- Um exemplo concreto com valores numéricos plausíveis para este estudo
+- Uma "Nota prática:" com uma armadilha real que pesquisadores cometem
 
-2. SOFTWARE E CONFIGURAÇÃO INICIAL
-   ${dados.software_analise
-     ? `Como instalar/acessar o ${dados.software_analise}, configurar o arquivo de dados e importar a planilha. Inclua versão recomendada e como citar o software no artigo.`
-     : 'Recomende o software mais adequado com justificativa. Inclua como instalar/acessar e como citar no artigo.'
-   }
+SEÇÕES OBRIGATÓRIAS:
 
-3. PREPARAÇÃO E LIMPEZA DOS DADOS
-   3.1 Importação dos dados (formato: .csv, .xlsx, .sav)
-   3.2 Identificação e tratamento de dados ausentes (missing data): critérios de exclusão, imputação
-   3.3 Detecção de outliers: métodos (boxplot, Z-score, Grubbs) e decisão
-   3.4 Transformação de variáveis (recodificação, criação de escores compostos)
-   3.5 Verificação da consistência dos dados
+1. ESTRATÉGIA ANALÍTICA GERAL
+Escreva em PROSA (não em lista) a lógica da abordagem: por que esses testes, o que o delineamento determina, e qual é a sequência de análises. Mencione especificamente a pergunta de pesquisa. Máximo 200 palavras, ritmo variado.
+
+2. SOFTWARE: CONFIGURAÇÃO E CITAÇÃO
+${dados.software_analise
+  ? `Versão recomendada do ${dados.software_analise}, onde obter (licença institucional, download), e a citação correta para o manuscrito. Inclua o comando de verificação de versão.`
+  : 'Recomende o software com justificativa baseada no delineamento. Compare 2 alternativas em prosa (não tabela). Inclua como citar no manuscrito.'
+}
+
+3. PREPARAÇÃO DOS DADOS (passo a passo realista)
+Escreva como se estivesse explicando a um colega ao telefone. Cubra: importação, missing data (quando excluir vs. imputar — dê a regra dos 5%), outliers (o que fazer quando Shapiro-Wilk falha?), e criação de variáveis derivadas. Inclua código de exemplo.
 
 4. ANÁLISE DESCRITIVA
-   - Variáveis contínuas: média, desvio-padrão, mediana, IQR, mínimo, máximo
-   - Variáveis categóricas: frequências absolutas e relativas (%)
-   - Tabela 1: características da amostra
+Mostre como montar a "Tabela 1" para este estudo específico. Inclua o código para gerar a tabela e um exemplo de como ela ficaria preenchida com valores fictícios plausíveis para esta população.
 
 5. VERIFICAÇÃO DE PREMISSAS
-   - Normalidade: testes de Shapiro-Wilk (n<50) ou Kolmogorov-Smirnov (n≥50), histograma, Q-Q plot
-   - Homocedasticidade: Levene ou Bartlett
-   - Independência das observações
+Explique em prosa quando usar Shapiro-Wilk versus Kolmogorov-Smirnov e por quê n < 50 muda a decisão. Inclua o código. Diga o que fazer quando a premissa É violada — muitos guias param aqui, mas é exatamente onde o pesquisador fica perdido.
 
-6. TESTES ESTATÍSTICOS PRINCIPAIS
-   Liste os testes específicos para cada objetivo, com:
-   - Nome do teste e variante (ex: t de Student independente, bilateral)
-   - Variáveis envolvidas
-   - Nível de significância (α = 0,05)
-   - Tamanho de efeito a reportar (d de Cohen, r, η², OR, RR, etc.)
-   - Código de exemplo no software recomendado
+6. TESTES PRINCIPAIS E CÓDIGO
+Para cada objetivo do projeto, mostre:
+- O teste escolhido e por quê (1 frase de justificativa)
+- Código completo e funcional no software escolhido
+- Como interpretar o output: exemplo de saída real com p-valor, estatística de teste, tamanho de efeito
+- Como reportar no manuscrito (frase modelo pronta)
 
-7. ANÁLISES COMPLEMENTARES (se aplicável)
-   - Análise de regressão (linear/logística): variáveis incluídas, método de seleção, diagnóstico do modelo
-   - Análises de subgrupo
-   - Análise de sensibilidade
+7. ANÁLISES COMPLEMENTARES
+Seja seletivo: mencione apenas as que são relevantes para este delineamento específico. Explique em prosa quando uma análise de sensibilidade é necessária versus quando é opcional.
 
-8. INTERPRETAÇÃO DOS RESULTADOS
-   - O que cada resultado estatístico significa clinicamente/praticamente
-   - Como reportar no artigo: "A média de X foi Y (DP=Z), e o grupo A diferiu significativamente do grupo B (t(df)=valor, p=valor, d=valor)"
-   - Modelo de tabelas de resultados
+8. INTERPRETAÇÃO E REDAÇÃO DOS RESULTADOS
+Dê frases-modelo prontas para copiar no manuscrito, com os valores entre colchetes para preencher. Inclua o que fazer quando p está entre 0,05 e 0,10 — zona cinzenta que ninguém explica.
 
-9. PODER ESTATÍSTICO E TAMANHO AMOSTRAL
-   Verificação post-hoc do poder (1-β) com base na amostra obtida (${dados.amostra_estimada}).
+9. PODER ESTATÍSTICO
+Com base na amostra de ${dados.amostra_estimada}, calcule o poder post-hoc e explique o que fazer se for abaixo de 0,80.
 
-10. CHECKLIST FINAL PRÉ-SUBMISSÃO DE RESULTADOS
-    Lista do que verificar antes de incluir os resultados no manuscrito.
+10. CHECKLIST PRÉ-SUBMISSÃO
+Lista enxuta (máximo 12 itens) do que verificar. Não repita tudo que foi dito antes — foque no que os revisores de periódicos mais rejeitam.
 
-Produza o guia completo, didático e pronto para uso por um pesquisador com nível intermediário em estatística.`
+Escreva de forma direta e útil. Inclua humor técnico leve quando adequado ("Se o Shapiro-Wilk der p < 0,001 com n = 200, provavelmente é outlier mesmo — não o teste mentindo"). Varie o comprimento das frases: curtas e longas alternadas.`
 }
 
 function buildSugestoesPeriodicos(dados: DadosProjeto): string {
