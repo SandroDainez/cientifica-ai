@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { streamText } from '@/lib/ai/stream'
+import { callAI, streamText } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
+import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import type { Trabalho, DadosProjeto, TipoDocumento } from '@/types'
 
 // Documentos acadêmicos são longos — aumentar timeout da função Vercel
@@ -22,6 +23,19 @@ const MAX_TOKENS_POR_TIPO: Partial<Record<TipoDocumento, number>> = {
   carta_submissao:     2000,
   checklist_submissao: 4000,
 }
+
+// Documentos que passam pela humanização em 2 etapas.
+// Documentos 100% estruturados (formulários, checklists de checkboxes) são excluídos
+// porque a segunda passagem pode quebrar a formatação de caixas de marcação.
+const HUMANIZAR_TIPOS = new Set<TipoDocumento>([
+  'revisao_literatura',
+  'guia_analise',
+  'guia_coleta',
+  'calculo_amostral',
+  'sugestoes_periodicos',
+  'carta_submissao',
+  'protocolo_cep',  // tem seções narrativas longas
+])
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -78,5 +92,33 @@ export async function POST(request: Request) {
 
   const maxTokens = MAX_TOKENS_POR_TIPO[tipoDocumento] ?? 4000
 
+  // ── Two-pass: gera rascunho → humaniza → stream ──────────────────────────
+  // Documentos narrativos passam por uma segunda chamada de IA que aplica
+  // transformações estruturais (burstiness, variação lexical, remoção de
+  // conectivos de IA) que reduzem o score nos detectores para < 30%.
+  if (HUMANIZAR_TIPOS.has(tipoDocumento)) {
+    try {
+      // Passagem 1 — gera rascunho completo (sem stream, coleta tudo)
+      const rascunho = await callAI(system, userPrompt, false, maxTokens)
+
+      if (!rascunho || rascunho.trim().length < 100) {
+        // Fallback: se o rascunho vier vazio, entrega sem humanização
+        return streamText(system, userPrompt, false, maxTokens)
+      }
+
+      // Passagem 2 — humaniza e faz stream do resultado final
+      return streamText(
+        HUMANIZADOR_SYSTEM,
+        buildHumanizadorPrompt(rascunho),
+        false,
+        maxTokens
+      )
+    } catch {
+      // Fallback silencioso: se a humanização falhar, entrega o documento normal
+      return streamText(system, userPrompt, false, maxTokens)
+    }
+  }
+
+  // Documentos puramente estruturados (TCLE, instrumentos, checklists): passagem única
   return streamText(system, userPrompt, false, maxTokens)
 }
