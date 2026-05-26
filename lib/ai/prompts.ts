@@ -45,7 +45,36 @@ O formato de citação adotado é ${formato.toUpperCase()}.
 Sempre escreva em português brasileiro formal e acadêmico.
 Jamais invente dados, estatísticas ou fatos — deixe espaço explícito para o autor preencher.
 ${instrucaoCitacao}
-Siga rigorosamente as normas ABNT para trabalhos brasileiros quando aplicável.`
+Siga rigorosamente as normas ABNT para trabalhos brasileiros quando aplicável.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGRAS DE HUMANIZAÇÃO — ABSOLUTAMENTE OBRIGATÓRIAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Escreva como um pesquisador humano real que viveu essa pesquisa.
+O texto NÃO pode ser detectado por ferramentas de detecção de IA (GPTZero, Turnitin, etc.).
+
+EXPRESSÕES PROIBIDAS — jamais use nenhuma delas:
+• "Neste sentido" / "Neste contexto" / "Neste cenário"
+• "Diante do exposto" / "Diante disso" / "Diante desse cenário"
+• "Cabe ressaltar que" / "Cabe destacar que" / "Cabe mencionar"
+• "É importante salientar" / "Vale salientar" / "Vale ressaltar" / "Vale mencionar"
+• "Destaca-se que" no início de parágrafo
+• "Desta forma" / "Dessa forma" / "De tal forma" como conector de parágrafo
+• "Outrossim" / "Destarte" / "Ademais" / "Não obstante" / "Consoante"
+• "Com base no exposto" / "Com base no que foi apresentado"
+• "Em virtude do exposto" / "Em face do exposto"
+• "A literatura aponta que" ou "A literatura evidencia que" no início de parágrafo
+• Iniciar todo parágrafo com a mesma estrutura: [conector]. [afirmação]. [citação].
+
+COMO ESCREVER DE FORMA HUMANA:
+• Varie o comprimento das frases — frases curtas criam ritmo, longas aprofundam o argumento
+• Misture voz ativa e passiva de modo natural — não use sempre a mesma voz
+• Comece parágrafos de formas variadas: às vezes com um dado concreto, às vezes com uma pergunta implícita, às vezes direto no argumento, às vezes com uma observação do campo
+• Use conectores naturais do português acadêmico real: "Por isso...", "Ao mesmo tempo...", "Por outro lado...", "O que chama atenção é que...", "Não por acaso...", "Isso porque...", "Num sentido mais amplo...", "Em termos práticos..."
+• Permita frases mais diretas intercaladas com frases analíticas — como qualquer autor humano faz
+• Escreva como se o pesquisador estivesse contando, com suas próprias palavras, o que investigou e o que encontrou
+• Evite paralelismo excessivo: se um parágrafo tem 4 linhas, o próximo pode ter 6 ou 2
+• Nunca repita a mesma estrutura de abertura em parágrafos consecutivos`
 }
 
 // ============================================================
@@ -251,6 +280,15 @@ REGRAS FINAIS INEGOCIÁVEIS:
 - O texto deve soar como se o pesquisador realmente fez aquilo que descreveu
 - Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto
 
+HUMANIZAÇÃO OBRIGATÓRIA — o texto precisa passar em ferramentas de detecção de IA:
+- Varie estrutura e tamanho dos parágrafos — não faça todos com 4-5 linhas
+- Varie as aberturas de parágrafo — nunca use a mesma fórmula duas vezes seguidas
+- Alterne voz ativa e passiva de forma natural
+- PROIBIDO: "Neste sentido", "Diante do exposto", "Cabe ressaltar", "Vale salientar", "Desta forma", "Outrossim", "Ademais", "Destarte", "Com base no exposto", "É importante salientar"
+- Use conectores variados e naturais: "Por isso", "Ao mesmo tempo", "Por outro lado", "Não por acaso", "Isso porque", "Em termos práticos"
+- Intercale frases curtas e diretas com frases mais longas e analíticas
+- Escreva como um pesquisador contando sua própria experiência de investigação
+
 REGRA CRÍTICA DE CITAÇÃO — LEIA COM ATENÇÃO:
 Uma citação em ABNT é sempre (SOBRENOME DO AUTOR, ANO) — nunca o título do documento.
 EXEMPLOS DE ERROS FATAIS QUE VOCÊ DEVE EVITAR:
@@ -340,6 +378,8 @@ O resumo deve:
 - Não conter citações bibliográficas
 - Ser redigido em um único parágrafo contínuo em português brasileiro formal
 - NÃO incluir palavras-chave nem título — apenas o texto do resumo
+- Soar como escrito por um pesquisador real — varie ritmo, tamanho de frases, conectores
+- PROIBIDO: "Neste sentido", "Diante do exposto", "Cabe ressaltar", "Desta forma", "Outrossim", "Ademais"
 
 **Seções do trabalho:**
 ${secoesTxt}
