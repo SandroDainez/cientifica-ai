@@ -1305,6 +1305,22 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             </div>
           )}
 
+          {/* ── Análise do orientador virtual — full width ──────────────────── */}
+          {(() => {
+            const textoAnalise = planData.analise_orientador
+              ?? (streamingText ? streamingText.split('===PLANO_JSON===')[0].trim() : '')
+            return textoAnalise ? (
+              <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4">
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">
+                  Análise do Orientador Virtual
+                </p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                  {textoAnalise}
+                </p>
+              </div>
+            ) : null
+          })()}
+
           {/* ── Two-column: roadmap grid + sidebar ─────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -1830,31 +1846,19 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
               </div>
             )}
 
-            {/* ── Sidebar (1/3): analysis + details + CEP ── */}
-            <div className="space-y-4">
+            {/* ── Sidebar (1/3): details 2-col grid + CEP ── */}
+            <div className="space-y-3">
 
-              {/* Análise do orientador virtual */}
-              {(() => {
-                const textoAnalise = planData.analise_orientador
-                  ?? (streamingText ? streamingText.split('===PLANO_JSON===')[0].trim() : '')
-                return textoAnalise ? (
-                  <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4">
-                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">
-                      Análise do Orientador Virtual
-                    </p>
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                      {textoAnalise}
-                    </p>
+              {/* Grid 2 colunas: Pergunta, Objetivo, Justificativa */}
+              <div className="grid grid-cols-2 gap-3">
+                <DetailCard label="Pergunta de Pesquisa" value={planData.pergunta_pesquisa} />
+                <DetailCard label="Objetivo Geral" value={planData.objetivo_geral} />
+                {planData.justificativa_resumida && (
+                  <div className="col-span-2">
+                    <DetailCard label="Justificativa" value={planData.justificativa_resumida} />
                   </div>
-                ) : null
-              })()}
-
-              {/* Pergunta e objetivo */}
-              <DetailCard label="Pergunta de Pesquisa" value={planData.pergunta_pesquisa} />
-              <DetailCard label="Objetivo Geral" value={planData.objetivo_geral} />
-              {planData.justificativa_resumida && (
-                <DetailCard label="Justificativa" value={planData.justificativa_resumida} />
-              )}
+                )}
+              </div>
 
               {/* CEP / Ética */}
               {planData.envolve_seres_humanos && (
