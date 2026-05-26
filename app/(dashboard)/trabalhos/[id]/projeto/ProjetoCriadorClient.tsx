@@ -462,7 +462,15 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   const [salvando, setSalvando] = useState(false)
 
   // Roadmap interaction state
-  const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(new Set())
+  // Auto-expande cards que já têm documentos gerados (facilita encontrar botão "Regerar")
+  const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(() => {
+    if (!documentosInicial) return new Set()
+    // Extrai os IDs das etapas a partir das chaves "etapaId_tipoDoc"
+    const ids = Object.keys(documentosInicial)
+      .filter(k => documentosInicial[k])   // só as que têm conteúdo salvo
+      .map(k => k.split('_')[0])
+    return new Set(ids)
+  })
   // Inline document editing
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editBuffer, setEditBuffer] = useState<Record<string, string>>({})
@@ -501,6 +509,12 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
 
   const streamRef = useRef<string>('')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Guarda os últimos inputs do formulário para restaurar ao "Refazer o plano"
+  const lastInputsRef = useRef<{
+    tema: string; populacao: string; local: string
+    nivel: string; temDados: boolean; dadosColetados: string
+  }>({ tema: '', populacao: '', local: '', nivel: '', temDados: false, dadosColetados: '' })
 
   // ── Persist partial dados_projeto ─────────────────────────────────────────
 
@@ -845,6 +859,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
 
   async function handleGerarPlano() {
     if (tema.trim().length < 20) return
+    // Salva os inputs para restaurar se o usuário quiser "Refazer"
+    lastInputsRef.current = { tema, populacao, local, nivel, temDados, dadosColetados }
     const desc = buildDescricao()
     setStep('gerando')
     setStreamingText('')
@@ -961,6 +977,23 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     } finally {
       setSalvando(false)
     }
+  }
+
+  // ── Volta ao formulário restaurando os inputs anteriores ─────────────────
+  function voltarParaInput() {
+    const last = lastInputsRef.current
+    // Se não há inputs salvos (plano veio do banco), tenta reconstruir do planData
+    const temaRestored = last.tema || (planData
+      ? [planData.pergunta_pesquisa, planData.objetivo_geral].filter(Boolean).join('\n\n')
+      : '')
+    setTema(temaRestored)
+    setPopulacao(last.populacao || '')
+    setLocal(last.local || '')
+    setNivel(last.nivel || '')
+    setTemDados(last.temDados)
+    setDadosColetados(last.dadosColetados || '')
+    setStep('input')
+    setStreamingText('')
   }
 
   // ── Progresso do checklist ────────────────────────────────────────────────
@@ -1235,6 +1268,19 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                 />
               </div>
             )}
+
+            {/* Ação rápida de regeneração — visível sem precisar rolar */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                onClick={voltarParaInput}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-white dark:bg-green-950 border border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 hover:bg-green-50 dark:hover:bg-green-900 transition-colors"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Regenerar plano com IA
+              </button>
+              <span className="text-xs text-green-600 dark:text-green-500">
+                Não gostou do resultado? Gere um novo plano com os mesmos dados ou ajuste as informações.
+              </span>
+            </div>
           </div>
 
           {/* ── Visão geral: 4-col stats strip ─────────────────────────────── */}
@@ -1894,13 +1940,10 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
           {/* Ações */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <button
-              onClick={() => {
-                setStep('input')
-                setStreamingText('')
-              }}
+              onClick={voltarParaInput}
               className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'flex-1 gap-2')}
             >
-              <ArrowLeft className="h-4 w-4" /> Refazer o plano
+              <RefreshCw className="h-4 w-4" /> Regenerar plano
             </button>
             <button
               onClick={salvarESeguir}
