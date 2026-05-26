@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Eye, BookMarked, Download, Presentation, Shield, Filter, ClipboardList, Map } from 'lucide-react'
+import { ArrowLeft, Eye, BookMarked, Download, Presentation, Shield, Filter, ClipboardList, Map, DatabaseZap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -13,6 +13,7 @@ import { EditorArea, type StatusIA } from '@/components/editor/EditorArea'
 import { PainelIA } from '@/components/editor/PainelIA'
 import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
+import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
@@ -166,6 +167,8 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
   const [tituloOpcoes, setTituloOpcoes] = useState<string[]>([])
   // Questionário pré-geração
   const [questionarioAberto, setQuestionarioAberto] = useState(false)
+  // Painel de dados autênticos do pesquisador
+  const [dadosAutenticosAberto, setDadosAutenticosAberto] = useState(false)
 
   // Detecta fim de geração para seções de título e extrai opções
   const prevStatusRef = useRef<StatusIA>('idle')
@@ -422,6 +425,14 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 <Link href={`/trabalhos/${trabalho.id}/exportar`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0')} title="Exportar">
                   <Download className="h-4 w-4" />
                 </Link>
+                <button
+                  onClick={() => setDadosAutenticosAberto(true)}
+                  className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 gap-1.5 px-2')}
+                  title="Dados Autênticos — cole seus dados de pesquisa e a IA identifica onde incorporar"
+                >
+                  <DatabaseZap className="h-4 w-4 text-violet-500" />
+                  <span className="text-xs hidden sm:inline text-violet-600 dark:text-violet-400">Meus Dados</span>
+                </button>
                 <div className="w-px h-5 bg-border mx-1" />
                 <Link href="/trabalhos" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
                   <ArrowLeft className="h-3.5 w-3.5" /> Sair
@@ -545,6 +556,19 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           onCancelar={() => setQuestionarioAberto(false)}
         />
       )}
+
+      {/* ── Painel de Dados Autênticos ────────────────────────── */}
+      <PainelDadosAutenticos
+        trabalhoId={trabalho.id}
+        dadosProjeto={(trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | null | undefined}
+        fases={fases}
+        isOpen={dadosAutenticosAberto}
+        onClose={() => setDadosAutenticosAberto(false)}
+        onIrParaSecao={(chaveSecao) => {
+          trocarFase(chaveSecao)
+          setDadosAutenticosAberto(false)
+        }}
+      />
     </div>
   )
 }

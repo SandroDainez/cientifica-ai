@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Settings, Brain, FileText, Shield,
+  Brain, FileText, Shield,
   Save, Loader2, CheckCircle2, AlertTriangle, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'

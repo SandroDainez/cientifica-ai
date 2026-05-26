@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { CheckCircle2 } from 'lucide-react'
-import { TipoTrabalhoIcon, getTipoLabel, TIPOS } from './TipoTrabalhoIcon'
+import { TipoTrabalhoIcon, getTipoLabel } from './TipoTrabalhoIcon'
 import type { TipoTrabalho } from '@/types'
 
 interface TipoTrabalhoCardProps {
@@ -13,8 +13,6 @@ interface TipoTrabalhoCardProps {
 }
 
 export function TipoTrabalhoCard({ tipo, selected, onClick, duracao }: TipoTrabalhoCardProps) {
-  const info = TIPOS[tipo]
-
   return (
     <button
       type="button"

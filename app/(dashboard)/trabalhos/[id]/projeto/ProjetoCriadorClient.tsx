@@ -448,7 +448,6 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   const router = useRouter()
 
   const [step, setStep] = useState<Step>(dadosProjetoInicial ? 'plano' : 'input')
-  const [descricao, setDescricao] = useState('')
 
   // Guided form fields
   const [tema, setTema] = useState('')
@@ -847,7 +846,6 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   async function handleGerarPlano() {
     if (tema.trim().length < 20) return
     const desc = buildDescricao()
-    setDescricao(desc)
     setStep('gerando')
     setStreamingText('')
     streamRef.current = ''
@@ -2027,6 +2025,7 @@ function DadosPesquisaPanel({ trabalhoId, dadosProjetoAtual }: DadosPesquisaPane
   // Always-current ref — salvarDados reads this inside the debounce timeout
   // so it never captures stale textos from the render closure.
   const textosRef = useRef<Record<AbaNotas, string>>(textos)
+  // eslint-disable-next-line react-hooks/refs
   textosRef.current = textos
 
   function salvarDados(patch: Partial<{

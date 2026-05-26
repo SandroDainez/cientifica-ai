@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import type { NivelAcademico, NivelExperiencia, FormatoCitacao } from '@/types'
 
 export async function GET() {
   const supabase = await createClient()

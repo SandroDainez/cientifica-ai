@@ -73,6 +73,7 @@ export function BuscarReferencias({
   // Auto-busca ao montar se solicitado e houver query
   useEffect(() => {
     if (autoSearch && querySugerida.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       handleBuscar(querySugerida, 'todos')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

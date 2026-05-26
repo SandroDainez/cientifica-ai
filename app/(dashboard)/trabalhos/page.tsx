@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { Trabalho, TipoTrabalho, StatusTrabalho } from '@/types'
+import type { Trabalho } from '@/types'
 
 const TIPOS_FILTRO: { value: string; label: string }[] = [
   { value: '',                    label: 'Todos os tipos' },

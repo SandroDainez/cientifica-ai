@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { formatarReferencia } from '@/lib/referencias/formatar'
-import type { Referencia, FormatoCitacao } from '@/types'
+import type { Referencia } from '@/types'
 
 // GET — lista referências de um trabalho
 export async function GET(request: Request) {
@@ -44,7 +44,6 @@ export async function POST(request: Request) {
 
   // Gera textos pré-formatados
   const refParcial = { ...campos, id: '', trabalho_id: trabalhoId, dados_extras: {}, confiabilidade: 'alta', created_at: '' } as Referencia
-  const formato = trabalho.formato_citacao as FormatoCitacao
 
   const insercao = {
     ...campos,

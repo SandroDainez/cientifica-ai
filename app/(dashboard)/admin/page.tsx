@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 export default async function AdminMetricasPage() {
   const supabase = createAdminClient()
 
+  // eslint-disable-next-line react-hooks/purity
   const umaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   const [

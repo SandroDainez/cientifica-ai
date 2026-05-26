@@ -32,9 +32,8 @@ const statusClass: Record<StatusTrabalho, string> = {
   arquivado:    'bg-slate-800/80 text-slate-400',
 }
 
-export function TrabalhosAdminClient({ trabalhos: inicial, filtrosUrl }: {
+export function TrabalhosAdminClient({ trabalhos: inicial }: {
   trabalhos: TrabalhoAdmin[]
-  filtrosUrl: string
 }) {
   const [trabalhos, setTrabalhos] = useState(inicial)
   const [loadingId, setLoadingId] = useState<string | null>(null)

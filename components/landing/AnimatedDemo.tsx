@@ -258,7 +258,7 @@ const SLIDE_LABELS = [
   'Exportar',
 ]
 
-const SLIDES = [<Slide1 />, <Slide2 />, <Slide3 />, <Slide4 />]
+const SLIDES = [<Slide1 key="s1" />, <Slide2 key="s2" />, <Slide3 key="s3" />, <Slide4 key="s4" />]
 
 export function AnimatedDemo() {
   const [current, setCurrent]   = useState(0)
@@ -269,6 +269,7 @@ export function AnimatedDemo() {
   useEffect(() => {
     if (!playing) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(0)
     let p = 0
     const step = 100 / (DURATION / TICK)

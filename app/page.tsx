@@ -2,7 +2,7 @@ import Link from 'next/link'
 import {
   GraduationCap, FileText, BookOpen, FlaskConical, Award,
   ArrowRight, CheckCircle2, Sparkles, Zap, Shield, Clock,
-  ChevronDown, Star, Users, BookMarked, Presentation,
+  ChevronDown, Star, BookMarked, Presentation,
   BarChart3, Search, ClipboardList, LayoutDashboard,
 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'

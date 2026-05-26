@@ -143,7 +143,6 @@ export function EticaClient({ trabalho, eticaInicial }: Props) {
   }
 
   const precisaCEP = dados.envolve_seres_humanos
-  const precisaCEUA = dados.envolve_animais
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-10">

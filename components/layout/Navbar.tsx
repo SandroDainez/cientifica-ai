@@ -34,6 +34,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
 
   async function handleLogout() {

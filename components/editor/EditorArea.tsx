@@ -53,12 +53,6 @@ function scoreColor(score: number) {
   return 'text-red-500'
 }
 
-function scoreBg(score: number) {
-  if (score >= 80) return 'bg-green-50 border-green-200'
-  if (score >= 60) return 'bg-yellow-50 border-yellow-200'
-  return 'bg-red-50 border-red-200'
-}
-
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function EditorArea({
@@ -84,11 +78,13 @@ export function EditorArea({
 
   // Esconde o card intro assim que o usuário começa a escrever ou gerar
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (temConteudo || statusIA === 'gerando') setMostraIntro(false)
   }, [temConteudo, statusIA])
 
   // Ao trocar de seção (fase.chave_secao muda), reconfigura o estado local
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConfirmandoAvanco(false)
     setMostraIntro(!temConteudo)
     ultimoConteudoValidado.current = ''
@@ -122,6 +118,7 @@ export function EditorArea({
     if (!conteudo.trim() || statusIA !== 'idle' || palavrasAtual < 100) return
     // Só roda se o conteúdo mudou desde a última validação
     if (conteudo === ultimoConteudoValidado.current) return
+    // eslint-disable-next-line react-hooks/immutability
     autoReviewTimer.current = setTimeout(() => {
       ultimoConteudoValidado.current = conteudo
       onValidar()
@@ -491,7 +488,7 @@ export function EditorArea({
               {/* Mensagem personalizada por estado */}
               {avancoStyle === 'revisar' && (
                 <p className="mt-2 text-xs text-red-600 leading-relaxed">
-                  Há pontos críticos a corrigir. Clique em "Revisar seção" para ver as sugestões da IA, ou avance mesmo assim se preferir corrigir depois.
+                  Há pontos críticos a corrigir. Clique em &quot;Revisar seção&quot; para ver as sugestões da IA, ou avance mesmo assim se preferir corrigir depois.
                 </p>
               )}
               {avancoStyle === 'pendente' && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Circle, ChevronRight, Lock, Clock } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Lock, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FaseConfig, SecaoTrabalho } from '@/types'
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, Copy, MessageCircle, Lock, FileDown } from 'lucide-react'
+import { CheckCircle2, Copy, MessageCircle, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'

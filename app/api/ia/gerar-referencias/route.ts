@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
-import type { Trabalho, Referencia, FormatoCitacao } from '@/types'
+import type { Trabalho, Referencia } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -120,7 +120,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ referencias: refsBD ?? [], mensagem: 'Referências já importadas anteriormente.' })
   }
 
-  const formato = (trabalho.formato_citacao ?? 'abnt') as FormatoCitacao
   const inserir = novas.map(ref => {
     const parcial = {
       id: '', trabalho_id: trabalhoId, dados_extras: {},

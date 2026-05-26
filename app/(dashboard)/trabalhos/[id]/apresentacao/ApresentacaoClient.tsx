@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Presentation, Download, Loader2, Sparkles,
-  Clock, Layers, Palette, ChevronRight, BookOpen,
+  Clock, Layers, Palette, ChevronRight,
   HelpCircle, BarChart2, CheckCircle2, XCircle,
   ChevronDown, ChevronUp, AlertTriangle, Star,
   MessageSquare, Shield,

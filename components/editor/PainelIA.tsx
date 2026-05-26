@@ -132,6 +132,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
   const listaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMensagens([])
   }, [fase.id])
 
@@ -169,6 +170,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
+        // eslint-disable-next-line react-hooks/immutability
         resposta += decoder.decode(value, { stream: true })
         setMensagens(prev => {
           const copia = [...prev]
@@ -243,7 +245,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
             <ol className="space-y-1.5">
               <li className="flex items-start gap-2 text-xs text-foreground">
                 <span className="shrink-0 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">1</span>
-                Clique em <strong>"Gerar com IA"</strong> para criar um rascunho automático
+                Clique em <strong>&quot;Gerar com IA&quot;</strong> para criar um rascunho automático
               </li>
               <li className="flex items-start gap-2 text-xs text-muted-foreground">
                 <span className="shrink-0 h-4 w-4 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">2</span>
@@ -251,7 +253,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
               </li>
               <li className="flex items-start gap-2 text-xs text-muted-foreground">
                 <span className="shrink-0 h-4 w-4 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">3</span>
-                Clique em <strong>"Validar"</strong> para checar a qualidade
+                Clique em <strong>&quot;Validar&quot;</strong> para checar a qualidade
               </li>
               <li className="flex items-start gap-2 text-xs text-muted-foreground">
                 <span className="shrink-0 h-4 w-4 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center mt-0.5">4</span>
@@ -334,7 +336,7 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
                   <Bot className="h-8 w-8 text-primary/30 mx-auto mb-2" />
                   <p className="text-xs font-semibold text-foreground">Assistente de escrita</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Pergunte qualquer coisa sobre a seção "{fase.nome}"
+                    Pergunte qualquer coisa sobre a seção &quot;{fase.nome}&quot;
                   </p>
                 </div>
                 {/* Perguntas sugeridas — contextuais por tipo de seção */}

@@ -45,11 +45,6 @@ export default async function AdminTrabalhosPage({
     }
   })
 
-  const filtrosUrl = [
-    usuario ? `usuario=${usuario}` : '',
-    status  ? `status=${status}`   : '',
-  ].filter(Boolean).join('&')
-
   const liberados   = trabalhos.filter(t => t.liberado).length
   const bloqueados  = trabalhos.filter(t => !t.liberado).length
 
@@ -94,7 +89,7 @@ export default async function AdminTrabalhosPage({
         </div>
       )}
 
-      <TrabalhosAdminClient trabalhos={trabalhos} filtrosUrl={filtrosUrl} />
+      <TrabalhosAdminClient trabalhos={trabalhos} />
     </div>
   )
 }
