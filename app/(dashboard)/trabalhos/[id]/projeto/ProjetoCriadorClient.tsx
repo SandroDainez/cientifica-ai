@@ -462,15 +462,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   const [salvando, setSalvando] = useState(false)
 
   // Roadmap interaction state
-  // Auto-expande cards que já têm documentos gerados (facilita encontrar botão "Regerar")
-  const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(() => {
-    if (!documentosInicial) return new Set()
-    // Extrai os IDs das etapas a partir das chaves "etapaId_tipoDoc"
-    const ids = Object.keys(documentosInicial)
-      .filter(k => documentosInicial[k])   // só as que têm conteúdo salvo
-      .map(k => k.split('_')[0])
-    return new Set(ids)
-  })
+  const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(new Set())
   // Inline document editing
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editBuffer, setEditBuffer] = useState<Record<string, string>>({})
@@ -1379,11 +1371,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                         key={etapa.id}
                         className={cn(
                           'rounded-xl border bg-card overflow-hidden flex flex-col transition-shadow',
-                          hasDetails && 'hover:shadow-md cursor-pointer',
                           etapaStatus === 'concluido' && 'border-green-200 dark:border-green-800',
                           etapaStatus === 'em_andamento' && 'border-blue-200 dark:border-blue-800',
                         )}
-                        onClick={() => hasDetails && toggleEtapa(etapa.id)}
                       >
                         {/* Card colour band */}
                         <div className={cn('p-4', etapaCor(etapa.tipo))}>
@@ -1451,22 +1441,60 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                             >
                               {etapaStatusLabel(etapaStatus)}
                             </button>
+                            {/* Botão de gerar documento — visível sem expandir */}
+                            {documentosEtapa.length > 0 && documentosEtapa.map(doc => {
+                              const key = `${etapa.id}_${doc.tipo}`
+                              const docState = docsMap[key]
+                              return (
+                                <button
+                                  key={doc.tipo}
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    // Expande o card para mostrar o resultado
+                                    if (!isExpanded) toggleEtapa(etapa.id)
+                                    void handleGerarDocumento(etapa.id, doc.tipo as TipoDocumento)
+                                  }}
+                                  disabled={docState?.status === 'gerando'}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors',
+                                    docState?.status === 'gerando'
+                                      ? 'bg-muted text-muted-foreground opacity-60 cursor-not-allowed'
+                                      : docState?.status === 'gerado'
+                                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                                  )}
+                                >
+                                  {docState?.status === 'gerando'
+                                    ? <><Loader2 className="h-2.5 w-2.5 animate-spin" /> Gerando...</>
+                                    : docState?.status === 'gerado'
+                                    ? <><RefreshCw className="h-2.5 w-2.5" /> Regerar</>
+                                    : <><FileText className="h-2.5 w-2.5" /> Gerar doc</>}
+                                </button>
+                              )
+                            })}
+
                             {hasDetails && (
-                              <span className="text-muted-foreground">
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  toggleEtapa(etapa.id)
+                                }}
+                                className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                                title={isExpanded ? 'Recolher' : 'Ver detalhes'}
+                              >
                                 {isExpanded
                                   ? <ChevronUp className="h-3.5 w-3.5" />
                                   : <ChevronDown className="h-3.5 w-3.5" />}
-                              </span>
+                              </button>
                             )}
                           </div>
                         </div>
 
                         {/* Expanded details */}
                         {isExpanded && hasDetails && (
-                          <div
-                            className="border-t px-4 pb-4 pt-3 space-y-4 text-foreground"
-                            onClick={e => e.stopPropagation()}
-                          >
+                          <div className="border-t px-4 pb-4 pt-3 space-y-4 text-foreground">
                             {/* Instructions */}
                             {instrucoes.length > 0 && (
                               <div>
