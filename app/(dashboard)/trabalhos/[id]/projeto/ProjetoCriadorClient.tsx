@@ -972,7 +972,10 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // ─── Layout base ────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
+    <div className={cn(
+      'mx-auto py-8 px-4 lg:px-6',
+      step === 'plano' ? 'max-w-7xl' : 'max-w-3xl'
+    )}>
       <div className="mb-6">
         <PageHeader
           title="Projeto de Pesquisa"
@@ -1193,62 +1196,69 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
       {step === 'plano' && planData && (
         <div className="space-y-6">
 
-          {/* Header card */}
-          <div className="rounded-xl border border-green-200 bg-green-50 p-5 flex items-start gap-4">
-            <CheckCircle2 className="h-7 w-7 text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-green-700 mb-0.5">Plano criado com sucesso</p>
-              <h2 className="text-lg font-bold text-green-900">{planData.titulo_provisorio}</h2>
+          {/* ── Header: success banner ─────────────────────────────────────── */}
+          <div className="rounded-xl border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50/60 dark:from-green-950/50 dark:to-emerald-950/30 p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="h-11 w-11 rounded-full bg-green-100 dark:bg-green-900/60 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">
+                    Plano criado com sucesso
+                  </p>
+                  <h2 className="text-lg font-bold text-green-900 dark:text-green-100 leading-tight truncate">
+                    {planData.titulo_provisorio}
+                  </h2>
+                </div>
+              </div>
+              {totalChecklist > 0 && (
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-400">{progressPct}%</div>
+                    <div className="text-xs text-green-600 dark:text-green-500">{doneChecklist}/{totalChecklist} tarefas</div>
+                  </div>
+                  <div className="w-2 h-12 rounded-full bg-green-100 dark:bg-green-900/50 overflow-hidden flex flex-col-reverse">
+                    <div
+                      className="w-full rounded-full bg-green-500 transition-all duration-500"
+                      style={{ height: `${progressPct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Análise do orientador virtual — logo abaixo do header */}
-          {(() => {
-            const textoAnalise = planData.analise_orientador
-              ?? (streamingText ? streamingText.split('===PLANO_JSON===')[0].trim() : '')
-            return textoAnalise ? (
-              <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4">
-                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">
-                  Análise do Orientador Virtual
-                </p>
-                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {textoAnalise}
-                </p>
-              </div>
-            ) : null
-          })()}
-
-          {/* Progress bar */}
-          {totalChecklist > 0 && (
-            <div className="rounded-lg border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-foreground">
-                  Progresso do Projeto
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {doneChecklist} de {totalChecklist} concluídos
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
+            {totalChecklist > 0 && (
+              <div className="mt-4 h-1.5 rounded-full bg-green-100 dark:bg-green-900/50 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-green-500 transition-all duration-500"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{progressPct}% completo</p>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Alertas */}
+          {/* ── Visão geral: 4-col stats strip ─────────────────────────────── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <InfoCard label="Tipo de Trabalho" value={TIPO_LABELS[planData.tipo_trabalho_sugerido] ?? planData.tipo_trabalho_sugerido} />
+            <InfoCard label="Delineamento" value={planData.delineamento} />
+            <InfoCard label="Tipo de Coleta" value={COLETA_LABELS[planData.tipo_coleta] ?? planData.tipo_coleta} />
+            <InfoCard
+              label="Tempo Estimado"
+              value={planData.tempo_total_estimado}
+              icon={<Clock className="h-3.5 w-3.5 text-muted-foreground" />}
+            />
+          </div>
+
+          {/* ── Alertas ─────────────────────────────────────────────────────── */}
           {planData.alertas && planData.alertas.length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
               <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-semibold text-amber-800">Atenção</span>
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">Atenção</span>
               </div>
               <ul className="space-y-1">
                 {planData.alertas.map((alerta, i) => (
-                  <li key={i} className="text-sm text-amber-800 flex gap-2">
+                  <li key={i} className="text-sm text-amber-800 dark:text-amber-200 flex gap-2">
                     <span className="flex-shrink-0">•</span>
                     <span>{alerta}</span>
                   </li>
@@ -1257,92 +1267,58 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             </div>
           )}
 
-          {/* Visão geral */}
-          <div>
-            <h3 className="text-base font-semibold text-foreground mb-3">Visão Geral</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <InfoCard label="Tipo de Trabalho" value={TIPO_LABELS[planData.tipo_trabalho_sugerido] ?? planData.tipo_trabalho_sugerido} />
-              <InfoCard label="Delineamento" value={planData.delineamento} />
-              <InfoCard label="Tipo de Coleta" value={COLETA_LABELS[planData.tipo_coleta] ?? planData.tipo_coleta} />
-              <InfoCard
-                label="Tempo Estimado"
-                value={planData.tempo_total_estimado}
-                icon={<Clock className="h-3.5 w-3.5 text-muted-foreground" />}
-              />
-            </div>
-          </div>
+          {/* ── Two-column: roadmap grid + sidebar ─────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Pergunta e objetivo */}
-          <div className="space-y-3">
-            <DetailCard label="Pergunta de Pesquisa" value={planData.pergunta_pesquisa} />
-            <DetailCard label="Objetivo Geral" value={planData.objetivo_geral} />
-            {planData.justificativa_resumida && (
-              <DetailCard label="Justificativa" value={planData.justificativa_resumida} />
-            )}
-          </div>
-
-          {/* CEP / Ética */}
-          {planData.envolve_seres_humanos && (
-            <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                    Aprovação ética obrigatória (CEP/Plataforma Brasil)
-                  </p>
-                  <p className="text-sm text-orange-700 dark:text-orange-300">
-                    Sua pesquisa envolve seres humanos. Pela Resolução CNS 466/2012, é obrigatória a
-                    aprovação do Comitê de Ética em Pesquisa (CEP) antes do início da coleta de dados.
-                    A submissão é feita pela Plataforma Brasil.
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {planData.precisa_cep && <EticaBadge label="CEP (Comitê de Ética em Pesquisa)" />}
-                    {planData.precisa_carta_anuencia && <EticaBadge label="Carta de Anuência" />}
-                    {planData.precisa_tcle && <EticaBadge label="TCLE (Termo de Consentimento)" />}
+            {/* ── Main: Roadmap card grid (2/3) ── */}
+            {planData.roadmap && planData.roadmap.length > 0 && (
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold text-foreground">Roadmap do Projeto</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(() => {
+                      const total = planData.roadmap.length
+                      const done = Object.values(etapaStatuses).filter(s => s === 'concluido').length
+                      const inProg = Object.values(etapaStatuses).filter(s => s === 'em_andamento').length
+                      const pend = total - done - inProg
+                      return (
+                        <>
+                          {done > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/40 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
+                              <CheckCircle2 className="h-3 w-3" /> {done} concluída{done !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {inProg > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                              {inProg} em andamento
+                            </span>
+                          )}
+                          {pend > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                              {pend} pendente{pend !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
-                  <a
-                    href="https://plataformabrasil.saude.gov.br"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300 underline underline-offset-2 hover:text-orange-900 dark:hover:text-orange-100 mt-1"
-                  >
-                    Acessar Plataforma Brasil
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* Roadmap expandível */}
-          {planData.roadmap && planData.roadmap.length > 0 && (
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-4">Roadmap do Projeto</h3>
-              <div className="relative">
-                {/* Linha vertical */}
-                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-                <ol className="space-y-4 pl-10">
+                {/* Card grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {(() => {
-                    // Rastreia quais tipos já foram renderizados para evitar duplicação de
-                    // instruções e checklist quando o roadmap tem 2 etapas do mesmo tipo.
                     const tiposJaRenderizados = new Set<string>()
-                    return planData.roadmap.map((etapaRaw) => {
-                    // Normaliza tipo antes de qualquer lógica (corrige erros da IA)
+                    return planData.roadmap.map((etapaRaw, etapaIdx) => {
                     const etapa = normalizeEtapa(etapaRaw)
-                    // app_executa calculado no frontend — não depende do valor gerado pela IA
                     const appExecuta = computeAppExecuta(etapa)
                     const isExpanded = expandedEtapas.has(etapa.id)
                     const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
 
-                    // Instruções e checklist só aparecem na PRIMEIRA etapa de cada tipo.
-                    // Se houver duas etapas 'coleta', a segunda não repete os mesmos itens.
                     const isPrimeiraDoTipo = !tiposJaRenderizados.has(etapa.tipo)
                     tiposJaRenderizados.add(etapa.tipo)
 
                     const instrucoes = isPrimeiraDoTipo ? getInstrucoesEtapa(etapa, appExecuta) : []
-                    // Documentos baseados no appExecuta computado (não em "primeiro de cada tipo")
                     const documentosEtapa = getDocumentosEtapa(etapa, appExecuta, planData)
-                    // Link para Plataforma Brasil em etapas de submissão de ética
                     const linkExterno = etapa.tipo === 'etica' && !appExecuta ? 'https://plataformabrasil.saude.gov.br' : null
                     const etapaChecklistItems = isPrimeiraDoTipo
                       ? (planData.checklist ?? []).filter(item => {
@@ -1353,172 +1329,192 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                     const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno || etapaChecklistItems.length > 0
 
                     return (
-                      <li key={etapa.id} className="relative">
-                        {/* Marcador */}
-                        <span className="absolute -left-6 flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border text-sm">
-                          {etapaIcone(etapa.tipo)}
-                        </span>
-
-                        <div className={cn('rounded-lg border', etapaCor(etapa.tipo))}>
-                          {/* Header da etapa — clicável para expandir */}
-                          <button
-                            type="button"
-                            onClick={() => hasDetails && toggleEtapa(etapa.id)}
-                            className={cn(
-                              'w-full text-left p-4',
-                              hasDetails && 'cursor-pointer'
-                            )}
-                          >
-                            <div className="flex flex-wrap items-start gap-2 mb-1">
-                              <span className="font-semibold text-base">{etapa.titulo}</span>
-
-                              {etapa.bloqueante && (
-                                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wide">
-                                  Bloqueio
-                                </span>
-                              )}
-
-                              {/* Status badge — clicável para ciclar */}
-                              <button
-                                type="button"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  handleEtapaStatusChange(etapa.id)
-                                }}
+                      <div
+                        key={etapa.id}
+                        className={cn(
+                          'rounded-xl border bg-card overflow-hidden flex flex-col transition-shadow',
+                          hasDetails && 'hover:shadow-md cursor-pointer',
+                          etapaStatus === 'concluido' && 'border-green-200 dark:border-green-800',
+                          etapaStatus === 'em_andamento' && 'border-blue-200 dark:border-blue-800',
+                        )}
+                        onClick={() => hasDetails && toggleEtapa(etapa.id)}
+                      >
+                        {/* Card colour band */}
+                        <div className={cn('p-4', etapaCor(etapa.tipo))}>
+                          <div className="flex items-start justify-between mb-3">
+                            {/* Number badge + icon */}
+                            <div className="flex items-center gap-2.5">
+                              <span
                                 className={cn(
-                                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80',
-                                  etapaStatusBadge(etapaStatus)
+                                  'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ring-2 ring-white dark:ring-gray-900 flex-shrink-0',
+                                  etapaStatus === 'concluido'
+                                    ? 'bg-green-500 text-white'
+                                    : etapaStatus === 'em_andamento'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-background text-foreground border border-border'
                                 )}
                               >
-                                {etapaStatusLabel(etapaStatus)}
-                              </button>
-
-                              {appExecuta ? (
-                                <span className="ml-auto flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/60 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
-                                  <Cpu className="h-3 w-3" /> App faz com IA
-                                </span>
-                              ) : (
-                                <span className="ml-auto flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                                  <User className="h-3 w-3" /> Você faz
-                                </span>
-                              )}
-
-                              {hasDetails && (
-                                <span className="text-current opacity-50">
-                                  {isExpanded
-                                    ? <ChevronUp className="h-4 w-4" />
-                                    : <ChevronDown className="h-4 w-4" />}
-                                </span>
-                              )}
+                                {etapaStatus === 'concluido'
+                                  ? <CheckCircle2 className="h-4 w-4" />
+                                  : etapaIdx + 1}
+                              </span>
+                              <span className="text-xl">{etapaIcone(etapa.tipo)}</span>
                             </div>
+                            {/* App / User badge */}
+                            {appExecuta ? (
+                              <span className="flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/60 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
+                                <Cpu className="h-3 w-3" /> App faz
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                                <User className="h-3 w-3" /> Você faz
+                              </span>
+                            )}
+                          </div>
 
-                            <p className="text-sm leading-relaxed mb-2 text-foreground/80">{etapa.descricao}</p>
+                          <h4 className="font-semibold text-sm text-foreground leading-tight mb-1 flex items-center gap-1.5 flex-wrap">
+                            {etapa.titulo}
+                            {etapa.bloqueante && (
+                              <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700 uppercase tracking-wide">
+                                Bloqueio
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-xs text-foreground/70 line-clamp-2 leading-relaxed">
+                            {etapa.descricao}
+                          </p>
+                        </div>
 
-                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
-                            </span>
-                          </button>
-
-                          {/* Conteúdo expandido */}
-                          {isExpanded && hasDetails && (
-                            <div className="border-t border-current/20 px-4 pb-4 pt-3 space-y-4 text-foreground">
-
-                              {/* Instruções detalhadas — determinadas estaticamente no frontend */}
-                              {instrucoes.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                                    Como fazer
-                                  </p>
-                                  <ol className="space-y-2">
-                                    {instrucoes.map((instrucao, idx) => (
-                                      <li key={idx} className="flex gap-2 text-sm leading-relaxed text-foreground">
-                                        <span className="flex-shrink-0 font-semibold text-muted-foreground w-4">{idx + 1}.</span>
-                                        <span>{instrucao}</span>
-                                      </li>
-                                    ))}
-                                  </ol>
-                                </div>
+                        {/* Card footer */}
+                        <div className="px-4 py-2.5 flex items-center justify-between gap-2 bg-background border-t mt-auto">
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {/* Status badge — click to cycle */}
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation()
+                                handleEtapaStatusChange(etapa.id)
+                              }}
+                              className={cn(
+                                'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80',
+                                etapaStatusBadge(etapaStatus)
                               )}
+                            >
+                              {etapaStatusLabel(etapaStatus)}
+                            </button>
+                            {hasDetails && (
+                              <span className="text-muted-foreground">
+                                {isExpanded
+                                  ? <ChevronUp className="h-3.5 w-3.5" />
+                                  : <ChevronDown className="h-3.5 w-3.5" />}
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                              {/* Mini-checklist desta etapa — usa etapaChecklistItems já filtrado acima */}
-                              {etapaChecklistItems.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                                      Tarefas desta etapa
-                                    </p>
-                                    <div className="space-y-2">
-                                      {etapaChecklistItems.map(item => {
-                                        const done = checklistStatus[item.id] ?? false
-                                        return (
-                                          <button
-                                            key={item.id}
-                                            type="button"
-                                            onClick={() => handleChecklistToggle(item.id)}
-                                            className={cn(
-                                              'w-full text-left rounded-lg border border-l-4 p-3 transition-opacity bg-background',
-                                              urgenciaCor(item.urgencia),
-                                              done && 'opacity-60'
-                                            )}
-                                          >
-                                            <div className="flex items-start gap-3">
-                                              <div className="flex-shrink-0 mt-0.5">
-                                                {done
-                                                  ? <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                                  : <div className="h-4 w-4 rounded border-2 border-current opacity-40" />}
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                  <span className={cn('text-sm font-medium text-foreground', done && 'line-through')}>
-                                                    {item.item}
-                                                  </span>
-                                                  <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
-                                                    {urgenciaLabel(item.urgencia)}
-                                                  </span>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
-                                                {item.link_ajuda && (
-                                                  <a
-                                                    href={item.link_ajuda}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={e => e.stopPropagation()}
-                                                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
-                                                  >
-                                                    Saiba mais <ExternalLink className="h-3 w-3" />
-                                                  </a>
-                                                )}
-                                              </div>
+                        {/* Expanded details */}
+                        {isExpanded && hasDetails && (
+                          <div
+                            className="border-t px-4 pb-4 pt-3 space-y-4 text-foreground"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {/* Instructions */}
+                            {instrucoes.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Como fazer</p>
+                                <ol className="space-y-2">
+                                  {instrucoes.map((instrucao, idx) => (
+                                    <li key={idx} className="flex gap-2 text-sm leading-relaxed text-foreground">
+                                      <span className="flex-shrink-0 font-semibold text-muted-foreground w-4">{idx + 1}.</span>
+                                      <span>{instrucao}</span>
+                                    </li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+
+                            {/* Checklist items */}
+                            {etapaChecklistItems.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                  Tarefas desta etapa
+                                </p>
+                                <div className="space-y-2">
+                                  {etapaChecklistItems.map(item => {
+                                    const done = checklistStatus[item.id] ?? false
+                                    return (
+                                      <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => handleChecklistToggle(item.id)}
+                                        className={cn(
+                                          'w-full text-left rounded-lg border border-l-4 p-3 transition-opacity bg-background',
+                                          urgenciaCor(item.urgencia),
+                                          done && 'opacity-60'
+                                        )}
+                                      >
+                                        <div className="flex items-start gap-3">
+                                          <div className="flex-shrink-0 mt-0.5">
+                                            {done
+                                              ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                              : <div className="h-4 w-4 rounded border-2 border-current opacity-40" />}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className={cn('text-sm font-medium text-foreground', done && 'line-through')}>
+                                                {item.item}
+                                              </span>
+                                              <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide', urgenciaBadge(item.urgencia))}>
+                                                {urgenciaLabel(item.urgencia)}
+                                              </span>
                                             </div>
-                                          </button>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                              )}
+                                            <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
+                                            {item.link_ajuda && (
+                                              <a
+                                                href={item.link_ajuda}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                                              >
+                                                Saiba mais <ExternalLink className="h-3 w-3" />
+                                              </a>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
 
-                              {/* Link externo — estático por tipo de etapa */}
-                              {linkExterno && (
-                                <a
-                                  href={linkExterno}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  Acessar Plataforma Brasil
-                                </a>
-                              )}
+                            {/* External link */}
+                            {linkExterno && (
+                              <a
+                                href={linkExterno}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Acessar Plataforma Brasil
+                              </a>
+                            )}
 
-                              {/* Documentos IA — determinados estaticamente por tipo de etapa */}
-                              {documentosEtapa.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                                    Documentos
-                                  </p>
-                                  <div className="space-y-3">
-                                    {documentosEtapa.map(doc => {
-                                      const key = `${etapa.id}_${doc.tipo}`
-                                      const docState = docsMap[key]
+                            {/* Documents */}
+                            {documentosEtapa.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                  Documentos
+                                </p>
+                                <div className="space-y-3">
+                                  {documentosEtapa.map(doc => {
+                                    const key = `${etapa.id}_${doc.tipo}`
+                                    const docState = docsMap[key]
 
                                       return (
                                         <div key={doc.tipo} className="rounded-md bg-background border border-border p-3">
@@ -1727,40 +1723,100 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                 </div>
                               )}
 
-                              {/* Link direto ao editor para etapa de escrita */}
-                              {etapa.tipo === 'escrita' && (
-                                <Link
-                                  href={`/trabalhos/${trabalho.id}/editar`}
-                                  className={cn(
-                                    buttonVariants({ size: 'sm' }),
-                                    'w-full gap-2 justify-center'
-                                  )}
-                                >
-                                  <ArrowRight className="h-4 w-4" />
-                                  Abrir Editor e escrever com IA
-                                </Link>
-                              )}
+                            {/* Writing link */}
+                            {etapa.tipo === 'escrita' && (
+                              <Link
+                                href={`/trabalhos/${trabalho.id}/editar`}
+                                className={cn(
+                                  buttonVariants({ size: 'sm' }),
+                                  'w-full gap-2 justify-center'
+                                )}
+                              >
+                                <ArrowRight className="h-4 w-4" />
+                                Abrir Editor e escrever com IA
+                              </Link>
+                            )}
 
-                              {/* Próximo passo */}
-                              <div className="rounded-md bg-muted/60 border border-border p-3">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                                  Próximo passo
-                                </p>
-                                <p className="text-sm text-foreground">
-                                  {getProximoPasso(etapa.tipo, planData)}
-                                </p>
-                              </div>
+                            {/* Próximo passo */}
+                            <div className="rounded-md bg-muted/60 border border-border p-3">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                Próximo passo
+                              </p>
+                              <p className="text-sm text-foreground">
+                                {getProximoPasso(etapa.tipo, planData)}
+                              </p>
                             </div>
-                          )}
-                        </div>
-                      </li>
+                          </div>
+                        )}
+                      </div>
                     )
                   })
                   })()}
-                </ol>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* ── Sidebar (1/3): analysis + details + CEP ── */}
+            <div className="space-y-4">
+
+              {/* Análise do orientador virtual */}
+              {(() => {
+                const textoAnalise = planData.analise_orientador
+                  ?? (streamingText ? streamingText.split('===PLANO_JSON===')[0].trim() : '')
+                return textoAnalise ? (
+                  <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4">
+                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">
+                      Análise do Orientador Virtual
+                    </p>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                      {textoAnalise}
+                    </p>
+                  </div>
+                ) : null
+              })()}
+
+              {/* Pergunta e objetivo */}
+              <DetailCard label="Pergunta de Pesquisa" value={planData.pergunta_pesquisa} />
+              <DetailCard label="Objetivo Geral" value={planData.objetivo_geral} />
+              {planData.justificativa_resumida && (
+                <DetailCard label="Justificativa" value={planData.justificativa_resumida} />
+              )}
+
+              {/* CEP / Ética */}
+              {planData.envolve_seres_humanos && (
+                <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                        Aprovação ética obrigatória (CEP/Plataforma Brasil)
+                      </p>
+                      <p className="text-sm text-orange-700 dark:text-orange-300">
+                        Sua pesquisa envolve seres humanos. Pela Resolução CNS 466/2012, é obrigatória a
+                        aprovação do Comitê de Ética em Pesquisa (CEP) antes do início da coleta de dados.
+                        A submissão é feita pela Plataforma Brasil.
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {planData.precisa_cep && <EticaBadge label="CEP (Comitê de Ética em Pesquisa)" />}
+                        {planData.precisa_carta_anuencia && <EticaBadge label="Carta de Anuência" />}
+                        {planData.precisa_tcle && <EticaBadge label="TCLE (Termo de Consentimento)" />}
+                      </div>
+                      <a
+                        href="https://plataformabrasil.saude.gov.br"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300 underline underline-offset-2 hover:text-orange-900 dark:hover:text-orange-100 mt-1"
+                      >
+                        Acessar Plataforma Brasil
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>{/* end sidebar */}
+          </div>{/* end 2-col grid */}
 
           {/* Checklist órfão — itens sem etapa_tipo e sem categoria mapeável */}
           {(() => {
