@@ -143,7 +143,9 @@ O protocolo deve conter as seguintes seções obrigatórias, com conteúdo compl
 8. REFERÊNCIAS BIBLIOGRÁFICAS
    Mínimo 10 referências relevantes no formato ABNT
 
-Produza o documento completo, formal, em português brasileiro, pronto para ser copiado e inserido na Plataforma Brasil.`
+Produza o documento completo, formal, em português brasileiro, pronto para ser copiado e inserido na Plataforma Brasil.
+
+ESTILO NAS SEÇÕES NARRATIVAS (Introdução, Justificativa, Aspectos Éticos): Alterne parágrafos longos com frases curtas de impacto. Inclua pelo menos uma ressalva real por seção ("embora...", "a exceção ocorre..."). PROIBIDO: "É importante ressaltar", "Nesse contexto", "Diante do exposto", "Outrossim", "Destarte", "Sendo assim", "Cabe destacar".`
 }
 
 function buildCartaAnuencia(dados: DadosProjeto, titulo?: string): string {
@@ -165,7 +167,9 @@ A carta deve:
 - Usar linguagem formal e respeitosa
 - Incluir local, data e campos de assinatura do pesquisador e do representante institucional
 
-Formate como carta oficial brasileira (com cabeçalho, corpo, fechamento e campos de assinatura).`
+Formate como carta oficial brasileira (com cabeçalho, corpo, fechamento e campos de assinatura).
+
+ESTILO: Escreva de forma direta e profissional. Varie levemente o comprimento das frases. Evite linguagem roboticamente formal: prefira "solicita autorização" a "vem mui respeitosamente requerer". Inclua 1-2 frases com ritmo curto para destacar compromissos.`
 }
 
 function buildTcle(dados: DadosProjeto, titulo?: string): string {
@@ -222,7 +226,9 @@ O TCLE deve conter obrigatoriamente:
 12. DUAS VIAS
     Nota informando que o TCLE é emitido em duas vias, uma para o participante e outra para o pesquisador.
 
-Use linguagem clara, direta e empática. O documento deve ser completo e pronto para uso.`
+Use linguagem clara, direta e empática. O documento deve ser completo e pronto para uso.
+
+ESTILO OBRIGATÓRIO: Nas seções descritivas (Objetivos, Procedimentos, Riscos, Benefícios), use linguagem simples e variada — misture frases curtas de 1 linha com explicações mais longas. Nunca use "É importante ressaltar", "Diante do exposto", "Nesse contexto", "Destarte". O participante precisa entender facilmente.`
 }
 
 function buildInstrumentoColeta(dados: DadosProjeto): string {
@@ -264,7 +270,9 @@ O instrumento deve conter:
 7. CÓDIGO DE ANÁLISE
    Tabela de codificação de variáveis para análise no software ${dados.analise_prevista}.
 
-Produza o instrumento completo, numerado e pronto para aplicação.`
+Produza o instrumento completo, numerado e pronto para aplicação.
+
+ESTILO NAS INSTRUÇÕES E DESCRIÇÕES: Use linguagem direta e prática. Alterne entre frases curtas (instruções) e explicações mais longas. Evite o estilo "lista de IA" onde cada item é idêntico em estrutura e comprimento.`
 }
 
 function buildCalculoAmostral(dados: DadosProjeto): string {
@@ -333,7 +341,9 @@ O documento deve conter:
 8. REFERÊNCIAS DO CÁLCULO
    Cite as referências metodológicas utilizadas (Cohen, 1988; ou outra referência padrão para o método), em formato ABNT.
 
-Produza o documento completo, com todos os cálculos realizados e o texto pronto para uso no manuscrito e no protocolo CEP.`
+Produza o documento completo, com todos os cálculos realizados e o texto pronto para uso no manuscrito e no protocolo CEP.
+
+ESTILO NAS SEÇÕES NARRATIVAS (Contexto, Justificativa, Resultado Final, Texto para Métodos): Alterne parágrafos densos com frases curtas de conclusão ("O N final recomendado é X."). Inclua pelo menos uma ressalva sobre limitações do cálculo. PROIBIDO: "É importante ressaltar", "Nesse contexto", "Diante do exposto", "Destarte", "Sendo assim".`
 }
 
 function buildGuiaColeta(dados: DadosProjeto): string {
@@ -394,7 +404,9 @@ O guia deve ser prático, claro e seguir a seguinte estrutura:
     - Orientador
     - Responsável na instituição coparticipante
 
-Produza o guia completo, formal e pronto para uso em campo.`
+Produza o guia completo, formal e pronto para uso em campo.
+
+ESTILO: Escreva as seções narrativas (Introdução, Scripts de abordagem, Controle de qualidade) com ritmo variado — alterne frases de instrução curtas com explicações em prosa. Inclua pelo menos 1 "Atenção:" ou "Nota de campo:" com dica prática por seção principal. PROIBIDO: "É importante ressaltar", "Nesse contexto", "Destarte", "Outrossim".`
 }
 
 function buildGuiaAnalise(dados: DadosProjeto): string {
@@ -488,7 +500,9 @@ Para cada periódico, forneça obrigatoriamente:
 - URL para submissão: https://...
 - Por que é adequado para esta pesquisa: (1-2 frases específicas)
 
-Ordene do mais ao menos recomendado. Ao final, acrescente uma seção "DICAS PARA ESCOLHA DO PERIÓDICO" com 3-4 orientações práticas baseadas neste projeto específico.`
+Ordene do mais ao menos recomendado. Ao final, acrescente uma seção "DICAS PARA ESCOLHA DO PERIÓDICO" com 3-4 orientações práticas baseadas neste projeto específico.
+
+ESTILO NA SEÇÃO DE DICAS E NAS JUSTIFICATIVAS: Escreva em prosa com ritmo variado. Misture frases curtas com análises mais longas. Inclua pelo menos 1 dado surpreendente ou ressalva inesperada (ex: "Curiosamente, o periódico X aceita artigos em português mas raramente publica estudos brasileiros"). PROIBIDO: "É importante ressaltar", "Nesse contexto", "Destarte".`
 }
 
 function buildCartaSubmissao(dados: DadosProjeto, titulo?: string): string {
@@ -539,7 +553,9 @@ ORCID: [ORCID]
 
 [Mesma estrutura, traduzida adequadamente]
 
-Produza ambas as versões completas e prontas para uso.`
+Produza ambas as versões completas e prontas para uso.
+
+ESTILO: Escreva de forma profissional mas não roboticamente uniforme. Cada parágrafo deve ter comprimento diferente. A versão em inglês deve soar como escrita por nativo (use construções naturais, não tradução literal). Inclua 1-2 frases curtas de impacto. PROIBIDO em português: "É importante ressaltar", "Nesse contexto", "Destarte", "Sendo assim".`
 }
 
 function buildChecklistSubmissao(dados: DadosProjeto): string {
@@ -607,7 +623,9 @@ O checklist deve estar organizado por categorias, com cada item em formato de ca
 **DICAS ESPECÍFICAS PARA ESTE PROJETO**
 Com base no delineamento (${dados.delineamento}) e na análise prevista (${dados.analise_prevista}), liste 3-4 cuidados adicionais que este estudo específico precisa ter na submissão.
 
-Formate o checklist de forma clara e pronta para impressão ou uso digital.`
+Formate o checklist de forma clara e pronta para impressão ou uso digital.
+
+ESTILO NAS DICAS ESPECÍFICAS E NAS EXPLICAÇÕES: Escreva em prosa com ritmo variado. Inclua pelo menos 1 observação contraintuitiva ou aviso sobre erro comum. PROIBIDO: "É importante ressaltar", "Nesse contexto", "Destarte", "Sendo assim", "Além disso,".`
 }
 
 export function buildDocumentoPrompt(
