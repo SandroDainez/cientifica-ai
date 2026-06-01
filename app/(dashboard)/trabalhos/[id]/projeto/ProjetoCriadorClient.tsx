@@ -1321,12 +1321,52 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             ) : null
           })()}
 
-          {/* ── Two-column: roadmap grid + sidebar ─────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ── CEP / Ética — full width ─────────────────────────────────────── */}
+          {planData.envolve_seres_humanos && (
+            <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                    Aprovação ética obrigatória (CEP/Plataforma Brasil)
+                  </p>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    Sua pesquisa envolve seres humanos. Pela Resolução CNS 466/2012, é obrigatória a
+                    aprovação do Comitê de Ética em Pesquisa (CEP) antes do início da coleta de dados.
+                    A submissão é feita pela Plataforma Brasil.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {planData.precisa_cep && <EticaBadge label="CEP (Comitê de Ética em Pesquisa)" />}
+                    {planData.precisa_carta_anuencia && <EticaBadge label="Carta de Anuência" />}
+                    {planData.precisa_tcle && <EticaBadge label="TCLE (Termo de Consentimento)" />}
+                  </div>
+                  <a
+                    href="https://plataformabrasil.saude.gov.br"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300 underline underline-offset-2 hover:text-orange-900 dark:hover:text-orange-100 mt-1"
+                  >
+                    Acessar Plataforma Brasil
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
-            {/* ── Main: Roadmap card grid (2/3) ── */}
-            {planData.roadmap && planData.roadmap.length > 0 && (
-              <div className="lg:col-span-2 space-y-4">
+          {/* ── Pergunta / Objetivo / Justificativa — 3 colunas full width ──── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <DetailCard label="Pergunta de Pesquisa" value={planData.pergunta_pesquisa} />
+            <DetailCard label="Objetivo Geral" value={planData.objetivo_geral} />
+            {planData.justificativa_resumida
+              ? <DetailCard label="Justificativa" value={planData.justificativa_resumida} />
+              : <div />
+            }
+          </div>
+
+          {/* ── Roadmap ─────────────────────────────────────────────────────── */}
+          {planData.roadmap && planData.roadmap.length > 0 && (
+            <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-base font-semibold text-foreground">Roadmap do Projeto</h3>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1359,7 +1399,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                 </div>
 
                 {/* Card grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(() => {
                     const tiposJaRenderizados = new Set<string>()
                     return planData.roadmap.map((etapaRaw, etapaIdx) => {
@@ -1846,55 +1886,6 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
               </div>
             )}
 
-            {/* ── Sidebar (1/3): details 2-col grid + CEP ── */}
-            <div className="space-y-3">
-
-              {/* Grid 2 colunas: Pergunta, Objetivo, Justificativa */}
-              <div className="grid grid-cols-2 gap-3">
-                <DetailCard label="Pergunta de Pesquisa" value={planData.pergunta_pesquisa} />
-                <DetailCard label="Objetivo Geral" value={planData.objetivo_geral} />
-                {planData.justificativa_resumida && (
-                  <div className="col-span-2">
-                    <DetailCard label="Justificativa" value={planData.justificativa_resumida} />
-                  </div>
-                )}
-              </div>
-
-              {/* CEP / Ética */}
-              {planData.envolve_seres_humanos && (
-                <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                        Aprovação ética obrigatória (CEP/Plataforma Brasil)
-                      </p>
-                      <p className="text-sm text-orange-700 dark:text-orange-300">
-                        Sua pesquisa envolve seres humanos. Pela Resolução CNS 466/2012, é obrigatória a
-                        aprovação do Comitê de Ética em Pesquisa (CEP) antes do início da coleta de dados.
-                        A submissão é feita pela Plataforma Brasil.
-                      </p>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {planData.precisa_cep && <EticaBadge label="CEP (Comitê de Ética em Pesquisa)" />}
-                        {planData.precisa_carta_anuencia && <EticaBadge label="Carta de Anuência" />}
-                        {planData.precisa_tcle && <EticaBadge label="TCLE (Termo de Consentimento)" />}
-                      </div>
-                      <a
-                        href="https://plataformabrasil.saude.gov.br"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300 underline underline-offset-2 hover:text-orange-900 dark:hover:text-orange-100 mt-1"
-                      >
-                        Acessar Plataforma Brasil
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>{/* end sidebar */}
-          </div>{/* end 2-col grid */}
 
           {/* Checklist órfão — itens sem etapa_tipo e sem categoria mapeável */}
           {(() => {
@@ -1957,10 +1948,16 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             )
           })()}
 
-          {/* Dados da Pesquisa — para inserir dados coletados */}
-          <div>
-            <h3 className="text-base font-semibold text-foreground mb-1">Dados da Pesquisa</h3>
-            <p className="text-sm text-muted-foreground mb-3">
+          {/* ── Dados da Pesquisa — destaque ────────────────────────────────── */}
+          <div className="rounded-xl border-2 border-primary/25 bg-gradient-to-br from-primary/5 via-background to-primary/10 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <Table2 className="h-5 w-5 text-primary flex-shrink-0" />
+              <h3 className="text-base font-semibold text-foreground">Dados da Pesquisa</h3>
+              <span className="ml-1 inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary uppercase tracking-wide">
+                Importante
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
               Cole aqui seus dados coletados, resultados, tabelas ou achados. O editor usará essas informações ao gerar a seção Resultados.
             </p>
             <DadosPesquisaPanel

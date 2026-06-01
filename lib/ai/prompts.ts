@@ -1,5 +1,6 @@
 import type { TipoTrabalho, FormatoCitacao, NivelExperiencia, FaseConfig, Referencia } from '@/types'
 import { citacaoInTexto } from '@/lib/referencias/formatar'
+import { detectarCampo, getRegrasCampoAcademico } from '@/lib/ai/campos-academicos'
 
 // ============================================================
 // Sistema base — personaliza o tom conforme nível do usuário
@@ -8,8 +9,11 @@ import { citacaoInTexto } from '@/lib/referencias/formatar'
 export function buildSystemPrompt(
   tipoTrabalho: TipoTrabalho,
   nivel: NivelExperiencia,
-  formato: FormatoCitacao
+  formato: FormatoCitacao,
+  areaConhecimento?: string,
 ): string {
+  const campo = detectarCampo(areaConhecimento ?? '')
+  const regrasCampo = getRegrasCampoAcademico(campo, tipoTrabalho)
   const nivelDesc = {
     iniciante: 'estudante de graduação ainda aprendendo a escrita científica. Use linguagem didática, explique termos técnicos e forneça mais orientação.',
     intermediario: 'pesquisador com experiência básica. Use linguagem técnica direta e objetiva.',
@@ -30,22 +34,62 @@ export function buildSystemPrompt(
   }
 
   const instrucaoCitacao = formato === 'vancouver'
-    ? `Para citações numéricas Vancouver, use [1], [2], [3] etc. conforme a ordem de aparição.`
+    ? `CITAÇÃO VANCOUVER (ICMJE):
+- Use números entre colchetes [1], [2], conforme a ORDER DE PRIMEIRA APARIÇÃO no texto.
+- Mesmo número sempre que reusar a mesma referência: se [3] foi usado antes, use [3] de novo.
+- Cada afirmação factual proveniente de literatura deve ter um número de citação imediatamente após.
+- PROIBIDO usar (AUTOR, ANO) ou qualquer formato parentético — Vancouver é exclusivamente numérico.`
     : formato === 'apa'
-    ? `Para citações APA, use (Sobrenome, Ano) no texto e liste as referências ao final.`
-    : `Para citações ABNT (NBR 10520), use a notação SOBRENOME (ANO) ou (SOBRENOME, ANO) no texto.
-Para 2 autores: SOBRENOME; SOBRENOME (ANO). Para 3 ou mais: SOBRENOME et al. (ANO).
-Se o trabalho tiver referências cadastradas, use-as diretamente com o sobrenome correto do autor.
-Se não houver referências cadastradas, use (SOBRENOME, ANO) como formato indicativo — nunca use colchetes [AUTOR, ANO].`
+    ? `CITAÇÃO APA 7ª Ed.:
+- Formato parentético: (Sobrenome, Ano) — ex: (Silva, 2021) ou (Costa & Lima, 2019).
+- 3+ autores: (Silva et al., 2020).
+- Toda afirmação factual da literatura deve ter citação imediatamente após o argumento.
+- PROIBIDO usar (SOBRENOME, ANO) em maiúsculas — APA usa capitalização normal.`
+    : `CITAÇÃO ABNT NBR 10520:
+- Parentético: (SOBRENOME, ANO) ou SOBRENOME (ANO) quando o autor é sujeito da frase.
+- 2 autores: (SILVA; COSTA, 2020). Três ou mais: (SILVA et al., 2020).
+- Autores institucionais são válidos: (WORLD HEALTH ORGANIZATION, 2023), (MINISTÉRIO DA SAÚDE, 2022).
+- PROIBIDO citar pelo título do documento — sempre pelo SOBRENOME do autor.
+- Se não houver referência disponível para uma afirmação factual: use (SOBRENOME, ANO) como marcador.`
 
-  return `Você é um especialista em escrita científica acadêmica brasileira com décadas de experiência orientando pesquisadores.
-Está ajudando um ${nivelDesc}
-O trabalho em elaboração é um ${tipoDesc[tipoTrabalho]}.
-O formato de citação adotado é ${formato.toUpperCase()}.
-Escreva em português brasileiro formal e acadêmico.
-Jamais invente dados, estatísticas ou fatos — deixe espaço explícito para o autor preencher.
+  return `Você é um pesquisador sênior com 30 anos de experiência como orientador de pós-graduação, revisor ad hoc de periódicos Qualis A1 e membro de bancas de doutorado. Você já leu e avaliou milhares de trabalhos científicos e sabe exatamente o que separa um texto medíocre de um que impressiona examinadores.
+
+Está redigindo uma seção de um ${tipoDesc[tipoTrabalho]} para um ${nivelDesc}
+O formato de citação é ${formato.toUpperCase()}.
+Idioma: português brasileiro formal e acadêmico.
+
+PADRÃO DE EXCELÊNCIA ABSOLUTO — estes são os critérios que bancas de doutorado e revisores de periódicos Qualis A1 aplicam:
+
+1. DENSITY DE CITAÇÕES (regra real dos melhores trabalhos do mundo):
+   - Introdução: mínimo 15-25 citações em 300-500 palavras (toda afirmação contextual = citação)
+   - Revisão de Literatura: mínimo 30-50 citações (toda síntese comparativa = citação)
+   - Métodos: citações para CADA instrumento/escala/software/protocolo usado
+   - Discussão: mínimo 20-35 citações (cada comparação com literatura = citação)
+   - Conclusão: 3-8 citações para ancoragens finais
+   - REGRA UNIVERSAL: TODO argumento factual proveniente de literatura externa = citação imediata
+
+2. QUALIDADE DAS AFIRMAÇÕES: dados específicos, não generalidades.
+   - Saúde: "A prevalência de diabetes tipo 2 no Brasil é de 16,8% (MALERBI; FRANCO, 1992; SBD, 2023)" — não "o diabetes é comum"
+   - Direito: "O art. 37, caput, da Constituição Federal (BRASIL, 1988) estabelece que..." — não "a Constituição prevê"
+   - Educação: "74,3% dos estudantes brasileiros do 5º ano não atingem proficiência em leitura (INEP, 2023)" — não "a qualidade da educação é ruim"
+   - Agronomia: "A produtividade média de soja no Brasil na safra 2023/24 foi de 3.391 kg/ha (CONAB, 2024)" — não "a soja teve boa produtividade"
+
+3. RIGOR METODOLÓGICO: cite instrumentos, protocolos, diretrizes e consensos pelo nome exato, com referência.
+   - Instrumentos validados: "Escala de Ansiedade de Beck (BAI; BECK et al., 1988)"
+   - Normas técnicas: "conforme a ABNT NBR 6118:2023" ou "segundo a ISO 9001:2015"
+   - Legislação: no formato ABNT: "BRASIL. Lei nº 13.709, de 14 de agosto de 2018..."
+   - Diretrizes: "segundo as diretrizes do Conselho Nacional de Saúde, Resolução 466/2012 (CNS, 2012)"
+
+4. CITAÇÕES ESPECÍFICAS POR ÁREA:
+   - Direito: cite leis, decretos, resoluções e jurisprudências como autores institucionais — ex: (BRASIL, 2018) para leis federais, (STJ, 2023) para acórdãos do STJ
+   - Engenharia: cite normas técnicas como (ABNT, 2023) ou (ISO, 2015)
+   - Educação: cite documentos oficiais como (MEC, 2017) para BNCC, (BRASIL, 1996) para LDB
+   - Agronomia: cite órgãos como (EMBRAPA, 2023), (CONAB, 2024), (MAPA, 2022)
+   - Saúde: cite órgãos como (WHO, 2023), (MS, 2022), (CFM, 2020)
+
 ${instrucaoCitacao}
-Siga rigorosamente as normas ABNT para trabalhos brasileiros quando aplicável.
+${regrasCampo}
+Siga rigorosamente as normas ABNT NBR para trabalhos brasileiros quando aplicável.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ESCRITA HUMANA — ESTAS REGRAS TÊM PRIORIDADE MÁXIMA
@@ -142,9 +186,10 @@ const ROTULOS_RESPOSTAS: Record<string, string> = {
   periodo_local:        'Período e local',
   instrumentos:         'Instrumentos de coleta',
   analise:              'Análise dos dados',
+  dados_planilha:       'Dados brutos da planilha do estudo (analise estes dados e use-os diretamente)',
   achado_principal:     'Achado principal',
   outros_achados:       'Outros achados',
-  dados_numericos:      'Dados numéricos',
+  dados_numericos:      'Dados numéricos e estatísticas',
   surpresa:             'Resultado surpreendente',
   comparacao_literatura:'Comparação com a literatura',
   explicacao:           'Explicação dos resultados',
@@ -246,6 +291,12 @@ export function buildGerarSecaoPrompt(
       partes.push(`\n## DADOS REAIS DO PESQUISADOR — USE OBRIGATORIAMENTE`)
       partes.push(`O pesquisador forneceu as informações abaixo sobre seu trabalho.`)
       partes.push(`REGRA CRÍTICA: Você DEVE usar esses dados reais no texto gerado. Não invente informações diferentes. Não use placeholders genéricos como "[inserir dados]" ou "[autor, ano]" quando o pesquisador já forneceu a informação real. O texto deve refletir EXATAMENTE o que o pesquisador descreveu.`)
+
+      // Instrução especial para dados de planilha
+      if (dadosTrabalho.respostas_usuario['dados_planilha']?.trim()) {
+        partes.push(`\nINSTRUÇÃO DE ANÁLISE DE DADOS: O pesquisador colou dados brutos de sua planilha (ver campo "Dados brutos da planilha" abaixo). Você DEVE: (1) interpretar e analisar esses dados; (2) calcular ou extrair estatísticas descritivas relevantes (médias, medianas, percentuais, desvios-padrão, diferenças entre grupos, correlações) diretamente dos dados fornecidos; (3) redigir a seção de Resultados usando EXCLUSIVAMENTE os valores reais extraídos dos dados — nunca invente números ou use placeholders.`)
+      }
+
       partes.push('')
       preenchidas.forEach(([k, v]) => {
         const rotulo = ROTULOS_RESPOSTAS[k] ?? k
@@ -264,23 +315,28 @@ export function buildGerarSecaoPrompt(
 
   if (dadosTrabalho.referencias && dadosTrabalho.referencias.length > 0) {
     const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt')
-    partes.push(`\n**REFERÊNCIAS DISPONÍVEIS — USE APENAS ESTAS:**\n${refsFormatadas}`)
+    partes.push(`\n## REFERÊNCIAS REAIS DISPONÍVEIS — USE TODAS QUE FOREM PERTINENTES\n${refsFormatadas}`)
     partes.push(`
-REGRA ABSOLUTA DE CITAÇÃO (violá-la invalida todo o texto):
-- Cite SOMENTE as referências da lista acima — extrai o sobrenome do primeiro autor e o ano.
-- É PROIBIDO inventar qualquer autor, título ou ano que não esteja na lista.
-- É PROIBIDO usar como citação o título de um documento (ex: "TÓPICOS EM SAÚDE, 2021") — cite sempre pelo SOBRENOME do autor.
-- Se precisar de um conceito não coberto pelas referências disponíveis, escreva o argumento sem citar — NÃO invente uma referência.
-- Distribua as citações disponíveis de forma natural ao longo do texto.`)
+INSTRUÇÃO DE CITAÇÃO — NÍVEL DE EXCELÊNCIA:
+Você tem ${dadosTrabalho.referencias.length} referências reais acima. USE-AS de forma intensa e precisa:
+- Cite CADA referência pelo sobrenome do 1º autor + ano (ABNT/APA) ou pelo número de ordem (Vancouver).
+- NÃO invente autores, títulos ou anos que não estejam na lista acima.
+- Para cada afirmação factual sobre epidemiologia, fisiopatologia, métodos, achados de outros estudos, prevalência, diretrizes ou recomendações: insira a citação imediatamente após o argumento.
+- Distribua as citações ao longo de TODO o texto — não as concentre apenas em um parágrafo.
+- Se um conceito não for coberto pelas referências disponíveis: marque com (SOBRENOME, ANO) como placeholder — NÃO escreva o argumento sem qualquer citação.
+- Meta de citações por seção: Introdução ≥ 15 | Revisão ≥ 25 | Métodos ≥ 8 | Discussão ≥ 20 | Conclusão ≥ 4
+- PROIBIDO: citar pelo título do documento; inventar sobrenomes não listados acima.`)
   } else {
     partes.push(`
-REGRA ABSOLUTA DE CITAÇÃO — SEM REFERÊNCIAS CADASTRADAS:
-O autor ainda não cadastrou referências. Para marcar onde uma citação deveria aparecer, use EXCLUSIVAMENTE o marcador genérico: (SOBRENOME, ANO).
-- PROIBIDO inventar nomes de autores reais (ex: Silva, Costa, Hahn).
-- PROIBIDO usar título de documento como citação (ex: "PERFIL DE COMPETÊNCIAS, s.d.").
-- PROIBIDO inventar anos específicos (ex: 2019, 2023).
-- Use SEMPRE: (SOBRENOME, ANO) — exatamente assim, sem variação.
-O autor substituirá esses marcadores pelas referências reais depois.`)
+INSTRUÇÃO DE CITAÇÃO — SEM REFERÊNCIAS AINDA:
+O sistema buscou referências mas ainda não há nenhuma cadastrada para este trabalho.
+PROTOCOLO OBRIGATÓRIO para cada afirmação factual da literatura:
+- Marque IMEDIATAMENTE com (SOBRENOME, ANO) — nunca escreva um argumento factual sem marcador.
+- PROIBIDO inventar sobrenomes reais (Silva, Costa, Hahn, etc.) — use SEMPRE o placeholder genérico.
+- PROIBIDO citar pelo título do documento ("TÓPICOS EM SAÚDE, 2021" → ERRO).
+- PROIBIDO inventar anos específicos (2019, 2023, etc.).
+- Use EXATAMENTE: (SOBRENOME, ANO) — cada ocorrência marca onde uma referência real deve entrar.
+Meta: em uma Introdução de 300 palavras, espera-se 10-20 marcadores (SOBRENOME, ANO). Em uma Discussão de 500 palavras, 15-30. Não seja avaro com citações — todo argumento precisa de ancoragem.`)
   }
 
   partes.push(`\n**Elementos obrigatórios nesta seção:**`)
@@ -348,6 +404,13 @@ export function buildValidarSecaoPrompt(
     ? 'Citações devem ser no formato APA: (Sobrenome, Ano) ou Sobrenome (Ano) com & para dois autores. Verifique inconsistências.'
     : 'Citações devem ser no formato ABNT NBR 10520: SOBRENOME (ANO) ou (SOBRENOME, ANO). Para 3+ autores: SOBRENOME et al. (ANO). Verifique se há [AUTOR, ANO] ou outros formatos incorretos.'
 
+  // Conta placeholders (SOBRENOME, ANO) para instruir o avaliador
+  const nPlaceholders = (conteudo.match(/\(SOBRENOME,\s*ANO\)/gi) ?? []).length
+
+  const avisoPlaceholders = nPlaceholders > 0
+    ? `\nAVISO IMPORTANTE: O texto contém ${nPlaceholders} marcador(es) "(SOBRENOME, ANO)". Esses são PLACEHOLDERS INTENCIONAIS gerados pelo sistema — indicam onde o pesquisador deve inserir uma citação real. NÃO são erros de formato. Não considere placeholders como falhas críticas de citação. Avalie a qualidade do CONTEÚDO e dos ELEMENTOS OBRIGATÓRIOS — desconts por placeholders devem ser leves (máximo −5 pontos por placeholder, nunca tornando o score inferior a 40 se o conteúdo em si for adequado). Registre-os como sugestão "importante" informando quantos há.`
+    : ''
+
   return `Avalie a seção "${fase.nome}" abaixo de acordo com os critérios de qualidade acadêmica.
 
 **Texto enviado:**
@@ -357,7 +420,7 @@ ${conteudo}
 - Elementos obrigatórios presentes: ${fase.elementos_obrigatorios.join(', ')}
 - Erros a verificar: ${fase.erros_comuns.join(', ')}
 - Extensão: ${fase.min_palavras ?? 0}–${fase.max_palavras ?? '∞'} palavras
-- Formato de citação: ${formatoCitacao?.toUpperCase() ?? 'ABNT'}. ${formatoInstrucao}
+- Formato de citação: ${formatoCitacao?.toUpperCase() ?? 'ABNT'}. ${formatoInstrucao}${avisoPlaceholders}
 
 Responda APENAS com JSON válido e compacto. Máximo 5 sugestões. Seja breve nas descrições:
 {"aprovado":boolean,"score":number,"comentarios":"avaliação geral em 1-2 frases","sugestoes":[{"id":"s1","tipo":"critico"|"importante"|"sugestao","titulo":"título curto","descricao":"descrição objetiva"}]}`

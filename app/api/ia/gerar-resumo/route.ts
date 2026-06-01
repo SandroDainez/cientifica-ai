@@ -41,7 +41,8 @@ export async function POST(request: Request) {
   const systemPrompt = buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
-    trabalho.formato_citacao
+    trabalho.formato_citacao,
+    trabalho.area_conhecimento ?? undefined,
   )
 
   // Modo abstract: recebe o resumo PT já pronto

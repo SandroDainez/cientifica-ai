@@ -88,7 +88,7 @@ REGRAS QUE VOCÊ SEGUE SEMPRE:
 
 5\. Você nunca inventa referências para sustentar a discussão —
 
-   indica com \[AUTOR, ANO\] todos os pontos que precisam de citação real.
+   indica com (SOBRENOME, ANO) todos os pontos que precisam de citação real.
 
 6\. Você verifica que a discussão é coerente com o problema declarado
 
@@ -330,7 +330,7 @@ A análise de sensibilidade confirma que este resultado
 
 explicação é que \[por que a hipótese estava errada\].
 
-\[AUTOR, ANO\] havia proposto \[perspectiva alternativa\]
+(SOBRENOME, ANO) havia proposto \[perspectiva alternativa\]
 
 que os presentes dados apoiam mais fortemente."
 
@@ -560,7 +560,7 @@ Antes de liberar o avanço para a fase 8.10, a IA verifica se:
 - [ ] As implicações estão articuladas em três níveis  
 - [ ] O teste de autoridade foi aplicado  
 - [ ] A linguagem está calibrada com o que os dados sustentam  
-- [ ] As referências estão marcadas com \[AUTOR, ANO\]
+- [ ] As referências estão marcadas com (SOBRENOME, ANO)
 
 Se algum item não estiver atendido, a IA ajusta antes de liberar o avanço para a fase 8.10.
 

@@ -257,12 +257,14 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
         tipo: 'selecao',
         opcoes: [
           'Sim — já tenho o número do parecer CEP',
-          'Sim — mas ainda não tenho o número',
+          'Sim — mas ainda não tenho o número (aprovação recente)',
           'Está em análise no CEP',
+          'Não — ainda preciso me cadastrar e submeter na Plataforma Brasil',
           'Não precisa de CEP (pesquisa sem envolvimento humano/animal direto)',
           'É pesquisa com dados secundários públicos — dispensa CEP',
         ],
         obrigatoria: true,
+        dica: 'Se ainda não submeteu: acesse plataformabrasil.saude.gov.br → cadastre-se → submeta antes de iniciar a coleta. O processo leva de 30 a 60 dias.',
       },
       {
         id: 'numero_parecer',
@@ -365,26 +367,44 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
         pergunta: 'Quais bases de dados você consultou ou vai consultar?',
         tipo: 'selecao',
         opcoes: [
-          'PubMed/MEDLINE + SciELO + LILACS (padrão para área da saúde)',
-          'PubMed/MEDLINE + Cochrane Library + Embase',
-          'Web of Science + Scopus + PubMed',
-          'Google Scholar + bases regionais específicas',
+          // Saúde / Medicina / Biologia
+          'PubMed/MEDLINE + SciELO + LILACS (saúde, medicina, enfermagem, nutrição)',
+          'PubMed/MEDLINE + Cochrane Library + Embase (ensaios clínicos)',
+          'Web of Science + Scopus + PubMed (pesquisa biomédica ampla)',
+          // Ciências Humanas e Sociais
+          'SciELO + SPELL + Periódicos CAPES (ciências humanas e sociais — BR)',
+          'ERIC + PsycINFO + SciELO (educação e psicologia)',
+          'Google Scholar + Periódicos CAPES + repositórios institucionais',
+          // Direito
+          'Jusbrasil + DJe/STJ/STF + Periódicos CAPES Direito (jurisprudência e doutrina)',
+          'LexisNexis + HeinOnline + SciELO (direito comparado e internacional)',
+          // Agronomia / Ciências Agrárias
+          'Embrapa + SciELO + Web of Science (agronomia e ciências agrárias)',
+          'Scopus + Web of Science + AGRIS/FAO (agronômico internacional)',
+          // Engenharia
+          'Scopus + Web of Science + IEEE Xplore (engenharia e tecnologia)',
+          'Compendex (Engineering Village) + Scopus + ABNT NBR Online',
+          // Multidisciplinar
+          'Scopus + Web of Science (qualquer área — cobertura internacional)',
+          'Periódicos CAPES + Google Scholar (acesso via CAPES — todas as áreas)',
         ],
         obrigatoria: true,
+        dica: 'Escolha as bases adequadas para sua área. Revisões sistemáticas devem usar pelo menos 3 bases.',
       },
       {
         id: 'descritores',
         pergunta: 'Quais foram os descritores/termos de busca utilizados?',
         tipo: 'textarea',
-        placeholder: 'Ex: ("type 2 diabetes mellitus" OR "T2DM") AND ("metformin" OR "biguanide") AND ("HbA1c" OR "glycated hemoglobin") — busca no PubMed com filtro: Clinical Trial, últimos 5 anos',
+        placeholder:
+          'Saúde: ("diabetes mellitus tipo 2" OR "DM2") AND ("metformina") AND ("HbA1c") — PubMed, filtro: Clinical Trial, 2015–2024\n\nDireito: ("responsabilidade civil" OR "dano moral") AND ("relação de consumo") — Jusbrasil + STJ, acórdãos 2018–2024\n\nEducação: ("letramento digital" OR "competência digital") AND ("ensino fundamental") — ERIC + SciELO, 2018–2024\n\nAgronomia: ("soja" OR "Glycine max") AND ("déficit hídrico" OR "estresse hídrico") AND ("produtividade") — Web of Science, 2019–2024\n\nEngenharia: ("concreto de alto desempenho") AND ("resistência à compressão") — Scopus + Web of Science, 2018–2024',
         obrigatoria: false,
-        dica: 'Se ainda não fez a busca, descreva os principais descritores e os operadores booleanos que planeja usar',
+        dica: 'Use operadores booleanos (AND, OR, NOT). Use MeSH para saúde, descritores DeCS para português, termos controlados da área para outras disciplinas.',
       },
       {
         id: 'periodo_busca',
         pergunta: 'Qual é o período de abrangência da busca?',
         tipo: 'texto',
-        placeholder: 'Ex: Janeiro de 2015 a dezembro de 2024',
+        placeholder: 'Ex: Janeiro de 2015 a dezembro de 2024 | Ex: 2010–2024 (últimos 15 anos)',
         obrigatoria: false,
       },
     ]
@@ -395,16 +415,18 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
     return [
       {
         id: 'criterios_inclusao',
-        pergunta: 'Quais são os critérios de INCLUSÃO dos estudos?',
+        pergunta: 'Quais são os critérios de INCLUSÃO dos estudos/documentos?',
         tipo: 'textarea',
-        placeholder: 'Ex:\n• Ensaios clínicos randomizados ou estudos observacionais\n• Adultos ≥18 anos com diagnóstico de DM2\n• Uso de metformina como intervenção principal\n• Desfecho HbA1c reportado\n• Publicados de 2015 a 2024',
+        placeholder:
+          'Saúde:\n• Ensaios clínicos randomizados ou estudos observacionais\n• Adultos ≥18 anos com diagnóstico confirmado\n• Desfecho primário reportado\n• Publicados de 2015 a 2024\n\nDireito:\n• Acórdãos do TJSP sobre [tema]\n• Mérito julgado (não extinção processual)\n• Publicados entre 2018 e 2024\n\nEducação:\n• Estudos empíricos ou estudos de caso\n• Foco em [nível de ensino]\n• Publicados em português, inglês ou espanhol',
         obrigatoria: true,
       },
       {
         id: 'criterios_exclusao',
         pergunta: 'Quais são os critérios de EXCLUSÃO?',
         tipo: 'textarea',
-        placeholder: 'Ex:\n• Estudos em crianças e adolescentes\n• Diabetes tipo 1 ou gestacional\n• Sem grupo controle\n• Idiomas não cobrindo inglês, português ou espanhol',
+        placeholder:
+          'Saúde:\n• Estudos em menores de 18 anos\n• Sem grupo controle\n• Idiomas além de português, inglês e espanhol\n\nDireito:\n• Decisões meramente processuais (sem análise do mérito)\n• Processos em segredo de justiça\n\nEducação:\n• Estudos de revisão sem dados primários\n• Intervenção em contexto não escolar',
         obrigatoria: true,
       },
     ]
@@ -415,17 +437,19 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
     return [
       {
         id: 'numeros_triagem',
-        pergunta: 'Quantos estudos foram encontrados, triados e incluídos? (para o fluxograma PRISMA)',
+        pergunta: 'Quantos estudos/documentos foram encontrados, triados e incluídos? (para o fluxograma)',
         tipo: 'textarea',
-        placeholder: 'Identificados: 1.243 (PubMed: 678, SciELO: 231, LILACS: 334)\nApós remover duplicatas: 987\nTriagem por título/resumo: excluídos 834 (não atendiam critérios)\nLeitura completa: 153 — excluídos 121\nIncluídos na síntese: 32 estudos',
+        placeholder:
+          'Identificados: 1.243 (PubMed: 678, SciELO: 231, LILACS: 334) — ou: Jusbrasil: 891, STJ: 352, etc.\nApós remover duplicatas: 987\nTriagem por título/resumo: excluídos 834\nLeitura completa: 153 — excluídos 121\nIncluídos na síntese final: 32 estudos/documentos',
         obrigatoria: false,
-        dica: 'Se ainda está na fase de triagem, coloque os números que tem até agora',
+        dica: 'Se ainda está na fase de triagem, coloque os números que tem até agora.',
       },
       {
         id: 'motivos_exclusao',
         pergunta: 'Quais foram os principais motivos de exclusão na leitura completa?',
         tipo: 'textarea',
-        placeholder: 'Ex: Sem grupo controle (n=45), população pediátrica (n=28), desfecho não reportado (n=31), artigos de revisão (n=17)',
+        placeholder:
+          'Saúde: "Sem grupo controle (n=45), população pediátrica (n=28), desfecho não reportado (n=31)"\nDireito: "Decisões sem análise do mérito (n=23), processos sigilosos (n=8)"\nEducação: "Sem dados primários (n=31), intervenção fora do escopo (n=17)"',
         obrigatoria: false,
       },
     ]
@@ -795,98 +819,217 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
     ]
   }
 
-  if (
-    chave.includes('metodolog') ||
-    chave.includes('metodos') ||
-    chave.includes('coleta')
-  ) {
+  // ── Opções de delineamento/design de estudo — cobrindo TODAS as áreas ────────
+  const opcoesDelineamento = [
+    // Epidemiológicos/clínicos (saúde, medicina, enfermagem, nutrição)
+    'Estudo observacional transversal (cross-sectional) — survey/prevalência',
+    'Estudo de coorte (prospectivo ou retrospectivo)',
+    'Estudo caso-controle',
+    'Ensaio clínico randomizado (ECR / RCT)',
+    'Ensaio quasi-experimental (sem randomização)',
+    'Estudo descritivo / série de casos',
+    // Qualitativos e mistos (todas as áreas)
+    'Pesquisa qualitativa (entrevistas semiestruturadas, grupos focais)',
+    'Pesquisa-ação (action research)',
+    'Etnografia / observação participante',
+    'Fenomenologia',
+    'Teoria fundamentada nos dados (Grounded Theory)',
+    'Pesquisa mista (quantitativa + qualitativa)',
+    // Documentais/bibliográficos (todas as áreas)
+    'Pesquisa bibliográfica / revisão de literatura',
+    'Pesquisa documental (análise de documentos, registros, arquivos)',
+    'Análise jurisprudencial / análise de decisões judiciais (Direito)',
+    'Análise de conteúdo / análise do discurso',
+    'Análise de políticas públicas',
+    // Experimentais/laboratoriais/campo (agronomia, engenharia, biologia, EF)
+    'Experimento de campo / ensaio agronômico / ensaio de laboratório',
+    'Simulação computacional / modelagem matemática',
+    'Pesquisa experimental com animais / espécies',
+    // Outros
+    'Estudo de caso (case study) único ou múltiplo',
+    'Pesquisa histórica / historiográfica',
+    'Survey / levantamento (sem intervenção)',
+  ]
+
+  // ── Placeholders genéricos que funcionam para QUALQUER área ───────────────
+  const PH = {
+    local_periodo:
+      'Saúde: "Hospital das Clínicas de SP, UTI adulto, jan–dez 2024"\nEducação: "Escola E.E. Prof. João Santos, turmas 6º–9º ano, 2023"\nDireito: "Vara Criminal da Comarca de Ribeirão Preto (SP), acórdãos de 2020–2024"\nAgronomia: "Fazenda Santa Maria, município de Sorriso (MT), safra 2023/2024"\nEngenharia: "Laboratório de Materiais da UNICAMP, de março a agosto de 2024"',
+    populacao:
+      'Saúde: "87 pacientes adultos internados com sepse, ≥18 anos"\nEducação: "200 estudantes do ensino médio, 14–17 anos, 5 escolas públicas de BH"\nDireito: "Acórdãos do TJSP sobre [tema], publicados entre 2019–2024 (n=120 decisões)"\nAgronomia: "Produtores rurais de soja de Mato Grosso, propriedades entre 200–2.000 ha (n=45)"\nEd. Física: "Atletas amadores de corrida de rua, 25–45 anos, ambos os sexos (n=60)"',
+    criterios_inclusao:
+      'Saúde:\n• Paciente internado ≥ 24h com diagnóstico confirmado\n• Prontuário completo\nEducação:\n• Matriculado regularmente na escola-alvo\n• Presença em ≥ 75% das aulas\nDireito:\n• Decisão publicada no período definido\n• Mérito julgado (não extinção sem resolução)\nAgronomia:\n• Propriedade rural com cultivo de soja há ≥ 3 safras\n• Dados completos de produtividade disponíveis',
+    criterios_exclusao:
+      'Saúde:\n• Menores de 18 anos\n• Dados incompletos (>20% dos campos)\nEducação:\n• Aluno com matrícula cancelada durante o período\n• Recusa em participar\nDireito:\n• Decisões meramente processuais (sem análise do mérito)\n• Processos em segredo de justiça\nAgronomia:\n• Propriedades que usaram tecnologia diferente do protocolo padrão\n• Registros com lacunas superiores a 30%',
+    instrumentos:
+      'Saúde: "Questionário sociodemográfico + Escala de Ansiedade de Beck (BAI) + prontuário eletrônico"\nEducação: "Diário de campo + entrevista semiestruturada (roteiro com 18 questões) + análise documental do plano de aula"\nDireito: "Ficha de extração de dados jurisprudenciais: número do processo, data, relator, fundamento legal, resultado"\nAgronomia: "Medidor de umidade do solo (Thetaprobe ML2x) + pluviômetro digital + pesagem da colheita por parcela"\nEd. Física: "Dinamômetro isocinético Biodex + VO2máx em ergoespirômetro + questionário IPAQ"',
+    analise:
+      'Quantitativa: "SPSS v.26 ou R v.4.3 — estatística descritiva (média ± DP), teste t de Student, ANOVA, regressão logística. Significância: p < 0,05."\nQualitativa: "Análise temática de conteúdo segundo Bardin (2016). Codificação com MAXQDA 2022. Triangulação entre pesquisadores."\nDireito: "Análise jurisprudencial quantitativa (frequência de fundamentos) + qualitativa (discurso dos votos). Software: NVivo 12."\nAgronomia: "ANOVA fatorial + teste de Tukey (p < 0,05). Software: SISVAR v.5.8. Gráficos: SigmaPlot."\nEd. Física: "Correlação de Pearson para associações. Nível de significância: p < 0,05. IBM SPSS Statistics 27."',
+  }
+
+  // ── TCC: seção única de metodologia — todas as perguntas ──────────────────
+  if (chave.includes('metodolog')) {
     return [
       {
         id: 'delineamento',
         pergunta: 'Qual é o tipo/delineamento do seu estudo?',
         tipo: 'selecao',
-        opcoes: [
-          'Estudo observacional transversal (cross-sectional)',
-          'Estudo de coorte retrospectiva (análise de prontuários/dados passados)',
-          'Estudo de coorte prospectiva (acompanhamento ao longo do tempo)',
-          'Estudo caso-controle',
-          'Estudo descritivo / série de casos',
-          'Ensaio clínico randomizado (ECR)',
-          'Pesquisa qualitativa (entrevistas, grupos focais)',
-          'Pesquisa bibliográfica / revisão de literatura',
-          'Pesquisa mista (quantitativa + qualitativa)',
-        ],
+        opcoes: opcoesDelineamento,
         obrigatoria: true,
-        dica: 'O delineamento define toda a metodologia. Se não tiver certeza, escolha o mais próximo.',
+        dica: 'Escolha o que mais se aproxima da sua pesquisa. Funciona para todas as áreas: saúde, direito, educação, agronomia, engenharia, etc.',
       },
       {
         id: 'local_periodo',
         pergunta: 'Onde e quando foi realizado o estudo? Seja específico.',
         tipo: 'textarea',
-        placeholder:
-          'Ex: Hospital Universitário de São Paulo (HUSP), UTI adulto, de janeiro a dezembro de 2024\nEx: Unidade Básica de Saúde Central de Ribeirão Preto (MG), de março a setembro de 2023',
+        placeholder: PH.local_periodo,
         obrigatoria: true,
-        dica: 'Coloque o nome real da instituição, cidade/estado e as datas exatas. Esses dados precisam ser reais.',
+        dica: 'Coloque o nome real da instituição ou local, cidade/estado e as datas exatas.',
       },
       {
         id: 'populacao_amostra',
-        pergunta: 'Quem foram os participantes? Quantos? Qual o perfil?',
+        pergunta: 'Quem foram os participantes/unidades de análise? Quantos? Qual o perfil?',
         tipo: 'textarea',
-        placeholder:
-          'Ex: Pacientes adultos internados na UTI com diagnóstico de sepse, ≥18 anos, de ambos os sexos. Total: 87 pacientes.\nEx: 200 estudantes do ensino médio, 14-17 anos, de 5 escolas públicas de BH, sendo 110 meninas e 90 meninos.',
+        placeholder: PH.populacao,
         obrigatoria: true,
-        dica: 'Inclua: número total de participantes, faixa etária, sexo, diagnóstico ou perfil relevante.',
+        dica: 'Inclua: total, perfil (faixa etária, área geográfica, categoria), critério de seleção.',
       },
       {
         id: 'criterios_inclusao',
-        pergunta: 'Quais foram os critérios de INCLUSÃO? (quem entrou no estudo)',
+        pergunta: 'Quais foram os critérios de INCLUSÃO? (o que determinou quem/o que entrou)',
         tipo: 'textarea',
-        placeholder:
-          'Ex:\n• Idade ≥ 18 anos\n• Internado na UTI por ≥ 24 horas\n• Diagnóstico de sepse pelos critérios Sepsis-3\n• Prontuário completo disponível',
+        placeholder: PH.criterios_inclusao,
         obrigatoria: true,
         dica: 'Liste um critério por linha. Seja preciso — isso é fundamental para a qualidade do texto.',
       },
       {
         id: 'criterios_exclusao',
-        pergunta: 'Quais foram os critérios de EXCLUSÃO? (quem ficou fora)',
+        pergunta: 'Quais foram os critérios de EXCLUSÃO? (o que ficou de fora e por quê)',
         tipo: 'textarea',
-        placeholder:
-          'Ex:\n• Gestantes\n• Óbito nas primeiras 6 horas de internação\n• Prontuário com dados incompletos (>20% dos campos)\n• Pacientes transferidos de outra instituição sem história prévia',
+        placeholder: PH.criterios_exclusao,
         obrigatoria: true,
         dica: 'Critérios de exclusão protegem a validade interna do estudo. Seja específico.',
       },
       {
         id: 'coleta_instrumentos',
-        pergunta: 'Como os dados foram coletados? Quais instrumentos/escalas foram usados?',
+        pergunta: 'Como os dados foram coletados? Quais instrumentos/ferramentas foram usados?',
         tipo: 'textarea',
-        placeholder:
-          'Ex: Revisão de prontuários eletrônicos (sistema TrakCare). Dados coletados por formulário padronizado: variáveis demográficas, APACHE II, SOFA, tempo de ventilação mecânica.\nEx: Questionário autoaplicado online (Google Forms). Escala de Autoestima de Rosenberg (10 itens), Escala de Ansiedade de Beck.',
+        placeholder: PH.instrumentos,
         obrigatoria: true,
-        dica: 'Se usou escalas/scores validados, mencione o nome completo. Ex: APACHE II, SOFA, Escala de Rosenberg.',
+        dica: 'Se usou escalas/instrumentos validados, mencione o nome completo e a referência.',
       },
       {
         id: 'analise_estatistica',
-        pergunta: 'Como foi feita a análise dos dados? Qual software foi usado?',
+        pergunta: 'Como foi feita a análise dos dados? Qual software/método foi usado?',
         tipo: 'textarea',
-        placeholder:
-          'Ex: Análise estatística no SPSS v.26. Variáveis quantitativas: média ± desvio padrão; qualitativas: frequências e percentuais. Correlação de Pearson para associações. Nível de significância: p<0,05.\nEx: Análise temática de conteúdo segundo Bardin. Codificação manual das entrevistas transcritas.',
+        placeholder: PH.analise,
         obrigatoria: false,
-        dica: 'Se não fez análise ainda, descreva o que planeja usar. Mencione o software (SPSS, R, Stata, Excel, etc.).',
+        dica: 'Mencione o método e o software. Para pesquisa qualitativa: análise de conteúdo, análise do discurso, etc.',
       },
       {
         id: 'cep_etica',
-        pergunta: 'O estudo tem aprovação do Comitê de Ética (CEP)? Qual é o número CAAE?',
+        pergunta: 'Há aspectos éticos formais? (CEP, comissão de ética, confidencialidade, declaração de interesse)',
         tipo: 'texto',
         placeholder:
-          'Ex: Aprovado pelo CEP-HUSP, CAAE nº 12345678.9.0000.5390, Parecer nº 4.123.456\nEx: Dispensado de CEP — pesquisa com dados secundários públicos / pesquisa bibliográfica',
+          'Saúde: "Aprovado pelo CEP-[instituição], CAAE nº XXXX, Parecer nº XXXX"\nCiências Humanas/Sociais: "Aprovado pelo CEP, CAAE nº XXXX" ou "Dispensado — pesquisa documental sem envolvimento humano direto"\nDireito: "Dados públicos — não requer aprovação ética formal"\nAgronomia: "Declaração de inexistência de conflito de interesses. Coleta realizada em propriedade privada com autorização do proprietário."',
         obrigatoria: false,
-        dica: 'Se ainda não tem aprovação, escreva "Em análise no CEP" ou "Dispensado de CEP" conforme seu caso.',
+        dica: 'Se ainda não tem aprovação, escreva o status atual. Pesquisas documentais/bibliográficas geralmente dispensam CEP.',
+      },
+    ]
+  }
+
+  // ── Artigo: Métodos — Delineamento (tipo, local, população, critérios) ──────
+  if (chave.includes('delineamento')) {
+    return [
+      {
+        id: 'delineamento',
+        pergunta: 'Qual é o tipo/delineamento do seu estudo?',
+        tipo: 'selecao',
+        opcoes: opcoesDelineamento,
+        obrigatoria: true,
+        dica: 'Cobre todas as áreas: saúde, direito, educação, agronomia, engenharia, psicologia, etc.',
+      },
+      {
+        id: 'local_periodo',
+        pergunta: 'Onde e quando foi realizado o estudo? Seja específico.',
+        tipo: 'textarea',
+        placeholder: PH.local_periodo,
+        obrigatoria: true,
+        dica: 'Nome real do local/instituição, cidade/estado e datas exatas.',
+      },
+      {
+        id: 'populacao_amostra',
+        pergunta: 'Quem foram os participantes/unidades de análise? Quantos? Qual o perfil?',
+        tipo: 'textarea',
+        placeholder: PH.populacao,
+        obrigatoria: true,
+        dica: 'Inclua total, perfil (faixa etária, área geográfica, categoria) e critério de seleção.',
+      },
+      {
+        id: 'criterios_inclusao',
+        pergunta: 'Quais foram os critérios de INCLUSÃO?',
+        tipo: 'textarea',
+        placeholder: PH.criterios_inclusao,
+        obrigatoria: true,
+        dica: 'Liste um critério por linha. Seja preciso.',
+      },
+      {
+        id: 'criterios_exclusao',
+        pergunta: 'Quais foram os critérios de EXCLUSÃO?',
+        tipo: 'textarea',
+        placeholder: PH.criterios_exclusao,
+        obrigatoria: true,
+        dica: 'Critérios de exclusão protegem a validade interna. Seja específico.',
+      },
+    ]
+  }
+
+  // ── Artigo: Métodos — Coleta e Análise (instrumentos, análise, software) ───
+  if (chave.includes('coleta') || chave.includes('metodos')) {
+    return [
+      {
+        id: 'coleta_instrumentos',
+        pergunta: 'Como os dados foram coletados? Quais instrumentos/ferramentas foram usados?',
+        tipo: 'textarea',
+        placeholder: PH.instrumentos,
+        obrigatoria: true,
+        dica: 'Se usou instrumentos validados, mencione o nome completo e referência. Funciona para qualquer área.',
+      },
+      {
+        id: 'analise_estatistica',
+        pergunta: 'Como foi feita a análise dos dados? Qual método/software foi usado?',
+        tipo: 'textarea',
+        placeholder: `Quantitativa (saúde/agronomia/engenharia/EF): "SPSS v.26 ou R v.4.3. Média ± DP, teste t ou ANOVA, regressão logística. Significância: p < 0,05."
+Qualitativa (educação/ciências humanas/direito): "Análise temática de conteúdo segundo Bardin (2016). Codificação no MAXQDA 2022. Triangulação entre pesquisadores."
+Jurídica: "Análise quantitativa (frequência de fundamentos) + qualitativa (argumentação dos votos). Software: NVivo 12."
+Agronômica: "ANOVA fatorial + Tukey (p < 0,05). Software: SISVAR v.5.8. Gráficos: SigmaPlot."
+Educação física: "Correlação de Pearson, regressão linear múltipla. IBM SPSS v.27."`,
+        obrigatoria: true,
+        dica: 'Mencione o método e o software usado. Para pesquisas qualitativas: análise de conteúdo, grounded theory, análise do discurso, etc.',
+      },
+      {
+        id: 'desfechos_variaveis',
+        pergunta: 'Quais foram as variáveis/desfechos/categorias principais que você analisou?',
+        tipo: 'textarea',
+        placeholder:
+          'Saúde: "Desfecho primário: mortalidade em 30 dias. Desfechos secundários: tempo de internação, escore SOFA"\nEducação: "Variável dependente: desempenho escolar (nota SARESP). Independentes: método de ensino, perfil socioeconômico"\nDireito: "Variáveis: fundamento jurídico utilizado, resultado (procedente/improcedente), tempo de tramitação"\nAgronomia: "Produtividade (kg/ha), índice de colheita, teor de proteínas do grão"\nEd. Física: "VO2máx, força muscular isocinética, taxa de lesões"',
+        obrigatoria: false,
+        dica: 'Informe os desfechos/variáveis/categorias centrais para o seu campo específico.',
       },
     ]
   }
 
   if (chave.includes('resultado')) {
     return [
+      {
+        id: 'dados_planilha',
+        pergunta: '📊 Cole aqui os dados da sua planilha (a IA vai analisar e escrever os Resultados com base neles):',
+        tipo: 'textarea',
+        placeholder:
+          'Cole os dados diretamente do Excel (selecione tudo → Ctrl+C → cole aqui), ou exporte como CSV e cole o conteúdo.\n\nEx:\nID  Grupo  Idade  Autoestima  Instagram_h\n1   A      16     34          0,8\n2   B      17     26          3,5\n3   A      15     38          0,5\n...\n\nOu cole estatísticas já calculadas:\nN=200 | Grupo <1h: média=34,2 (DP=4,1) | Grupo >3h: média=26,7 (DP=5,3) | p<0,001',
+        obrigatoria: false,
+        dica: '💡 Com dados reais a IA calcula médias, percentuais, compara grupos e escreve os Resultados com precisão. Sem dados ela gera um texto genérico com (SOBRENOME, ANO).',
+      },
       {
         id: 'achado_principal',
         pergunta: 'Qual foi o resultado mais importante que você encontrou?',
@@ -906,12 +1049,12 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
       },
       {
         id: 'dados_numericos',
-        pergunta: 'Você tem números, percentuais ou dados concretos? Liste os principais:',
+        pergunta: 'Estatísticas resumidas ou números específicos adicionais:',
         tipo: 'textarea',
         placeholder:
           'N=200 participantes\n67% usam Instagram diariamente\nMédia de uso: 3,2h/dia\nEscores de autoestima: grupo <1h = 34,2; grupo >3h = 26,7\nCorrelação r=-0,42, p<0,001',
         obrigatoria: false,
-        dica: 'Dados concretos fazem TODA a diferença na qualidade do texto — inclua tudo que tiver',
+        dica: 'Complementa os dados colados acima. Use para resumir achados que a planilha não captou.',
       },
       {
         id: 'surpresa',

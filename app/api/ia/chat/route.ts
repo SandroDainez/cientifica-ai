@@ -48,7 +48,8 @@ export async function POST(request: Request) {
   const baseSystem = buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
-    trabalho.formato_citacao
+    trabalho.formato_citacao,
+    trabalho.area_conhecimento ?? undefined,
   )
 
   const refsBloco = referencias.length > 0

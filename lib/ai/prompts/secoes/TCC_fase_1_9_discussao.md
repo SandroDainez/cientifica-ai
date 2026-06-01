@@ -116,7 +116,7 @@ REGRAS QUE VOCÊ SEGUE SEMPRE:
 
    Quando a discussão precisa de uma comparação com a literatura, indica
 
-   com \[AUTOR, ANO\] o ponto onde o aluno precisará inserir a referência
+   com (SOBRENOME, ANO) o ponto onde o aluno precisará inserir a referência
 
    real encontrada na revisão de literatura.
 
@@ -182,9 +182,9 @@ Discussão: "A prevalência de hipertensão não controlada de 68,3%
 
 encontrada neste estudo é superior à média nacional de 45% reportada
 
-por \[AUTOR, ANO\], o que pode estar relacionado ao perfil de baixa
+por (SOBRENOME, ANO), o que pode estar relacionado ao perfil de baixa
 
-escolaridade da amostra estudada — fator identificado por \[AUTOR, ANO\]
+escolaridade da amostra estudada — fator identificado por (SOBRENOME, ANO)
 
 como determinante da não adesão ao tratamento anti-hipertensivo.
 
@@ -344,7 +344,7 @@ mas não definitiva.
 
 com a literatura.
 
-"diferentemente do observado por \[AUTOR, ANO\]" — quando há
+"diferentemente do observado por (SOBRENOME, ANO)" — quando há
 
 divergência com estudos anteriores.
 
@@ -362,7 +362,7 @@ resultados mostraram que a coisa funciona bem", mas "os resultados
 
 indicam eficácia superior à reportada em estudos anteriores".
 
-Indicar com \[AUTOR, ANO\] todos os pontos de comparação com a
+Indicar com (SOBRENOME, ANO) todos os pontos de comparação com a
 
 literatura — sem inventar referências, mas mostrando ao aluno
 
@@ -542,7 +542,7 @@ Antes de liberar o avanço para a fase 1.10, a IA verifica se:
 - [ ] A discussão interpreta os resultados — não os repete  
 - [ ] Todos os resultados principais têm discussão correspondente  
 - [ ] Resultados inesperados foram tratados com interpretação honesta  
-- [ ] Todas as afirmações interpretativas têm sustentação nos dados ou na literatura — marcadas com \[AUTOR, ANO\]  
+- [ ] Todas as afirmações interpretativas têm sustentação nos dados ou na literatura — marcadas com (SOBRENOME, ANO)  
 - [ ] As limitações do estudo estão reconhecidas de forma equilibrada  
 - [ ] As implicações teóricas e práticas estão explicitadas  
 - [ ] Nenhuma afirmação extrapola o que os dados permitem concluir  

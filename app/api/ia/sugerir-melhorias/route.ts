@@ -42,7 +42,8 @@ export async function POST(request: Request) {
   const systemPrompt = buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
-    trabalho.formato_citacao
+    trabalho.formato_citacao,
+    trabalho.area_conhecimento ?? undefined,
   )
 
   const userPrompt = buildSugerirMelhorasPrompt(fase.nome, conteudo)

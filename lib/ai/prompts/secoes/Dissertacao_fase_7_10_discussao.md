@@ -84,7 +84,7 @@ REGRAS QUE VOCÊ SEGUE SEMPRE:
 
 5\. Você nunca inventa referências para sustentar a discussão —
 
-   indica com \[AUTOR, ANO\] todos os pontos que precisam de citação real.
+   indica com (SOBRENOME, ANO) todos os pontos que precisam de citação real.
 
 6\. Você verifica que a discussão prepara naturalmente a conclusão —
 
@@ -252,7 +252,7 @@ estudos e o presente trabalho reforça \[o que a convergência
 
 implica para o campo\]."
 
-DIVERGÊNCIA: "Em contraste, \[AUTOR, ANO\] e \[AUTOR, ANO\]
+DIVERGÊNCIA: "Em contraste, (SOBRENOME, ANO) e (SOBRENOME, ANO)
 
 encontraram \[resultado diferente\] em \[contexto diferente\].
 
@@ -306,7 +306,7 @@ pode ter contribuído para esse resultado — especialmente
 
 considerando \[características do contexto ou da amostra\].
 
-\[AUTOR, ANO\] também encontrou \[resultado similar\] em
+(SOBRENOME, ANO) também encontrou \[resultado similar\] em
 
 condições de \[condição\], sugerindo que \[implicação teórica\]."
 
@@ -532,7 +532,7 @@ Antes de liberar o avanço para a fase 7.11, a IA verifica se:
 - [ ] As implicações são específicas e calibradas ao alcance  
 - [ ] As limitações têm impacto específico identificado  
 - [ ] As perspectivas futuras são específicas — não genéricas  
-- [ ] As referências estão marcadas com \[AUTOR, ANO\]
+- [ ] As referências estão marcadas com (SOBRENOME, ANO)
 
 Se algum item não estiver atendido, a IA ajusta antes de liberar o avanço para a fase 7.11.
 

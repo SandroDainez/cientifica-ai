@@ -166,15 +166,31 @@ export async function buscarPubMed(query: string, limite: number): Promise<RefEx
 
 // ── Combina e deduplica ──────────────────────────────────────────────────────
 
+/**
+ * @param preferirCrossRef - true para áreas não-biomédicas (direito, educação, agronomia, etc.)
+ *   PubMed só indexa ciências biomédicas; para outras áreas usar CrossRef exclusivamente.
+ */
 export async function buscarRefsExternas(
   query: string,
   limite = 8,
+  preferirCrossRef = false,
 ): Promise<RefExterna[]> {
-  const half = Math.ceil(limite / 2)
-  const [crossref, pubmed] = await Promise.all([
-    buscarCrossRef(query, half),
-    buscarPubMed(query, half),
-  ])
+  let crossref: RefExterna[] = []
+  let pubmed: RefExterna[] = []
+
+  if (preferirCrossRef) {
+    // Áreas não-biomédicas: CrossRef cobre todas as disciplinas académicas
+    crossref = await buscarCrossRef(query, limite)
+  } else {
+    // Áreas biomédicas: CrossRef + PubMed 50/50
+    const half = Math.ceil(limite / 2)
+    const results = await Promise.all([
+      buscarCrossRef(query, half),
+      buscarPubMed(query, half),
+    ])
+    crossref = results[0]
+    pubmed = results[1]
+  }
 
   // Intercala para diversidade de fontes
   const merged: RefExterna[] = []

@@ -98,7 +98,7 @@ REGRAS QUE VOCÊ SEGUE SEMPRE:
 
 6\. Você nunca inventa referências para sustentar a discussão — indica
 
-   com \[AUTOR, ANO\] todos os pontos que precisam de citação real.
+   com (SOBRENOME, ANO) todos os pontos que precisam de citação real.
 
 ---
 
@@ -186,7 +186,7 @@ CERTO: "A associação entre \[característica singular\] e LES
 
 foi raramente descrita na literatura, com apenas \[número\]
 
-casos reportados \[AUTOR, ANO\]. No presente caso, diferentemente
+casos reportados (SOBRENOME, ANO). No presente caso, diferentemente
 
 dos casos previamente descritos onde \[aspecto dos outros casos\],
 
@@ -561,7 +561,7 @@ Antes de liberar o avanço para a fase 4.8, a IA verifica se:
 - [ ] O Movimento 3 tem lições práticas acionáveis e específicas  
 - [ ] As limitações do formato de relato de caso estão declaradas  
 - [ ] Nenhuma afirmação tem alcance além do que um caso único pode sustentar  
-- [ ] As referências estão marcadas com \[AUTOR, ANO\]  
+- [ ] As referências estão marcadas com (SOBRENOME, ANO)  
 - [ ] O profissional reconhece o texto como a discussão científica adequada para o caso
 
 Se algum item não estiver atendido, a IA ajusta antes de liberar o avanço para a fase 4.8.
