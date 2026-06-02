@@ -360,7 +360,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
     }
   }
 
-  // ── Aplicar sugestão (marca como aplicada localmente) ────────
+  // ── Marcar sugestão como aplicada (visual apenas) ───────────
   const handleAplicarSugestao = useCallback((id: string) => {
     setValidacao(prev => {
       if (!prev) return prev
@@ -370,6 +370,47 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
       }
     })
   }, [])
+
+  // ── Aplicar sugestão com IA (reescreve o texto automaticamente) ──
+  const handleAplicarComIA = useCallback(async (sugestao: import('@/types').SugestaoIA) => {
+    const conteudo = conteudosRef.current[faseAtualRef.current.chave_secao] ?? ''
+    if (!conteudo.trim()) return
+
+    setStatusIA('gerando')
+    setConteudoAtual('')
+    try {
+      const res = await fetch('/api/ia/aplicar-sugestao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trabalhoId: trabalho.id,
+          chaveSecao: faseAtualRef.current.chave_secao,
+          conteudo,
+          sugestaoTitulo: sugestao.titulo,
+          sugestaoDescricao: sugestao.descricao,
+        }),
+      })
+      if (!res.ok || !res.body) throw new Error('Falha ao aplicar sugestão')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let acumulado = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        acumulado += decoder.decode(value, { stream: true })
+        setConteudoAtual(acumulado)
+      }
+      toast.success('Sugestão aplicada com sucesso!')
+    } catch (err) {
+      console.error('Erro ao aplicar sugestão:', err)
+      // Restaura o conteúdo original em caso de falha
+      setConteudoAtual(conteudosRef.current[faseAtualRef.current.chave_secao] ?? '')
+      toast.error('Erro ao aplicar. Tente novamente.')
+    } finally {
+      setStatusIA('idle')
+    }
+  }, [trabalho.id])
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8">
@@ -518,6 +559,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 statusIA={statusIA}
                 validacao={validacao}
                 onAplicarSugestao={handleAplicarSugestao}
+                onAplicarComIA={handleAplicarComIA}
                 iaPanelOpen={iaPanelOpen}
                 isUltimaFase={isUltimaFase}
                 tituloOpcoes={faseAtualConfig.chave_secao?.includes('titulo') ? tituloOpcoes : []}

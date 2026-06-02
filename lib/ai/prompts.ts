@@ -398,32 +398,47 @@ export function buildValidarSecaoPrompt(
   conteudo: string,
   formatoCitacao?: FormatoCitacao
 ): string {
-  const formatoInstrucao = formatoCitacao === 'vancouver'
-    ? 'Citações devem ser numéricas [1], [2] etc. Verifique se há citações no formato errado como (AUTOR, ANO).'
-    : formatoCitacao === 'apa'
-    ? 'Citações devem ser no formato APA: (Sobrenome, Ano) ou Sobrenome (Ano) com & para dois autores. Verifique inconsistências.'
-    : 'Citações devem ser no formato ABNT NBR 10520: SOBRENOME (ANO) ou (SOBRENOME, ANO). Para 3+ autores: SOBRENOME et al. (ANO). Verifique se há [AUTOR, ANO] ou outros formatos incorretos.'
-
-  // Conta placeholders (SOBRENOME, ANO) para instruir o avaliador
+  const palavras = conteudo.trim().split(/\s+/).length
   const nPlaceholders = (conteudo.match(/\(SOBRENOME,\s*ANO\)/gi) ?? []).length
 
   const avisoPlaceholders = nPlaceholders > 0
-    ? `\nAVISO IMPORTANTE: O texto contém ${nPlaceholders} marcador(es) "(SOBRENOME, ANO)". Esses são PLACEHOLDERS INTENCIONAIS gerados pelo sistema — indicam onde o pesquisador deve inserir uma citação real. NÃO são erros de formato. Não considere placeholders como falhas críticas de citação. Avalie a qualidade do CONTEÚDO e dos ELEMENTOS OBRIGATÓRIOS — desconts por placeholders devem ser leves (máximo −5 pontos por placeholder, nunca tornando o score inferior a 40 se o conteúdo em si for adequado). Registre-os como sugestão "importante" informando quantos há.`
+    ? `\nNOTA SOBRE CITAÇÕES PLACEHOLDER: O texto contém ${nPlaceholders} marcador(es) "(SOBRENOME, ANO)". São PLACEHOLDERS INTENCIONAIS do sistema — o pesquisador ainda não inseriu as referências reais. NÃO classifique como "crítico". Liste como sugestão "importante" informando quantas faltam. Reduza o score no máximo 3 pontos por placeholder (máximo −15 total por placeholders).`
     : ''
 
-  return `Avalie a seção "${fase.nome}" abaixo de acordo com os critérios de qualidade acadêmica.
+  const avisoFormato = formatoCitacao === 'vancouver'
+    ? `\nNOTA SOBRE FORMATO VANCOUVER: Se o texto usa (Autor, Ano) em vez de [1],[2], é inconsistência de formato, NÃO erro crítico de conteúdo. Classifique como "sugestao" (azul), deduza no máximo 5 pontos do score. O conteúdo e a estrutura do texto são muito mais importantes que o formato de citação.`
+    : ''
 
-**Texto enviado:**
+  return `Você é um professor orientador experiente avaliando uma seção de trabalho científico. Seu papel é ser JUSTO e CONSTRUTIVO — não severo ou punitivo.
+
+**FILOSOFIA DE AVALIAÇÃO (leia antes de avaliar):**
+A pontuação deve refletir a QUALIDADE REAL do conteúdo, não perfeições formais. Um texto com bom conteúdo e estrutura merece score alto mesmo com imperfeições menores.
+
+ESCALA DE REFERÊNCIA REAL:
+• 85-100: Texto excelente — publicável em periódico sem revisão maior. Elementos todos presentes, argumentação forte, linguagem impecável.
+• 70-84: Texto bom — aprovado com pequenas revisões. Todos os elementos presentes, possíveis ajustes de linguagem ou citações.
+• 55-69: Texto razoável — requer revisão moderada. A maioria dos elementos presente; lacunas identificáveis mas não estruturais.
+• 40-54: Texto com problemas — revisão significativa necessária. Falta elemento obrigatório importante ou tem erro estrutural.
+• Abaixo de 40: Apenas se o texto estiver fundamentalmente errado (seção completamente fora do escopo, linguagem completamente inadequada, totalmente vazio de conteúdo relevante).
+
+REGRAS INEGOCIÁVEIS DE AVALIAÇÃO:
+1. Texto com comprimento adequado (${fase.min_palavras ?? 0}+ palavras) e elementos obrigatórios presentes → score MÍNIMO de 55.
+2. Texto com bom conteúdo e estrutura → score de 70+, mesmo com format de citação errado.
+3. Expressões como "O paradoxo é esse", "O que chama atenção", "Não por acaso", "Em termos práticos", "O problema, porém", "Dito de outro modo", "Em termos concretos" são linguagem acadêmica contemporânea ACEITÁVEL — NÃO as classifique como informais.
+4. Primeira pessoa do plural (nós, nosso, nossa, optamos, identificamos) é PADRÃO em artigos científicos brasileiros (ABNT) — NÃO é erro. Se for seção de Métodos em estilo impessoal, mencione como "sugestao" (azul), nunca "critico".
+5. Formato de citação: inconsistência de formato (ex: ABNT num trabalho Vancouver) é "sugestao" leve, NUNCA "critico". O conteúdo vale 80% do score.
+
+**Seção avaliada:** "${fase.nome}"
+**Texto enviado (${palavras} palavras):**
 ${conteudo}
 
-**Critérios de avaliação:**
-- Elementos obrigatórios presentes: ${fase.elementos_obrigatorios.join(', ')}
-- Erros a verificar: ${fase.erros_comuns.join(', ')}
-- Extensão: ${fase.min_palavras ?? 0}–${fase.max_palavras ?? '∞'} palavras
-- Formato de citação: ${formatoCitacao?.toUpperCase() ?? 'ABNT'}. ${formatoInstrucao}${avisoPlaceholders}
+**Elementos obrigatórios:** ${fase.elementos_obrigatorios.join(', ')}
+**Erros críticos reais a verificar:** ${fase.erros_comuns.join(', ')}
+**Extensão esperada:** ${fase.min_palavras ?? 0}–${fase.max_palavras ?? '∞'} palavras
+**Formato de citação:** ${formatoCitacao?.toUpperCase() ?? 'ABNT'}${avisoFormato}${avisoPlaceholders}
 
-Responda APENAS com JSON válido e compacto. Máximo 5 sugestões. Seja breve nas descrições:
-{"aprovado":boolean,"score":number,"comentarios":"avaliação geral em 1-2 frases","sugestoes":[{"id":"s1","tipo":"critico"|"importante"|"sugestao","titulo":"título curto","descricao":"descrição objetiva"}]}`
+Responda APENAS com JSON válido. Máximo 4 sugestões práticas e específicas. Score deve ser realista — um texto bem escrito e completo merece 70+:
+{"aprovado":boolean,"score":number,"comentarios":"avaliação construtiva em 1-2 frases focada nos pontos fortes E no principal ponto de melhoria","sugestoes":[{"id":"s1","tipo":"critico"|"importante"|"sugestao","titulo":"título curto e específico","descricao":"o que exatamente mudar e por quê — seja específico e construtivo"}]}`
 }
 
 // ============================================================

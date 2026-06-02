@@ -26,6 +26,7 @@ interface EditorAreaProps {
   statusIA: StatusIA
   validacao: ResultadoValidacao | null
   onAplicarSugestao: (id: string) => void
+  onAplicarComIA?: (sugestao: import('@/types').SugestaoIA) => Promise<void>
   iaPanelOpen: boolean
   isUltimaFase: boolean
   /** Opções de título extraídas da resposta da IA — mostra picker em vez de markdown bruto */
@@ -58,7 +59,7 @@ function scoreColor(score: number) {
 export function EditorArea({
   fase, conteudo, onConteudoChange,
   onGerar, onValidar, onSalvar, onAbrirIA,
-  statusIA, validacao, onAplicarSugestao,
+  statusIA, validacao, onAplicarSugestao, onAplicarComIA,
   iaPanelOpen, isUltimaFase,
   tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
   linkReferencias,
@@ -419,7 +420,11 @@ export function EditorArea({
       {validacao && (
         <div className="bg-card border rounded-xl p-5">
           <p className="text-sm font-semibold text-foreground mb-3">Resultado da validação</p>
-          <ValidadorSecao resultado={validacao} onAplicarSugestao={onAplicarSugestao} />
+          <ValidadorSecao
+            resultado={validacao}
+            onAplicarSugestao={onAplicarSugestao}
+            onAplicarComIA={onAplicarComIA}
+          />
         </div>
       )}
 
