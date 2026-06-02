@@ -14,6 +14,7 @@ import { PainelIA } from '@/components/editor/PainelIA'
 import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
+import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
@@ -566,6 +567,14 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 onSelecionarTituloOpcao={handleSelecionarTituloOpcao}
                 onGerarNovamenteTitulo={handleGerarNovamenteTitulo}
                 linkReferencias={`/trabalhos/${trabalho.id}/referencias`}
+                slotDados={
+                  faseAtualConfig.chave_secao?.includes('resultado') ? (
+                    <PainelPlanilhaResultados
+                      trabalhoId={trabalho.id}
+                      dadosProjeto={((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null}
+                    />
+                  ) : null
+                }
               />
             )}
           </div>

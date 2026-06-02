@@ -36,6 +36,8 @@ interface EditorAreaProps {
   onGerarNovamenteTitulo?: (refinamento: string) => void
   /** Link para a página de referências — exibe aviso quando conteúdo tem placeholders (SOBRENOME, ANO) */
   linkReferencias?: string
+  /** Slot opcional renderizado acima do editor — usado para o painel de planilha na seção Resultados */
+  slotDados?: React.ReactNode
 }
 
 // ── Helpers de qualidade ──────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ export function EditorArea({
   statusIA, validacao, onAplicarSugestao, onAplicarComIA,
   iaPanelOpen, isUltimaFase,
   tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
-  linkReferencias,
+  linkReferencias, slotDados,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -240,6 +242,9 @@ export function EditorArea({
           </div>
         </div>
       </div>
+
+      {/* ── Painel de dados/planilha (sempre visível quando fornecido) ─── */}
+      {slotDados}
 
       {/* ── Card de boas-vindas (seção em branco) ───────────────────── */}
       {mostraIntro && !temConteudo && statusIA !== 'gerando' && (
