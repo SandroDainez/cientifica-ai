@@ -467,6 +467,87 @@ Responda APENAS com JSON:
 }
 
 // ============================================================
+// Prompt para análise/interpretação de planilha de dados
+// ============================================================
+
+/**
+ * Constrói o prompt para a IA analisar os dados brutos de uma planilha e
+ * auxiliar o pesquisador na fase atual do trabalho.
+ */
+export function buildAnalisarPlanilhaPrompt(
+  dadosPlanilha: string,
+  nomeSecao: string,
+  chaveSecao: string,
+  contextoTrabalho: {
+    tipoTrabalho?: string
+    area?: string
+    pergunta_pesquisa?: string
+    objetivo_geral?: string
+    delineamento?: string
+  },
+): string {
+  const ctx: string[] = []
+  if (contextoTrabalho.area)              ctx.push(`Área: ${contextoTrabalho.area}`)
+  if (contextoTrabalho.pergunta_pesquisa) ctx.push(`Pergunta de pesquisa: ${contextoTrabalho.pergunta_pesquisa}`)
+  if (contextoTrabalho.objetivo_geral)    ctx.push(`Objetivo: ${contextoTrabalho.objetivo_geral}`)
+  if (contextoTrabalho.delineamento)      ctx.push(`Delineamento: ${contextoTrabalho.delineamento}`)
+
+  // Orientação específica conforme a seção em que o usuário está
+  const chave = chaveSecao.toLowerCase()
+  let focoSecao = ''
+  if (chave.includes('resultado')) {
+    focoSecao = `O pesquisador está na seção de RESULTADOS. Ajude-o a:
+- Identificar quais resultados apresentar primeiro (caracterização da amostra → desfecho principal → secundários)
+- Calcular as estatísticas descritivas a reportar (médias, DP, frequências, percentuais)
+- Sugerir quais tabelas e figuras criar, com títulos
+- Indicar quais testes estatísticos rodar e o que cada um responde`
+  } else if (chave.includes('metodo') || chave.includes('metodolog') || chave.includes('coleta')) {
+    focoSecao = `O pesquisador está na seção de MÉTODOS. Ajude-o a:
+- Identificar as variáveis (dependentes, independentes, de controle) e seus tipos
+- Confirmar o tamanho amostral real (N) a partir dos dados
+- Sugerir a análise estatística apropriada para este tipo de dado
+- Apontar se há dados faltantes ou inconsistências a declarar`
+  } else if (chave.includes('discussao') || chave.includes('discussão')) {
+    focoSecao = `O pesquisador está na seção de DISCUSSÃO. Ajude-o a:
+- Identificar os achados mais relevantes para discutir
+- Apontar padrões, associações ou contrastes notáveis nos dados
+- Sugerir como esses achados podem dialogar com a literatura
+- Identificar limitações que os próprios dados revelam`
+  } else {
+    focoSecao = `Ajude o pesquisador a entender o que estes dados mostram e como usá-los na seção "${nomeSecao}".`
+  }
+
+  return `Você é um estatístico e metodologista sênior auxiliando um pesquisador a interpretar os dados que ele coletou. Seja prático, preciso e didático.
+
+${ctx.length > 0 ? `CONTEXTO DO ESTUDO:\n${ctx.join('\n')}\n` : ''}
+${focoSecao}
+
+DADOS DA PLANILHA FORNECIDA PELO PESQUISADOR:
+${dadosPlanilha.slice(0, 8000)}
+
+INSTRUÇÕES DE ANÁLISE:
+1. Interprete a estrutura dos dados: o que cada coluna/variável representa, quantos registros (N), tipos de variáveis.
+2. Calcule estatísticas descritivas reais a partir dos dados fornecidos (médias, desvios, frequências, percentuais) — use os NÚMEROS REAIS, nunca invente.
+3. Aponte os achados mais importantes que os dados revelam.
+4. Recomende os testes/análises estatísticas apropriados, explicando o que cada um responde.
+5. Dê orientações práticas para a seção atual (conforme o foco acima).
+
+REGRAS:
+- Use SOMENTE os números que estão na planilha. Se algo não puder ser calculado, diga "não é possível determinar a partir destes dados".
+- Se os dados estiverem incompletos ou ambíguos, aponte isso e diga o que falta.
+- Seja conciso mas completo. Use markdown: **negrito** para destaques, ## para seções, listas com -.
+- NÃO escreva o texto final da seção — seu papel é ANALISAR e ORIENTAR, não redigir a seção.
+- Responda em português brasileiro.
+
+Organize sua resposta em:
+## 📊 O que os dados mostram
+## 📈 Estatísticas descritivas
+## 🔍 Achados principais
+## 🧪 Análises recomendadas
+## ✍️ Como usar nesta seção`
+}
+
+// ============================================================
 // Prompt para geração de resumo/abstract
 // ============================================================
 

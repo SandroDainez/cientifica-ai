@@ -568,10 +568,11 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 onGerarNovamenteTitulo={handleGerarNovamenteTitulo}
                 linkReferencias={`/trabalhos/${trabalho.id}/referencias`}
                 slotDados={
-                  faseAtualConfig.chave_secao?.includes('resultado') ? (
+                  /resultado|metodo|metodolog|coleta|discuss/i.test(faseAtualConfig.chave_secao ?? '') ? (
                     <PainelPlanilhaResultados
                       trabalhoId={trabalho.id}
                       dadosProjeto={((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null}
+                      chaveSecao={faseAtualConfig.chave_secao}
                     />
                   ) : null
                 }

@@ -3,14 +3,17 @@
 import { useState, useRef } from 'react'
 import {
   Table2, Upload, FileSpreadsheet, FileText, ImageIcon, X,
-  Loader2, CheckCircle2, AlertTriangle,
+  Loader2, CheckCircle2, AlertTriangle, Sparkles, Brain,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MarkdownText } from '@/components/ui/MarkdownText'
 import type { DadosProjeto } from '@/types'
 
 interface PainelPlanilhaResultadosProps {
   trabalhoId: string
   dadosProjeto: DadosProjeto | null
+  /** chave_secao atual — permite análise contextualizada para a fase */
+  chaveSecao: string
 }
 
 type ArquivoStatus = 'lendo' | 'extraindo' | 'concluido' | 'erro'
@@ -29,17 +32,49 @@ interface ArquivoProcessado {
  * Salva em dados_projeto.dados_coletados — a geração da seção Resultados/Discussão/Conclusão
  * lê esse campo com prioridade máxima e usa os números reais (nunca inventa).
  */
-export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto }: PainelPlanilhaResultadosProps) {
+export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao }: PainelPlanilhaResultadosProps) {
   const [texto, setTexto] = useState(dadosProjeto?.dados_coletados ?? '')
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
   const [arquivos, setArquivos] = useState<ArquivoProcessado[]>([])
   const [arrastando, setArrastando] = useState(false)
   const [aberto, setAberto] = useState(true)
+  const [analise, setAnalise] = useState('')
+  const [analisando, setAnalisando] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textoRef = useRef(texto)
   const inputRef = useRef<HTMLInputElement>(null)
   textoRef.current = texto
+
+  async function analisarComIA() {
+    if (analisando || textoRef.current.trim().length < 10) return
+    setAnalisando(true)
+    setAnalise('')
+    try {
+      const res = await fetch('/api/ia/analisar-planilha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trabalhoId, chaveSecao, dadosPlanilha: textoRef.current }),
+      })
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error ?? 'Falha ao analisar')
+      }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let acc = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        acc += decoder.decode(value, { stream: true })
+        setAnalise(acc)
+      }
+    } catch (err) {
+      setAnalise(`⚠️ ${err instanceof Error ? err.message : 'Erro ao analisar os dados. Tente novamente.'}`)
+    } finally {
+      setAnalisando(false)
+    }
+  }
 
   function salvar(valor: string) {
     setSalvo(false)
@@ -242,6 +277,45 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto }: PainelPla
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Botão analisar + nota */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={analisarComIA}
+              disabled={analisando || texto.trim().length < 10}
+              className={cn(
+                'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                'bg-primary text-primary-foreground hover:opacity-90',
+                (analisando || texto.trim().length < 10) && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              {analisando
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Analisando dados…</>
+                : <><Brain className="h-4 w-4" /> Analisar dados com IA</>
+              }
+            </button>
+            <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+              A IA interpreta sua planilha, calcula estatísticas e orienta você nesta seção.
+            </p>
+          </div>
+
+          {/* Resultado da análise */}
+          {analise && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+                  Análise da IA
+                </span>
+                {analisando && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+              </div>
+              <MarkdownText
+                content={analise}
+                className="text-sm text-foreground leading-relaxed space-y-1 [&_p]:my-0.5"
+              />
             </div>
           )}
 
