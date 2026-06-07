@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento, DocumentoEtapa } from '@/types'
+import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 
@@ -517,6 +518,14 @@ const COLETA_LABELS: Record<string, string> = {
 export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentosInicial }: ProjetoCriadorClientProps) {
   const router = useRouter()
 
+  // Documento concluído? (todas as seções do fluxo geradas). Usado para marcar
+  // automaticamente como concluídas as etapas que o APP executa ao escrever o
+  // trabalho — revisão de literatura ('preparacao') e redação ('escrita').
+  const totalFasesDoc = getFluxo(trabalho.tipo_trabalho)?.fases.length ?? 0
+  const documentoCompleto = totalFasesDoc > 0 && (trabalho.fases_concluidas?.length ?? 0) >= totalFasesDoc
+  const etapaAutoConcluida = (tipo?: string) =>
+    documentoCompleto && (tipo === 'escrita' || tipo === 'preparacao')
+
   const [step, setStep] = useState<Step>(dadosProjetoInicial ? 'plano' : 'input')
 
   // Guided form fields
@@ -568,7 +577,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     if (!dadosProjetoInicial) return {}
     const statuses: Record<string, EtapaStatus> = {}
     for (const etapa of dadosProjetoInicial.roadmap ?? []) {
-      statuses[etapa.id] = etapa.status ?? 'pendente'
+      const base = etapa.status ?? 'pendente'
+      statuses[etapa.id] = base === 'pendente' && etapaAutoConcluida(etapa.tipo) ? 'concluido' : base
     }
     return statuses
   })
@@ -981,7 +991,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
       // Init local status state from new plan
       const statuses: Record<string, EtapaStatus> = {}
       for (const etapa of dadosProjeto.roadmap ?? []) {
-        statuses[etapa.id] = etapa.status ?? 'pendente'
+        const base = etapa.status ?? 'pendente'
+        statuses[etapa.id] = base === 'pendente' && etapaAutoConcluida(etapa.tipo) ? 'concluido' : base
       }
       setEtapaStatuses(statuses)
 
