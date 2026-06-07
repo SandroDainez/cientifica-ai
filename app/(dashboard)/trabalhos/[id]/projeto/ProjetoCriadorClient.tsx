@@ -1497,14 +1497,18 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                             >
                               {etapaStatusLabel(etapaStatus)}
                             </button>
-                            {/* Botão de gerar documento — visível sem expandir */}
+                            {/* Botões de gerar documento — um por documento, com o NOME do doc */}
                             {documentosEtapa.length > 0 && documentosEtapa.map(doc => {
                               const key = `${etapa.id}_${doc.tipo}`
                               const docState = docsMap[key]
+                              // Nome curto do documento (parte antes do "—"), para diferenciar os botões
+                              const nomeCurto = doc.label.split('—')[0].trim()
+                              const acao = docState?.status === 'gerado' ? 'Regerar' : 'Gerar'
                               return (
                                 <button
                                   key={doc.tipo}
                                   type="button"
+                                  title={`${acao}: ${doc.label}`}
                                   onClick={e => {
                                     e.stopPropagation()
                                     // Expande o card para mostrar o resultado
@@ -1513,7 +1517,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                   }}
                                   disabled={docState?.status === 'gerando'}
                                   className={cn(
-                                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors',
+                                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors max-w-[160px]',
                                     docState?.status === 'gerando'
                                       ? 'bg-muted text-muted-foreground opacity-60 cursor-not-allowed'
                                       : docState?.status === 'gerado'
@@ -1521,11 +1525,16 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                       : 'bg-primary/10 text-primary hover:bg-primary/20'
                                   )}
                                 >
-                                  {docState?.status === 'gerando'
-                                    ? <><Loader2 className="h-2.5 w-2.5 animate-spin" /> Gerando...</>
-                                    : docState?.status === 'gerado'
-                                    ? <><RefreshCw className="h-2.5 w-2.5" /> Regerar</>
-                                    : <><FileText className="h-2.5 w-2.5" /> Gerar doc</>}
+                                  {docState?.status === 'gerando' ? (
+                                    <><Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" /> Gerando...</>
+                                  ) : (
+                                    <>
+                                      {docState?.status === 'gerado'
+                                        ? <RefreshCw className="h-2.5 w-2.5 shrink-0" />
+                                        : <FileText className="h-2.5 w-2.5 shrink-0" />}
+                                      <span className="truncate">{acao}: {nomeCurto}</span>
+                                    </>
+                                  )}
                                 </button>
                               )
                             })}
