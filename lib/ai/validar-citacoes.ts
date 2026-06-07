@@ -11,6 +11,73 @@
  */
 
 import type { Referencia, FormatoCitacao } from '@/types'
+import { citacaoInTexto } from '@/lib/referencias/formatar'
+
+// Palavras irrelevantes para casar tema da frase × título da referência
+const STOPWORDS = new Set([
+  'de','da','do','das','dos','para','com','por','uma','que','os','as','na','no',
+  'em','ou','um','ao','aos','sua','seu','entre','sobre','como','mais','foi','são',
+  'the','of','and','in','on','for','with','from','this','that','study','review',
+  'analysis','based','using','among','effect','effects','clinical','patients',
+])
+
+function palavrasChave(texto: string): Set<string> {
+  return new Set(
+    normalizar(texto)
+      .toLowerCase()
+      .split(/[^a-zà-ÿ]+/i)
+      .filter(p => p.length >= 4 && !STOPWORDS.has(p))
+  )
+}
+
+/**
+ * Substitui cada placeholder "(SOBRENOME, ANO)" por uma citação REAL da lista de
+ * referências, escolhendo a mais próxima do tema da frase e variando as fontes
+ * (evita repetir sempre a mesma). É o que um pesquisador faz: "preciso de uma
+ * citação aqui — qual das minhas referências melhor embasa isto?".
+ *
+ * Só atua quando há referências citáveis. Sem referências, o placeholder
+ * permanece (sinalizando ao usuário que falta cadastrar fontes). Não mexe em
+ * Vancouver (numérico, tratado à parte).
+ */
+export function substituirPlaceholdersPorReais(
+  texto: string,
+  referencias: Referencia[],
+  formato: FormatoCitacao = 'abnt',
+): string {
+  if (formato === 'vancouver') return texto
+  const citaveis = referencias.filter(r => (r.autores?.[0]?.sobrenome?.trim().length ?? 0) > 1 && !!r.ano)
+  if (citaveis.length === 0) return texto
+
+  const refsInfo = citaveis.map(r => ({ r, kws: palavrasChave(r.titulo ?? '') }))
+  const usos = new Array(refsInfo.length).fill(0)
+
+  const PLACEHOLDER = /\(SOBRENOME,\s*ANO\)/g
+  let resultado = ''
+  let lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = PLACEHOLDER.exec(texto)) !== null) {
+    // Contexto = SOMENTE a frase atual (do último ponto final até o placeholder),
+    // para não vazar palavras da frase anterior e repetir a mesma referência.
+    const janela = texto.slice(Math.max(0, m.index - 240), m.index)
+    const ctx = janela.split(/[.!?]\s+/).pop() ?? janela
+    const ctxKws = palavrasChave(ctx)
+    let melhor = 0
+    let melhorScore = -Infinity
+    for (let k = 0; k < refsInfo.length; k++) {
+      let overlap = 0
+      for (const w of refsInfo[k].kws) if (ctxKws.has(w)) overlap++
+      // relevância domina; menos usos desempata (garante diversidade)
+      const score = overlap * 100 - usos[k]
+      if (score > melhorScore) { melhorScore = score; melhor = k }
+    }
+    resultado += texto.slice(lastIndex, m.index) + citacaoInTexto(refsInfo[melhor].r, formato)
+    usos[melhor]++
+    lastIndex = m.index + m[0].length
+  }
+  resultado += texto.slice(lastIndex)
+  return resultado
+}
 
 // Autores institucionais reconhecidos — sempre válidos mesmo sem referência cadastrada
 const AUTORES_INSTITUCIONAIS = new Set([
@@ -157,6 +224,10 @@ export function validarCitacoesReais(
   // REGRA RÍGIDA FINAL: re-normaliza para colapsar placeholders adjacentes e
   // remover nomes soltos que a conversão acima possa ter deixado.
   resultado = normalizarPlaceholders(resultado)
+
+  // ETAPA FINAL: troca os placeholders restantes por referências REAIS da lista
+  // (quando existirem). Assim o texto não fica com "(SOBRENOME, ANO)" visível.
+  resultado = substituirPlaceholdersPorReais(resultado, referencias, formato)
 
   return resultado
 }
