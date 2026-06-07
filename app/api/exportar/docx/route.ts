@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
-import { tituloEfetivo } from '@/lib/trabalho/titulo'
+import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
@@ -97,6 +97,10 @@ export async function GET(request: Request) {
   const fmt        = FORMATO_CONFIG[trabalho.formato_citacao] ?? FORMATO_CONFIG.abnt
   // Título da capa: coluna do trabalho ou, se vazia, extraído da seção "titulo"
   const tituloCapa = tituloEfetivo(trabalho.titulo, secoes)
+  // Capitalização para a capa: título em sentence case; nomes próprios capitalizados
+  const tituloSentence = capitalizarTitulo(tituloCapa)
+  const autorCapa = nomeProprioCase(pData?.nome)
+  const orientadorCapa = nomeProprioCase(trabalho.orientador)
 
   // Ordem do DOCUMENTO final (ABNT), não a de elaboração do editor.
   const secoesOrdenadas = ordenarSecoesParaDocumento(
@@ -214,12 +218,12 @@ export async function GET(request: Request) {
     // APA 7ª Ed — título page
     children.push(
       empty(), empty(), empty(),
-      ...(pData?.nome ? [
-        paragrafo(pData.nome, { center: true, indent: false }),
+      ...(autorCapa ? [
+        paragrafo(autorCapa, { center: true, indent: false }),
         empty(),
       ] : []),
       paragrafo(
-        (tituloCapa || 'Title of Work'),
+        (tituloSentence || 'Title of Work'),
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(),
@@ -229,9 +233,9 @@ export async function GET(request: Request) {
       ...(trabalho.area_conhecimento ? [
         paragrafo(trabalho.area_conhecimento, { center: true, indent: false }),
       ] : []),
-      ...(trabalho.orientador ? [
+      ...(orientadorCapa ? [
         empty(),
-        paragrafo(`Professor: ${trabalho.orientador}`, { center: true, indent: false }),
+        paragrafo(`Professor: ${orientadorCapa}`, { center: true, indent: false }),
       ] : []),
       empty(),
       paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
@@ -245,18 +249,18 @@ export async function GET(request: Request) {
         empty(),
       ] : []),
       empty(), empty(),
-      ...(pData?.nome ? [
-        paragrafo(pData.nome, { center: true, indent: false }),
+      ...(autorCapa ? [
+        paragrafo(autorCapa, { center: true, indent: false }),
         empty(),
       ] : []),
       empty(),
       paragrafo(
-        toTitleCase(tituloCapa || 'Title of Work'),
+        (tituloSentence || 'Title of Work'),
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(), empty(),
-      ...(trabalho.orientador ? [
-        paragrafo(`Supervisor: ${trabalho.orientador}`, { center: true, indent: false }),
+      ...(orientadorCapa ? [
+        paragrafo(`Supervisor: ${orientadorCapa}`, { center: true, indent: false }),
         empty(),
       ] : []),
       paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
@@ -270,8 +274,8 @@ export async function GET(request: Request) {
         empty(),
       ] : []),
       empty(), empty(),
-      ...(pData?.nome ? [
-        paragrafo(pData.nome, { center: true, indent: false }),
+      ...(autorCapa ? [
+        paragrafo(autorCapa, { center: true, indent: false }),
         empty(),
       ] : []),
       empty(), empty(),
@@ -280,8 +284,8 @@ export async function GET(request: Request) {
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(), empty(),
-      ...(trabalho.orientador ? [
-        paragrafo(`Orientador(a): ${trabalho.orientador}`, { center: true, indent: false }),
+      ...(orientadorCapa ? [
+        paragrafo(`Orientador(a): ${orientadorCapa}`, { center: true, indent: false }),
         empty(),
       ] : []),
       empty(),

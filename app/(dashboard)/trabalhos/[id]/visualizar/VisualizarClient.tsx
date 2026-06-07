@@ -12,6 +12,7 @@ import { extrairTextoSecao } from '@/lib/ai/utils'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { renderMarkdownInline } from '@/components/ui/MarkdownText'
+import { capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
@@ -72,7 +73,8 @@ function ConteudoSecao({ texto }: { texto: string }) {
 }
 
 export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes, referencias, autorNome, autorInstituicao }: Props) {
-  const titulo = tituloTrabalho?.trim() || trabalho.titulo?.trim() || ''
+  const titulo = capitalizarTitulo(tituloTrabalho?.trim() || trabalho.titulo?.trim() || '')
+  const autor = nomeProprioCase(autorNome)
 
   // Resumo/Abstract (pré-textual). A seção é serializada como JSON pelo editor.
   type ResumoData = { resumo?: string; abstract?: string; palavras_chave?: string[]; keywords?: string[] }
@@ -196,37 +198,37 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
         {/* ── Capa (ABNT NBR 14724 — tudo centralizado) ─────── */}
         <section id="capa" className="doc-page bg-white shadow-sm rounded-t-lg px-16 py-16 min-h-[80vh] flex flex-col items-center text-center border border-b-0">
           {/* Topo: instituição + autor */}
-          <div className="space-y-5 w-full">
+          <div className="space-y-5 w-full max-w-full">
             {autorInstituicao && (
-              <p className="doc-content text-sm font-bold uppercase tracking-widest text-gray-700" style={{ textIndent: 0, textAlign: 'center' }}>
+              <p className="doc-content text-sm font-bold uppercase tracking-widest text-gray-800 break-words" style={{ textIndent: 0, textAlign: 'center' }}>
                 {autorInstituicao}
               </p>
             )}
-            {autorNome && (
-              <p className="doc-content text-base text-gray-800" style={{ textIndent: 0, textAlign: 'center' }}>
-                {autorNome}
+            {autor && (
+              <p className="doc-content text-base font-medium text-gray-900 break-words" style={{ textIndent: 0, textAlign: 'center' }}>
+                {autor}
               </p>
             )}
           </div>
 
           {/* Centro: título + orientador */}
-          <div className="flex-1 flex flex-col items-center justify-center w-full">
-            <h1 className="doc-content text-2xl font-bold text-gray-900 leading-tight" style={{ textIndent: 0, textAlign: 'center' }}>
+          <div className="flex-1 flex flex-col items-center justify-center w-full max-w-full">
+            <h1 className="doc-content text-2xl font-bold text-gray-900 leading-tight break-words max-w-full" style={{ textIndent: 0, textAlign: 'center' }}>
               {titulo || 'Título do Trabalho'}
             </h1>
             {trabalho.orientador && (
-              <p className="doc-content text-sm text-gray-600 mt-10" style={{ textIndent: 0, textAlign: 'center' }}>
-                Orientador(a): {trabalho.orientador}
+              <p className="doc-content text-sm text-gray-700 mt-10 break-words" style={{ textIndent: 0, textAlign: 'center' }}>
+                Orientador(a): {nomeProprioCase(trabalho.orientador)}
               </p>
             )}
           </div>
 
           {/* Base: tipo de trabalho + área · ano (local e ano da capa ABNT) */}
-          <div className="space-y-1.5 w-full">
-            <p className="doc-content text-xs uppercase tracking-widest text-gray-500" style={{ textIndent: 0, textAlign: 'center' }}>
+          <div className="space-y-1.5 w-full max-w-full">
+            <p className="doc-content text-xs uppercase tracking-widest text-gray-700" style={{ textIndent: 0, textAlign: 'center' }}>
               {getTipoLabel(trabalho.tipo_trabalho)}
             </p>
-            <p className="doc-content text-sm text-gray-600" style={{ textIndent: 0, textAlign: 'center' }}>
+            <p className="doc-content text-sm text-gray-800" style={{ textIndent: 0, textAlign: 'center' }}>
               {trabalho.area_conhecimento && `${trabalho.area_conhecimento} · `}{anoAtual}
             </p>
           </div>
