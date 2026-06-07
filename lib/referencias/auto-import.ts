@@ -137,11 +137,20 @@ export function toEnglishQuery(texto: string): string {
  */
 export function filtrarRefsCitaveis(refs: Referencia[]): Referencia[] {
   return refs.filter(r => {
-    const temAutor = !!r.autores?.[0]?.sobrenome && r.autores[0].sobrenome.length > 1
+    const sobrenome = r.autores?.[0]?.sobrenome?.trim() ?? ''
+    const temAutor = sobrenome.length > 1
     const adicionadaManual = (r.fonte_tipo as string | undefined) === 'manual' || !r.fonte_tipo
     // Auto-importadas exigem autor E ano; manuais exigem apenas autor
     if (!temAutor) return false
     if (!adicionadaManual && !r.ano) return false
+    // Sobrenome mal-parseado: 3+ palavras numa importação automática quase sempre
+    // é erro de indexação (ex: "Mulik Devika Bhivgade") e gera citações quebradas.
+    if (!adicionadaManual) {
+      const palavrasSobrenome = sobrenome.split(/\s+/).filter(w => w.length > 1)
+      if (palavrasSobrenome.length > 2) return false
+      // Sobrenome todo em maiúsculas com várias palavras também é suspeito
+      if (palavrasSobrenome.length === 2 && sobrenome === sobrenome.toUpperCase() && sobrenome.length > 18) return false
+    }
     return true
   })
 }

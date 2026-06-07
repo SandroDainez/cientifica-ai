@@ -215,7 +215,9 @@ Você tem ${referencias.length} referências reais disponíveis. O texto é uma 
 
 5. PLACEHOLDER É ÚLTIMO RECURSO: use (SOBRENOME, ANO) apenas se NENHUMA das ${referencias.length} referências tiver qualquer relação com a frase. Meta: menos de 1 placeholder a cada 15 citações. Se o texto final tiver muitos placeholders, você falhou — releia e substitua-os por referências reais da lista.
 
-6. PROIBIDO: inventar sobrenome/ano fora da lista; escrever "(verificar referência)", "(referência)", "(citar fonte)"; citar pelo título do documento; deixar afirmação factual sem citação.`
+6. NUNCA misture nome de autor na frase + placeholder: é PROIBIDO escrever algo como "Mulik Devika (SOBRENOME, ANO)" ou "Silva (SOBRENOME, ANO)". Se você sabe o autor real, cite-o completo da lista: "Silva (2020)". Se NÃO há referência, use SÓ o marcador "(SOBRENOME, ANO)" — sem nome de autor antes dele.
+
+7. PROIBIDO: inventar sobrenome/ano fora da lista; escrever "(verificar referência)", "(referência)", "(citar fonte)"; citar pelo título do documento; deixar afirmação factual sem citação.`
 }
 
 // ============================================================

@@ -27,14 +27,20 @@ const AUTORES_INSTITUCIONAIS = new Set([
 /** Extrai sobrenomes válidos (primeiro autor) da lista de referências reais. */
 function sobrenomesValidos(referencias: Referencia[]): Set<string> {
   const set = new Set<string>()
+  const conectores = new Set(['DA', 'DE', 'DO', 'DOS', 'DAS', 'E', 'DI', 'DEL', 'VAN', 'VON'])
   for (const ref of referencias) {
-    const primeiro = ref.autores?.[0]?.sobrenome
-    if (primeiro) {
-      set.add(normalizar(primeiro))
+    for (const autor of (ref.autores ?? []).slice(0, 3)) {
+      const sob = autor?.sobrenome
+      if (!sob) continue
+      const n = normalizar(sob)
+      set.add(n)
+      // Também adiciona cada palavra significativa do sobrenome composto
+      // (ex: "MULIK DEVIKA BHIVGADE" → MULIK, DEVIKA, BHIVGADE) para que a IA
+      // possa citar por qualquer parte sem ser convertida em placeholder.
+      for (const parte of n.split(/\s+/)) {
+        if (parte.length >= 4 && !conectores.has(parte)) set.add(parte)
+      }
     }
-    // Também aceita o segundo autor (citações com 2 nomes)
-    const segundo = ref.autores?.[1]?.sobrenome
-    if (segundo) set.add(normalizar(segundo))
   }
   return set
 }
