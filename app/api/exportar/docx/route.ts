@@ -6,6 +6,7 @@ import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   PageBreak, convertInchesToTwip, LineRuleType,
+  Table, TableRow, TableCell, WidthType, BorderStyle,
 } from 'docx'
 import type { Trabalho, SecaoTrabalho, Referencia, FormatoCitacao } from '@/types'
 
@@ -195,7 +196,7 @@ export async function GET(request: Request) {
   }
 
   // ── Montar documento ────────────────────────────────────────
-  const children: Paragraph[] = []
+  const children: (Paragraph | Table)[] = []
 
   // ── Capa ────────────────────────────────────────────────────
   // ABNT: capa estruturada com instituição, autor, título, orientador, ano
@@ -285,26 +286,93 @@ export async function GET(request: Request) {
   }
 
   // ── Seções ──────────────────────────────────────────────────
+  // Constrói uma tabela DOCX no padrão ABNT (tabela aberta) a partir de linhas markdown
+  function construirTabelaDocx(linhasTabela: string[]): Table | null {
+    const linhas = linhasTabela
+      .map(l => l.trim())
+      .filter(l => l.startsWith('|'))
+    if (linhas.length < 2) return null
+    const parseRow = (l: string) => l.split('|').slice(1, -1).map(c => c.trim())
+    const ehSeparador = (l: string) => parseRow(l).every(c => /^:?-{2,}:?$/.test(c))
+    const header = parseRow(linhas[0])
+    const corpo = linhas.slice(1).filter(l => !ehSeparador(l)).map(parseRow)
+    const semBorda = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+    const linhaPreta = { style: BorderStyle.SINGLE, size: 6, color: '000000' }
+    const mkCell = (txt: string, opts: { header?: boolean; top?: boolean; bottom?: boolean } = {}) =>
+      new TableCell({
+        borders: {
+          top: opts.top ? linhaPreta : semBorda,
+          bottom: opts.bottom ? linhaPreta : semBorda,
+          left: semBorda, right: semBorda,
+        },
+        margins: { top: 40, bottom: 40, left: 80, right: 80 },
+        children: [new Paragraph({
+          children: txt.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*)/).filter(Boolean).map(tk =>
+            tk.startsWith('**') && tk.endsWith('**')
+              ? new TextRun({ text: tk.slice(2, -2), font: FONT, size: 22, bold: true })
+              : tk.startsWith('*') && tk.endsWith('*')
+                ? new TextRun({ text: tk.slice(1, -1), font: FONT, size: 22, italics: true })
+                : new TextRun({ text: tk, font: FONT, size: 22, bold: opts.header }),
+          ),
+        })],
+      })
+    const rows: TableRow[] = []
+    // Cabeçalho: borda superior (topo da tabela) e inferior (sob o cabeçalho)
+    rows.push(new TableRow({ tableHeader: true, children: header.map(c => mkCell(c, { header: true, top: true, bottom: true })) }))
+    // Corpo: última linha recebe borda inferior (base da tabela)
+    corpo.forEach((r, idx) => {
+      const ultima = idx === corpo.length - 1
+      // garante o nº de células igual ao cabeçalho
+      const cells = header.map((_, ci) => mkCell(r[ci] ?? '', { bottom: ultima }))
+      rows.push(new TableRow({ children: cells }))
+    })
+    return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows })
+  }
+
   secoesOrdenadas.forEach((secao, i) => {
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    // Parágrafos limpos — sem markdown estrutural, bold/italic preservados
-    const paragrafos = extrairParagrafosParaDocx(secao.conteudo ?? '')
-    paragrafos.forEach(p => {
-      children.push(new Paragraph({
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: {
-          line: fmt.lineSpacing,
-          lineRule: LineRuleType.AUTO,
-          after: fmt.lineSpacing === 480 ? 0 : 0, // APA não tem espaço extra entre parágrafos
-        },
-        indent: { firstLine: convertInchesToTwip(0.5) },
-        children: textRunsFromMarkdown(p),
-      }))
-    })
+    // Separa o conteúdo em blocos: tabelas markdown (linhas com "|") viram
+    // tabelas reais; o restante vira parágrafos justificados.
+    const linhas = (secao.conteudo ?? '').split('\n')
+    let bufProsa: string[] = []
+    let bufTabela: string[] = []
+
+    const flushProsa = () => {
+      if (bufProsa.length === 0) return
+      const paragrafos = extrairParagrafosParaDocx(bufProsa.join('\n'))
+      paragrafos.forEach(p => {
+        children.push(new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO, after: 0 },
+          indent: { firstLine: convertInchesToTwip(0.5) },
+          children: textRunsFromMarkdown(p),
+        }))
+      })
+      bufProsa = []
+    }
+    const flushTabela = () => {
+      if (bufTabela.length === 0) return
+      const tabela = construirTabelaDocx(bufTabela)
+      if (tabela) { children.push(tabela); children.push(empty()) }
+      else bufProsa.push(...bufTabela) // fallback: trata como texto
+      bufTabela = []
+    }
+
+    for (const linha of linhas) {
+      if (linha.trim().startsWith('|')) {
+        flushProsa()
+        bufTabela.push(linha)
+      } else {
+        flushTabela()
+        bufProsa.push(linha)
+      }
+    }
+    flushTabela()
+    flushProsa()
   })
 
   // ── Referências ─────────────────────────────────────────────

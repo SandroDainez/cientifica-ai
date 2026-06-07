@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import {
   Table2, Upload, FileSpreadsheet, FileText, ImageIcon, X,
-  Loader2, CheckCircle2, AlertTriangle, Sparkles, Brain, Plus, Copy, Check,
+  Loader2, CheckCircle2, AlertTriangle, Sparkles, Brain, Plus, Copy, Check, Printer, Download,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -97,6 +97,72 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao,
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
     } catch { /* ignore */ }
+  }
+
+  // Converte o markdown gerado (título + tabela + fonte) em HTML no padrão ABNT.
+  function tabelaParaHtml(md: string): string {
+    const linhas = md.split('\n')
+    let html = ''
+    let dentroTabela = false
+    let cabecalhoFeito = false
+    for (const linha of linhas) {
+      const l = linha.trim()
+      if (!l) { if (dentroTabela) { html += '</tbody></table>'; dentroTabela = false; cabecalhoFeito = false } continue }
+      // Linha de tabela markdown
+      if (l.startsWith('|')) {
+        const celulas = l.split('|').slice(1, -1).map(c => c.trim())
+        // Linha separadora |---|---|
+        if (celulas.every(c => /^:?-{2,}:?$/.test(c))) continue
+        if (!dentroTabela) { html += '<table class="abnt"><thead><tr>'; dentroTabela = true }
+        if (!cabecalhoFeito) {
+          html += celulas.map(c => `<th>${fmtInline(c)}</th>`).join('') + '</tr></thead><tbody>'
+          cabecalhoFeito = true
+        } else {
+          html += '<tr>' + celulas.map(c => `<td>${fmtInline(c)}</td>`).join('') + '</tr>'
+        }
+        continue
+      }
+      // Fora da tabela
+      if (dentroTabela) { html += '</tbody></table>'; dentroTabela = false; cabecalhoFeito = false }
+      if (/^\*\*.+\*\*$/.test(l)) html += `<p class="titulo">${fmtInline(l)}</p>`
+      else if (/^fonte:/i.test(l)) html += `<p class="fonte">${fmtInline(l)}</p>`
+      else html += `<p>${fmtInline(l)}</p>`
+    }
+    if (dentroTabela) html += '</tbody></table>'
+    return html
+  }
+  function fmtInline(s: string): string {
+    return s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>')
+  }
+
+  function imprimirTabela() {
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Tabela científica</title>
+<style>
+  @page { margin: 2.5cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; }
+  p.titulo { font-weight: bold; margin: 0 0 6pt; }
+  table.abnt { border-collapse: collapse; width: 100%; margin: 6pt 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+  table.abnt thead th { border-bottom: 1px solid #000; text-align: left; padding: 6pt 8pt; font-weight: bold; }
+  table.abnt td { padding: 4pt 8pt; vertical-align: top; }
+  p.fonte { font-size: 10pt; margin: 4pt 0 0; }
+</style></head><body>${tabelaParaHtml(tabela)}</body></html>`
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    setTimeout(() => w.print(), 300)
+  }
+
+  function baixarTabela() {
+    // Arquivo .doc (HTML) — abre no Word já como tabela formatada
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${tabelaParaHtml(tabela)}</body></html>`
+    const blob = new Blob([html], { type: 'application/msword' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'tabela_cientifica.doc'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function salvar(valor: string) {
@@ -359,16 +425,33 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao,
                   {gerandoTabela && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                 </div>
                 {!gerandoTabela && tabela.length > 20 && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {onInserirNoTexto && (
                       <button
                         type="button"
                         onClick={() => onInserirNoTexto(`\n\n${tabela}\n`)}
+                        title="Insere a tabela no texto dos Resultados (vira tabela formatada ao imprimir/exportar)"
                         className="inline-flex items-center gap-1 text-xs rounded px-2 py-1 bg-primary text-primary-foreground hover:opacity-90 font-medium"
                       >
                         <Plus className="h-3 w-3" /> Inserir no texto
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={imprimirTabela}
+                      title="Imprimir ou salvar como PDF"
+                      className="inline-flex items-center gap-1 text-xs rounded px-2 py-1 border border-border text-foreground hover:bg-muted"
+                    >
+                      <Printer className="h-3 w-3" /> Imprimir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={baixarTabela}
+                      title="Baixar como .doc (abre no Word já formatada)"
+                      className="inline-flex items-center gap-1 text-xs rounded px-2 py-1 border border-border text-foreground hover:bg-muted"
+                    >
+                      <Download className="h-3 w-3" /> Baixar Word
+                    </button>
                     <button
                       type="button"
                       onClick={copiarTabela}
