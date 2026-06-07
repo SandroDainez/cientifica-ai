@@ -185,10 +185,10 @@ export function filtrarRefsCitaveis(refs: Referencia[]): Referencia[] {
     // Sobrenome mal-parseado: 3+ palavras numa importação automática quase sempre
     // é erro de indexação (ex: "Mulik Devika Bhivgade") e gera citações quebradas.
     if (!adicionadaManual) {
+      // Só rejeita sobrenomes claramente mal-parseados (4+ palavras). Compostos
+      // legítimos de 2-3 palavras ("da Silva Júnior") são mantidos.
       const palavrasSobrenome = sobrenome.split(/\s+/).filter(w => w.length > 1)
-      if (palavrasSobrenome.length > 2) return false
-      // Sobrenome todo em maiúsculas com várias palavras também é suspeito
-      if (palavrasSobrenome.length === 2 && sobrenome === sobrenome.toUpperCase() && sobrenome.length > 18) return false
+      if (palavrasSobrenome.length >= 4) return false
     }
     return true
   })
@@ -241,7 +241,9 @@ export async function garantirReferenciasReais({
   limiar = 30,
 }: GarantirRefsParams): Promise<Referencia[]> {
   let referencias = [...refsExistentes]
-  if (referencias.length >= limiar) return referencias
+  // Conta só referências de QUALIDADE — se já há o suficiente, não reimporta.
+  // (um trabalho cheio de refs ruins ainda dispara nova importação de boas.)
+  if (filtrarRefsCitaveis(referencias).length >= limiar) return referencias
 
   try {
     const areaStr = (area ?? '').trim()
@@ -266,7 +268,8 @@ export async function garantirReferenciasReais({
     if (tituloEN.length > 8) queriesRegex.push(`${tituloEN.split(/\s+/).slice(0, 6).join(' ')} ${secKws[0]}`)
     if (areaEN) queriesRegex.push(`${areaEN} ${secKws[0]}`)
 
-    // Une: prioriza IA, completa com regex até 6 queries
+    // Une: prioriza IA, completa com regex (até 6 queries — mais que isso satura
+    // o rate limit do PubMed, que sem API key aceita ~3 req/s).
     const seen = new Set<string>()
     const queriesValidas = [...queriesIA, ...queriesRegex]
       .map(q => q.trim())
@@ -276,9 +279,14 @@ export async function garantirReferenciasReais({
     if (queriesValidas.length === 0) return referencias
     console.log('[auto-import] queries:', queriesValidas)
 
-    const resultados = await Promise.all(
-      queriesValidas.map(q => buscarRefsExternas(q, 8, !ehBiomedico))
-    )
+    // 12 resultados por query → ~72 candidatos antes de deduplicar/filtrar.
+    // Sequencial em pares para respeitar o rate limit do PubMed (evita 429).
+    const resultados: Awaited<ReturnType<typeof buscarRefsExternas>>[] = []
+    for (let i = 0; i < queriesValidas.length; i += 2) {
+      const lote = queriesValidas.slice(i, i + 2)
+      const r = await Promise.all(lote.map(q => buscarRefsExternas(q, 12, !ehBiomedico)))
+      resultados.push(...r)
+    }
 
     const vistosDois = new Set<string>(referencias.map(r => r.doi ?? '').filter(Boolean))
     const vistosTitulos = new Set<string>(referencias.map(r => r.titulo.toLowerCase().slice(0, 80)))

@@ -127,18 +127,25 @@ export async function buscarPubMed(query: string, limite: number): Promise<RefEx
 
       const rawAuthors = (art.authors as Array<Record<string, string>> | undefined) ?? []
       const autores: AutorReferencia[] = rawAuthors
-        .filter(a => a.authtype === 'Author' && a.name)
+        // Inclui qualquer autor com nome que NÃO seja nome coletivo (mais permissivo
+        // que exigir authtype === 'Author', que descartava refs válidas).
+        .filter(a => a.name && a.authtype !== 'CollectiveName')
         .map(a => {
-          const parts = (a.name as string).split(' ')
+          const parts = (a.name as string).trim().split(/\s+/)
+          // Formato PubMed: "Sobrenome Iniciais" (ex: "Smith JD") → sobrenome = parts[0]
           return { nome: parts.slice(1).join(' '), sobrenome: parts[0] ?? '', iniciais: parts.slice(1).join('').toUpperCase() }
         })
 
       const articleIds = (art.articleids as Array<Record<string, string>> | undefined) ?? []
       const doi = articleIds.find(a => a.idtype === 'doi')?.value
 
-      const pubdate = (art.pubdate as string | undefined) ?? ''
-      const anoRaw = parseInt(pubdate.split(' ')[0])
-      const ano = !isNaN(anoRaw) ? anoRaw : undefined
+      // Ano: tenta pubdate, depois epubdate, depois sortpubdate — pega o 1º com 4 dígitos
+      const datas = [art.pubdate, art.epubdate, art.sortpubdate].filter(Boolean) as string[]
+      let ano: number | undefined
+      for (const d of datas) {
+        const m = d.match(/(19|20)\d{2}/)
+        if (m) { ano = parseInt(m[0]); break }
+      }
 
       const titulo = ((art.title as string) ?? '').replace(/\.$/, '')
       if (!titulo) continue
