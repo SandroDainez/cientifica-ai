@@ -2,6 +2,7 @@ import type { TipoTrabalho, FormatoCitacao, NivelExperiencia, FaseConfig, Refere
 import { citacaoInTexto } from '@/lib/referencias/formatar'
 import { detectarCampo, getRegrasCampoAcademico } from '@/lib/ai/campos-academicos'
 import { getNormasSecao } from '@/lib/ai/normas-cientificas'
+import { compararGruposDeDados } from '@/lib/estatistica/comparar-grupos'
 
 // ============================================================
 // Sistema base — personaliza o tom conforme nível do usuário
@@ -405,6 +406,9 @@ export function buildGerarSecaoPrompt(
       partes.push(`Use nas seções de Resultados, Discussão e Conclusão. São dados reais coletados pelo pesquisador.`)
       partes.push(`REGRA CRÍTICA: Use EXATAMENTE estes dados. Nunca invente números, percentuais ou achados diferentes dos listados abaixo.`)
       partes.push(p.dados_coletados.trim())
+      // Estatística inferencial calculada de forma determinística (valor-p real)
+      const stats = compararGruposDeDados(p.dados_coletados)
+      if (stats) partes.push(`\n${stats}`)
     }
     if (p.notas_interpretacao?.trim()) {
       partes.push(`\n## INTERPRETAÇÃO E IMPRESSÕES DO PESQUISADOR`)

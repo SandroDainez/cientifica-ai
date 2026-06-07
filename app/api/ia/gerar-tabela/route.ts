@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { callAI } from '@/lib/ai/stream'
+import { compararGruposDeDados } from '@/lib/estatistica/comparar-grupos'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, DadosProjeto } from '@/types'
 
@@ -64,6 +65,11 @@ export async function POST(request: Request) {
   const fase = fluxo?.fases.find(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
   const nomeSecao = fase?.nome ?? 'Resultados'
 
+  // Estatística determinística: se os dados tiverem coluna de grupo, calculamos
+  // aqui (média ± DP, n %, valor-p por t/Welch, Fisher ou qui-quadrado). A IA
+  // não calcula p de forma confiável — então entregamos os valores prontos.
+  const statsBloco = compararGruposDeDados(dadosPlanilha)
+
   // System prompt CURTO e focado — o bloco completo de regras do campo é longo e,
   // somado aos dados, fazia o modelo retornar vazio. Para tabela basta o essencial.
   const systemPrompt = `Você é um especialista em apresentação de dados científicos na área de ${trabalho.area_conhecimento ?? 'pesquisa'}. Monta tabelas no padrão ABNT/IBGE (tabela aberta), de forma objetiva e usando SOMENTE os números reais fornecidos.`
@@ -79,7 +85,7 @@ ${dadosProjeto?.objetivo_geral ? `- Objetivo: ${dadosProjeto.objetivo_geral}` : 
 
 DADOS REAIS DA PLANILHA:
 ${dadosPlanilha.slice(0, 8000)}
-
+${statsBloco ? `\n${statsBloco}\n` : ''}
 NORMAS OBRIGATÓRIAS DE TABELA CIENTÍFICA (ABNT NBR 14724 / IBGE — "tabela aberta"):
 1. TÍTULO acima da tabela, em uma linha própria: "**Tabela 1 — [título descritivo do conteúdo]**" (numeração sequencial; título conciso e autoexplicativo). Deixe uma linha em branco entre o título e a tabela.
 2. Use UMA tabela markdown limpa e simples: linha de cabeçalho, linha separadora (|---|---|) e linhas de dados. Uma coluna por variável. NÃO desenhe bordas com caracteres (sem +---+, sem ═). O sistema renderiza no padrão ABNT (tabela aberta: só traços horizontais no topo, sob o cabeçalho e na base; sem linhas verticais).

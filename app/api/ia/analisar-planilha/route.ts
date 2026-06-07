@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { buildAnalisarPlanilhaPrompt } from '@/lib/ai/prompts'
 import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
+import { compararGruposDeDados } from '@/lib/estatistica/comparar-grupos'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, DadosProjeto } from '@/types'
 
@@ -57,13 +58,18 @@ export async function POST(request: Request) {
   // (aparecia "Failed to fetch" no cliente). Mantemos só o essencial aqui.
   const systemPrompt = `Você é um estatístico e metodologista sênior, especialista na área de ${trabalho.area_conhecimento ?? 'pesquisa científica'}. Interpreta dados de forma rigorosa, prática e objetiva, usando SOMENTE os números reais fornecidos (nunca inventa valores).`
 
-  const userPrompt = buildAnalisarPlanilhaPrompt(dadosPlanilha, nomeSecao, chaveSecao, {
+  let userPrompt = buildAnalisarPlanilhaPrompt(dadosPlanilha, nomeSecao, chaveSecao, {
     tipoTrabalho: trabalho.tipo_trabalho,
     area: trabalho.area_conhecimento ?? undefined,
     pergunta_pesquisa: dadosProjeto?.pergunta_pesquisa,
     objetivo_geral: dadosProjeto?.objetivo_geral,
     delineamento: dadosProjeto?.delineamento,
   })
+
+  // Valores-p e descritivas calculados deterministicamente (quando há grupos) —
+  // a IA usa estes números reais em vez de estimar/alucinar.
+  const statsBloco = compararGruposDeDados(dadosPlanilha)
+  if (statsBloco) userPrompt += `\n\n${statsBloco}`
 
   // Geração confiável: callAI (não-streaming) com retry e fallback de modelo.
   // Devolve a string pronta com efeito de digitação — assim um erro da IA vira
