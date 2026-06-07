@@ -2,11 +2,25 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { detectarCampo, getRegrasCampoAcademico } from '@/lib/ai/campos-academicos'
-import { streamText } from '@/lib/ai/stream'
+import { streamText, callAI } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, DadosProjeto } from '@/types'
 
 export const maxDuration = 120
+
+/** Transmite uma string já pronta com efeito de digitação. */
+function streamStringComEfeito(texto: string): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      const enc = new TextEncoder()
+      for (let i = 0; i < texto.length; i += 24) controller.enqueue(enc.encode(texto.slice(i, i + 24)))
+      controller.close()
+    },
+  })
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' },
+  })
+}
 
 /**
  * Monta uma ou mais TABELAS CIENTÍFICAS reais a partir dos dados da planilha,
@@ -87,5 +101,23 @@ REGRAS CRÍTICAS:
 - Responda APENAS com a(s) tabela(s) formatada(s) — título, tabela markdown, fonte e notas. Sem texto explicativo antes ou depois.
 - Após a tabela, em UMA linha, sugira: "💡 No texto, descreva esta tabela assim: [exemplo de 1 frase de chamada da tabela no corpo do texto]."`
 
-  return streamText(systemPrompt, userPrompt, false, 3000)
+  // Geração confiável: callAI (temperatura baixa) com retry. O streamText a 0.9
+  // ocasionalmente retornava vazio — uma tabela é curta e determinística, então
+  // gerar de uma vez e validar é mais robusto.
+  let tabela = ''
+  for (let tentativa = 0; tentativa < 2 && !tabela.trim(); tentativa++) {
+    try {
+      const out = await callAI(systemPrompt, userPrompt, false, 3000)
+      if (out && out.includes('|')) tabela = out.trim()   // precisa conter ao menos uma tabela markdown
+    } catch (err) {
+      console.error('[gerar-tabela] tentativa', tentativa, 'falhou:', err)
+    }
+  }
+
+  if (!tabela) {
+    // Último recurso: streaming direto (ainda pode funcionar)
+    return streamText(systemPrompt, userPrompt, false, 3000)
+  }
+
+  return streamStringComEfeito(tabela)
 }
