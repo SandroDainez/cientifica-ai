@@ -213,7 +213,7 @@ Você tem ${referencias.length} referências reais disponíveis. O texto é uma 
 4. FORMATO ${fmt}: ${exemplo}
    Copie a citação EXATAMENTE como aparece na lista (mesmo sobrenome, mesmo ano).
 
-5. PLACEHOLDER É ÚLTIMO RECURSO: use (SOBRENOME, ANO) apenas se NENHUMA das ${referencias.length} referências tiver qualquer relação com a frase. Meta: menos de 1 placeholder a cada 15 citações. Se o texto final tiver muitos placeholders, você falhou — releia e substitua-os por referências reais da lista.
+5. PLACEHOLDER É ÚLTIMO RECURSO E TEM FORMA FIXA: use EXATAMENTE "(SOBRENOME, ANO)" — com a palavra ANO, NUNCA um ano real. É PROIBIDO escrever "(SOBRENOME, 2024)", "(SOBRENOME, 2019)", "(AUTOR, 2023)" ou qualquer variação com ano numérico no placeholder. Se você não tem a referência, o ano também é desconhecido: escreva ANO. Use placeholder apenas se NENHUMA das ${referencias.length} referências tiver relação com a frase (meta: < 1 a cada 15 citações).
 
 6. NUNCA misture nome de autor na frase + placeholder: é PROIBIDO escrever algo como "Mulik Devika (SOBRENOME, ANO)" ou "Silva (SOBRENOME, ANO)". Se você sabe o autor real, cite-o completo da lista: "Silva (2020)". Se NÃO há referência, use SÓ o marcador "(SOBRENOME, ANO)" — sem nome de autor antes dele.
 

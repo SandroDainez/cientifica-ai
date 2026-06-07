@@ -75,15 +75,47 @@ export function normalizarFormatoCitacoesAbnt(texto: string): string {
   )
 }
 
+/**
+ * REGRA RÍGIDA 1 — Normaliza TODO placeholder para a forma canônica "(SOBRENOME, ANO)".
+ * Captura todos os híbridos errados onde o autor é placeholder mas o ano é real/inventado:
+ *   "(SOBRENOME, 2024)" → "(SOBRENOME, ANO)"
+ *   "(SOBRENOME et al., 2019)" → "(SOBRENOME, ANO)"
+ *   "(AUTOR, 2023)" → "(SOBRENOME, ANO)"
+ *   "SOBRENOME (2024)" → "(SOBRENOME, ANO)"
+ *   "[AUTOR, ANO]" / "(autor, ano)" → "(SOBRENOME, ANO)"
+ * E também remove um nome solto que tenha ficado ANTES de um placeholder:
+ *   "Mulik Devika (SOBRENOME, ANO)" → "(SOBRENOME, ANO)"
+ */
+export function normalizarPlaceholders(texto: string): string {
+  let t = texto
+  // Parentético com autor-placeholder + qualquer ano (real ou ANO)
+  t = t.replace(/\(\s*(?:SOBRENOME|AUTOR)(?:\s+et\s+al\.?)?(?:\s*;\s*(?:SOBRENOME|AUTOR))*\s*,\s*[^)]*\)/gi, '(SOBRENOME, ANO)')
+  // Colchetes: [AUTOR, ANO] / [SOBRENOME, 2020]
+  t = t.replace(/\[\s*(?:SOBRENOME|AUTOR)\s*,\s*[^\]]*\]/gi, '(SOBRENOME, ANO)')
+  // Narrativo: SOBRENOME (2024) / AUTOR (ANO) / SOBRENOME et al. (2024)
+  t = t.replace(/\b(?:SOBRENOME|AUTOR)(?:\s+et\s+al\.?)?\s*\([^)]*\)/gi, '(SOBRENOME, ANO)')
+  // Nome próprio solto imediatamente antes de um placeholder (resíduo de citação quebrada)
+  t = t.replace(/\b(?:[A-ZÀ-Ý][a-zà-ÿ]+\s+){1,3}\(SOBRENOME,\s*ANO\)/g, '(SOBRENOME, ANO)')
+  // Colapsa placeholders duplicados consecutivos
+  t = t.replace(/\(SOBRENOME,\s*ANO\)(\s*\(SOBRENOME,\s*ANO\))+/g, '(SOBRENOME, ANO)')
+  return t
+}
+
 export function validarCitacoesReais(
   texto: string,
   referencias: Referencia[],
   formato: FormatoCitacao = 'abnt',
 ): string {
   // Vancouver usa [1], [2] — validação numérica é tratada à parte; não mexe aqui
-  if (formato === 'vancouver') return texto
+  if (formato === 'vancouver') {
+    // Mesmo em Vancouver, garante que placeholders fiquem canônicos
+    return normalizarPlaceholders(texto)
+  }
 
-  // Primeiro corrige o formato híbrido errado (maiúsculas + ano fora dos parênteses)
+  // REGRA RÍGIDA 1: normaliza todos os placeholders para "(SOBRENOME, ANO)"
+  texto = normalizarPlaceholders(texto)
+
+  // REGRA RÍGIDA 2: corrige o formato híbrido (maiúsculas + ano fora dos parênteses)
   if (formato === 'abnt') texto = normalizarFormatoCitacoesAbnt(texto)
 
   const validos = sobrenomesValidos(referencias)
@@ -115,13 +147,16 @@ export function validarCitacoesReais(
   // ── 2. Citações narrativas: Sobrenome (ANO) / Sobrenome et al. (ANO) ──────────
   resultado = resultado.replace(
     /\b([A-ZÀ-Ý][a-zà-ÿ]+(?:\s+(?:e|&|;)\s+[A-ZÀ-Ý][a-zà-ÿ]+)?(?:\s+et\s+al\.?)?)\s*\(((?:19|20)\d{2}[a-z]?|s\.?\s*d\.?)\)/g,
-    (match, autorParte, ano) => {
+    (match, autorParte) => {
       const primeiroAutor = autorParte.replace(/\s+et\s+al\.?/i, '').split(/\s+(?:e|&|;)\s+/)[0].trim()
       if (ehValido(primeiroAutor)) return match
-      // Narrativa inválida → placeholder narrativo
-      return `(SOBRENOME, ${/^\d/.test(ano) ? 'ANO' : 'ANO'})`
+      return '(SOBRENOME, ANO)'
     }
   )
+
+  // REGRA RÍGIDA FINAL: re-normaliza para colapsar placeholders adjacentes e
+  // remover nomes soltos que a conversão acima possa ter deixado.
+  resultado = normalizarPlaceholders(resultado)
 
   return resultado
 }
