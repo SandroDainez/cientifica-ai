@@ -1309,16 +1309,47 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
           {(() => {
             const textoAnalise = planData.analise_orientador
               ?? (streamingText ? streamingText.split('===PLANO_JSON===')[0].trim() : '')
-            return textoAnalise ? (
+            if (!textoAnalise) return null
+            const nomeDoc = 'Análise do Orientador Virtual'
+            return (
               <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4">
-                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">
-                  Análise do Orientador Virtual
-                </p>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                    Análise do Orientador Virtual
+                  </p>
+                  <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleImprimir(textoAnalise, nomeDoc, trabalho.titulo ?? '')}
+                      className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-white/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-white transition-colors"
+                      title="Imprimir ou salvar como PDF"
+                    >
+                      <Printer className="h-3 w-3" /> Imprimir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(textoAnalise, nomeDoc)}
+                      className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-white/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-white transition-colors"
+                      title="Baixar como .txt"
+                    >
+                      <Download className="h-3 w-3" /> Baixar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy('analise_orientador', textoAnalise)}
+                      className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 bg-white/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-white transition-colors"
+                    >
+                      {copiedKey === 'analise_orientador'
+                        ? <><Check className="h-3 w-3" /> Copiado</>
+                        : <><Copy className="h-3 w-3" /> Copiar</>}
+                    </button>
+                  </div>
+                </div>
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                   {textoAnalise}
                 </p>
               </div>
-            ) : null
+            )
           })()}
 
           {/* ── CEP / Ética — full width ─────────────────────────────────────── */}

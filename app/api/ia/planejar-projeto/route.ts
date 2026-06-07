@@ -39,5 +39,7 @@ export async function POST(request: Request) {
   }
 
   const { system, user: userPrompt } = buildPlanejadorPrompt(descricao.trim())
-  return streamText(system, userPrompt, false)
+  // Tokens generosos: a resposta tem a ANÁLISE (texto livre) + o PLANO JSON completo
+  // (roadmap + checklist). Com pouco token, a análise ou o JSON poderiam ser cortados.
+  return streamText(system, userPrompt, false, 16000)
 }
