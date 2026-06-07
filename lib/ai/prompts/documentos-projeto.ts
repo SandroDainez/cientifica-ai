@@ -1,5 +1,5 @@
 import type { TipoDocumento, DadosProjeto, Referencia, FormatoCitacao } from '@/types'
-import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
+import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias } from '@/lib/ai/prompts'
 
 const SYSTEM_PROMPT = `Você é um especialista em pesquisa científica brasileira com profundo domínio em normas ABNT, regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos e prontos para uso.
 
@@ -684,41 +684,20 @@ export function buildDocumentoPrompt(
     }
   }
 
-  // Injeta as referências reais + instrução de ancoragem no system prompt
+  // Injeta as referências reais + instrução de ancoragem (densidade máxima) no system prompt
   let system = SYSTEM_PROMPT
   if (referencias && referencias.length > 0) {
-    const fmt = formato.toUpperCase()
-    const exemplo = formato === 'vancouver'
-      ? 'números entre colchetes na ordem de aparição: [1], [2] (reuse o mesmo número para a mesma referência)'
-      : formato === 'apa'
-      ? '(Sobrenome, Ano) — ex: (Silva, 2020)'
-      : '(SOBRENOME, ANO) — ex: (SILVA, 2020); dois autores (SILVA; COSTA, 2020); três ou mais (SILVA et al., 2020)'
-
     system += `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO DOCUMENTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Cada linha mostra: a citação no texto → o título do estudo. Use o título para saber sobre o que cada referência fala e citá-la no ponto certo.
+Cada linha mostra: a citação no texto → o título do estudo.
 
 ${formatarRefsParaPrompt(referencias, formato)}
-
-REGRA DE OURO DAS CITAÇÕES (siga rigorosamente):
-1. ANCORE o texto nestas referências reais — você está sintetizando estes estudos, não escrevendo do zero.
-2. Para CADA afirmação factual (epidemiologia, estatística, achado de estudo, diretriz, prevalência), insira IMEDIATAMENTE após a citação real mais pertinente da lista. Use o título de cada referência para escolher a mais adequada.
-3. FORMATO ${fmt}: ${exemplo}. Copie a citação EXATAMENTE como aparece na lista.
-4. Distribua as citações por TODO o texto. A maioria das referências deve ser citada ao menos uma vez.
-5. PROIBIDO ABSOLUTAMENTE: escrever "(verificar referência)", "(referência)", "(citar fonte)", "(fonte)" ou qualquer marcador vago. PROIBIDO inventar autores/anos fora da lista. PROIBIDO citar pelo título do documento.
-6. Se nenhuma referência da lista embasar uma afirmação muito específica, use o marcador (SOBRENOME, ANO) — mas isso deve ser raro, pois você tem ${referencias.length} referências reais.`
+${buildInstrucaoCitacaoReferencias(referencias, formato)}`
   } else {
-    system += `
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CITAÇÕES — SEM REFERÊNCIAS CADASTRADAS AINDA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Para cada afirmação factual da literatura, marque com (SOBRENOME, ANO).
-PROIBIDO: escrever "(verificar referência)", "(referência)", "(citar fonte)" ou marcadores vagos.
-PROIBIDO: inventar sobrenomes ou anos reais. Use SEMPRE (SOBRENOME, ANO) como marcador genérico.`
+    system += `\n${buildInstrucaoCitacaoReferencias([], formato)}`
   }
 
   return { system, user }

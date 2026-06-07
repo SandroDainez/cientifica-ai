@@ -164,6 +164,51 @@ export function formatarRefsParaPrompt(refs: Referencia[], formato: FormatoCitac
   }).join('\n')
 }
 
+/**
+ * Instrução de citação compartilhada (editor + documentos do projeto).
+ * Exige densidade máxima: TODA sentença factual termina com uma citação real,
+ * reutilizando livremente as referências. Placeholders viram exceção rara.
+ */
+export function buildInstrucaoCitacaoReferencias(
+  referencias: Referencia[],
+  formato: FormatoCitacao = 'abnt',
+): string {
+  if (!referencias.length) {
+    return `
+INSTRUÇÃO DE CITAÇÃO — SEM REFERÊNCIAS CADASTRADAS:
+Para CADA sentença que faça uma afirmação factual da literatura, marque ao final com (SOBRENOME, ANO).
+- PROIBIDO inventar sobrenomes/anos reais. Use SEMPRE o marcador genérico (SOBRENOME, ANO).
+- PROIBIDO escrever "(verificar referência)", "(referência)", "(citar fonte)" ou marcadores vagos.
+- PROIBIDO citar pelo título do documento.`
+  }
+
+  const fmt = formato.toUpperCase()
+  const exemplo = formato === 'vancouver'
+    ? 'número entre colchetes na ordem de aparição: [1], [2]. Reuse o MESMO número sempre que citar a mesma referência.'
+    : formato === 'apa'
+    ? '(Sobrenome, Ano) — ex: (Silva, 2020); ou Silva (2020) quando o autor é sujeito da frase.'
+    : '(SOBRENOME, ANO) — ex: (SILVA, 2020); dois autores (SILVA; COSTA, 2020); três ou mais (SILVA et al., 2020). Ou SILVA (2020) quando o autor é sujeito.'
+
+  return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGRA DE OURO DAS CITAÇÕES — DENSIDADE MÁXIMA (siga rigorosamente)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Você tem ${referencias.length} referências reais disponíveis. O texto é uma SÍNTESE delas.
+
+1. CITAÇÃO EM CADA SENTENÇA FACTUAL: toda frase que afirme um fato, dado, achado, mecanismo, prevalência, definição ou recomendação DEVE terminar com uma citação real. Em uma revisão de literatura, espere que praticamente TODA sentença tenha citação. Frases de transição/conexão (poucas) podem não ter.
+
+2. REUTILIZE AS REFERÊNCIAS LIVREMENTE: a MESMA referência pode (e deve) ser citada várias vezes ao longo do texto — em 3, 5, 10 frases diferentes, se ela embasa cada uma. NÃO evite repetir uma referência. Reutilizar é correto e esperado. NÃO pare de citar só porque "já usou" uma referência.
+
+3. ESCOLHA POR PROXIMIDADE: para cada sentença, escolha da lista a referência cujo TÍTULO seja mais próximo do tema da frase e cite-a. Sempre há uma referência razoavelmente próxima entre as ${referencias.length} disponíveis.
+
+4. FORMATO ${fmt}: ${exemplo}
+   Copie a citação EXATAMENTE como aparece na lista (mesmo sobrenome, mesmo ano).
+
+5. PLACEHOLDER É ÚLTIMO RECURSO: use (SOBRENOME, ANO) apenas se NENHUMA das ${referencias.length} referências tiver qualquer relação com a frase. Meta: menos de 1 placeholder a cada 15 citações. Se o texto final tiver muitos placeholders, você falhou — releia e substitua-os por referências reais da lista.
+
+6. PROIBIDO: inventar sobrenome/ano fora da lista; escrever "(verificar referência)", "(referência)", "(citar fonte)"; citar pelo título do documento; deixar afirmação factual sem citação.`
+}
+
 // ============================================================
 // Prompt para geração de seção
 // ============================================================
@@ -389,31 +434,8 @@ export function buildGerarSecaoPrompt(
 
   if (dadosTrabalho.referencias && dadosTrabalho.referencias.length > 0) {
     const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt')
-    const fmt = (dadosTrabalho.formato_citacao ?? 'abnt')
-    const exemploCitacao = fmt === 'vancouver'
-      ? 'use o número entre colchetes na ordem de aparição — ex: [1], [2]. Reuse o mesmo número para a mesma referência.'
-      : fmt === 'apa'
-      ? 'use (Sobrenome, Ano) — ex: (Silva, 2020) ou Silva (2020) quando o autor é sujeito da frase.'
-      : 'use (SOBRENOME, ANO) — ex: (SILVA, 2020) ou SILVA (2020) quando o autor é sujeito. Dois autores: (SILVA; COSTA, 2020). Três ou mais: (SILVA et al., 2020).'
-
     partes.push(`\n## ${dadosTrabalho.referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO SEU TEXTO\nCada linha mostra a citação no texto → o título do estudo. Use o TÍTULO para saber sobre o que cada referência fala e citá-la no ponto certo.\n${refsFormatadas}`)
-    partes.push(`
-INSTRUÇÃO DE CITAÇÃO — REGRA DE OURO (siga rigorosamente):
-
-1. ANCORE O TEXTO NAS REFERÊNCIAS REAIS. Você NÃO está escrevendo do zero — está sintetizando as ${dadosTrabalho.referencias.length} referências reais listadas acima. Construa cada afirmação a partir do que esses estudos dizem (use os títulos como guia) e cite-os.
-
-2. PREFIRA SEMPRE uma referência real da lista a um placeholder. Para CADA afirmação factual, escolha a referência da lista cujo título seja mais próximo do tema da frase e cite-a. O placeholder (SOBRENOME, ANO) é EXCEÇÃO RARA — use apenas se NENHUMA das ${dadosTrabalho.referencias.length} referências tiver qualquer relação com a afirmação.
-
-3. FORMATO DE CITAÇÃO (${fmt.toUpperCase()}): ${exemploCitacao}
-   Copie a citação EXATAMENTE como aparece na lista acima (mesmo sobrenome, mesmo ano).
-
-4. DISTRIBUIÇÃO: espalhe as citações por TODO o texto. A maioria das referências da lista deve ser citada ao menos uma vez. Não concentre tudo em um parágrafo.
-
-5. DENSIDADE MÍNIMA: Introdução ≥ 12 citações | Revisão ≥ 20 | Métodos ≥ 6 | Discussão ≥ 15 | Conclusão ≥ 3. Conte placeholders separadamente — eles NÃO contam para a meta.
-
-6. PROIBIDO: inventar sobrenome/ano fora da lista; citar pelo título do documento; deixar afirmação factual sem citação.
-
-META PRÁTICA: ao terminar, releia o texto — se houver mais de 2 ou 3 placeholders (SOBRENOME, ANO), você falhou em usar as referências reais disponíveis. Volte e substitua-os por referências reais da lista.`)
+    partes.push(buildInstrucaoCitacaoReferencias(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt'))
   } else {
     partes.push(`
 INSTRUÇÃO DE CITAÇÃO — SEM REFERÊNCIAS AINDA:

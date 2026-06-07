@@ -173,8 +173,8 @@ export async function garantirReferenciasReais({
   chaveSecao = 'revisao_literatura',
   pergunta,
   refsExistentes,
-  meta = 30,
-  limiar = 25,
+  meta = 40,
+  limiar = 30,
 }: GarantirRefsParams): Promise<Referencia[]> {
   let referencias = [...refsExistentes]
   if (referencias.length >= limiar) return referencias

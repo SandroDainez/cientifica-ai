@@ -382,9 +382,9 @@ export async function POST(request: Request) {
     resumo:                ['abstract', 'summary', 'overview'],
   }
 
-  // Alvo: 30 referências reais. Roda se tiver menos de 25.
-  const META_REFS = 30
-  const LIMIAR_IMPORTAR = 25
+  // Alvo: 40 referências reais. Roda se tiver menos de 30.
+  const META_REFS = 40
+  const LIMIAR_IMPORTAR = 30
 
   if (referencias.length < LIMIAR_IMPORTAR) {
     try {
