@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import { VisualizarClient } from './VisualizarClient'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
@@ -28,16 +29,22 @@ export default async function VisualizarPage({ params }: Props) {
   const referencias = (rData ?? []) as Referencia[]
   const fluxo = getFluxo(trabalho.tipo_trabalho)
 
-  // Ordena seções na ordem do fluxo
-  const secoesOrdenadas = fluxo
+  // Título da capa: coluna do trabalho ou, se vazia, extraído da seção "titulo"
+  const titulo = tituloEfetivo(trabalho.titulo, secoes)
+
+  // Ordena seções na ordem do fluxo. A seção "titulo" não entra no corpo —
+  // o título já aparece na capa (não vira seção numerada "1 TÍTULO E ESCOPO").
+  const secoesOrdenadas = (fluxo
     ? fluxo.fases
         .map(f => secoes.find(s => s.chave_secao === f.chave_secao || s.chave_secao === f.id))
         .filter((s): s is SecaoTrabalho => !!s && !!s.conteudo)
     : secoes.filter(s => !!s.conteudo)
+  ).filter(s => s.chave_secao !== 'titulo')
 
   return (
     <VisualizarClient
       trabalho={trabalho}
+      tituloTrabalho={titulo}
       secoes={secoesOrdenadas}
       referencias={referencias}
       autorNome={pData?.nome}

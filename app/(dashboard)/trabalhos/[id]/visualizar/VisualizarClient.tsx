@@ -18,6 +18,7 @@ import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
   trabalho: Trabalho
+  tituloTrabalho?: string | null
   secoes: SecaoTrabalho[]
   referencias: Referencia[]
   autorNome?: string
@@ -69,7 +70,8 @@ function ConteudoSecao({ texto }: { texto: string }) {
   )
 }
 
-export function VisualizarClient({ trabalho, secoes, referencias, autorNome, autorInstituicao }: Props) {
+export function VisualizarClient({ trabalho, tituloTrabalho, secoes, referencias, autorNome, autorInstituicao }: Props) {
+  const titulo = tituloTrabalho?.trim() || trabalho.titulo?.trim() || ''
   const [tocAberto, setTocAberto] = useState(false)
   const [checklistAberto, setChecklistAberto] = useState(false)
   const [relatorioAberto, setRelatorioAberto] = useState(false)
@@ -99,7 +101,7 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
 
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground truncate">
-              {trabalho.titulo || 'Sem título'} · {getTipoLabel(trabalho.tipo_trabalho)}
+              {titulo || 'Sem título'} · {getTipoLabel(trabalho.tipo_trabalho)}
             </p>
           </div>
 
@@ -192,7 +194,7 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
               {getTipoLabel(trabalho.tipo_trabalho)}
             </p>
             <h1 className="doc-content text-2xl font-bold text-gray-900 leading-tight" style={{ textIndent: 0 }}>
-              {trabalho.titulo || 'Título do Trabalho'}
+              {titulo || 'Título do Trabalho'}
             </h1>
           </div>
 
@@ -208,10 +210,6 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
               <p className="doc-content text-sm text-gray-700" style={{ textIndent: 0 }}>{trabalho.orientador}</p>
             </div>
           )}
-
-          <p className="doc-content text-sm text-gray-500 mt-auto" style={{ textIndent: 0 }}>
-            {trabalho.area_conhecimento && `${trabalho.area_conhecimento} · `}{anoAtual}
-          </p>
         </section>
 
         {/* ── Sumário ──────────────────────────────────────── */}
@@ -302,6 +300,13 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
             </section>
           )
         })()}
+
+        {/* ── Dados finais (área · ano) ─────────────────────── */}
+        {secoesComConteudo.length > 0 && (
+          <p className="doc-content text-sm text-gray-500 text-center pt-8 pb-2" style={{ textIndent: 0 }}>
+            {trabalho.area_conhecimento && `${trabalho.area_conhecimento} · `}{anoAtual}
+          </p>
+        )}
 
         {/* Estado vazio */}
         {secoesComConteudo.length === 0 && (

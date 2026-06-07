@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
+import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   PageBreak, convertInchesToTwip, LineRuleType,
@@ -93,6 +94,8 @@ export async function GET(request: Request) {
   const referencias = (rData ?? []) as Referencia[]
   const fluxo      = getFluxo(trabalho.tipo_trabalho)
   const fmt        = FORMATO_CONFIG[trabalho.formato_citacao] ?? FORMATO_CONFIG.abnt
+  // Título da capa: coluna do trabalho ou, se vazia, extraído da seção "titulo"
+  const tituloCapa = tituloEfetivo(trabalho.titulo, secoes)
 
   const secoesOrdenadas = fluxo
     ? fluxo.fases
@@ -212,7 +215,7 @@ export async function GET(request: Request) {
         empty(),
       ] : []),
       paragrafo(
-        (trabalho.titulo || 'Title of Work'),
+        (tituloCapa || 'Title of Work'),
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(),
@@ -244,7 +247,7 @@ export async function GET(request: Request) {
       ] : []),
       empty(),
       paragrafo(
-        toTitleCase(trabalho.titulo || 'Title of Work'),
+        toTitleCase(tituloCapa || 'Title of Work'),
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(), empty(),
@@ -269,7 +272,7 @@ export async function GET(request: Request) {
       ] : []),
       empty(), empty(),
       paragrafo(
-        (trabalho.titulo || 'TÍTULO DO TRABALHO').toUpperCase(),
+        (tituloCapa || 'TÍTULO DO TRABALHO').toUpperCase(),
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(), empty(),
