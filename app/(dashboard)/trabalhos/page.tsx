@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { TrabalhosListClient } from '@/components/trabalho/TrabalhosListClient'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { totalFasesEfetivas } from '@/lib/tipos/fases-efetivas'
 import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -141,10 +142,13 @@ export default async function TrabalhosPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <TrabalhosListClient
-          trabalhos={lista.map(trabalho => ({
-            trabalho,
-            totalFases: getFluxo(trabalho.tipo_trabalho)?.fases.length ?? 1,
-          }))}
+          trabalhos={lista.map(trabalho => {
+            const fluxo = getFluxo(trabalho.tipo_trabalho)
+            return {
+              trabalho,
+              totalFases: fluxo ? totalFasesEfetivas(fluxo.fases, trabalho) : 1,
+            }
+          })}
         />
       )}
     </div>

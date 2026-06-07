@@ -472,7 +472,11 @@ Meta: em uma Introdução de 300 palavras, espera-se 10-20 marcadores (SOBRENOME
   fase.erros_comuns.forEach(er => partes.push(`- ${er}`))
 
   if (fase.min_palavras || fase.max_palavras) {
-    partes.push(`\n**Extensão:** entre ${fase.min_palavras ?? '—'} e ${fase.max_palavras ?? '—'} palavras.`)
+    const max = fase.max_palavras
+    partes.push(
+      `\n**EXTENSÃO (LIMITE RÍGIDO):** entre ${fase.min_palavras ?? '—'} e ${max ?? '—'} palavras.` +
+      (max ? ` NÃO ultrapasse ${max} palavras em hipótese alguma — é melhor um texto conciso e denso do que longo e prolixo. Se passar de ${max}, corte frases redundantes e enxugue até caber. Conte mentalmente as palavras antes de entregar.` : '')
+    )
   }
 
   // ── Portão de qualidade: normas rigorosas da seção (verificar antes/depois) ──
@@ -489,7 +493,7 @@ REGRAS FINAIS INEGOCIÁVEIS:
 - Escreva APENAS o texto da seção — sem títulos introdutórios, sem "Seção X:", sem metacomentários
 - Use SEMPRE os dados reais do pesquisador fornecidos acima — nunca escreva textos genéricos ou com placeholders como [autor], [ano], [inserir dados]
 - O texto deve soar como se o pesquisador realmente fez aquilo que descreveu
-- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto`)
+- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto${fase.max_palavras ? `\n- RESPEITE o limite de ${fase.max_palavras} palavras — concisão é qualidade; não encha linguiça para alongar` : ''}`)
 
   // Seções estruturadas (objetivos, palavras-chave) NÃO recebem regras de prosa/burstiness
   if (ehSecaoEstruturada(fase.chave_secao ?? fase.id ?? '')) {

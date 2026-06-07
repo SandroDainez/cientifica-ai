@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { fasesEfetivas, getDadosProjeto } from '@/lib/tipos/fases-efetivas'
+import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
 import { EditorClient } from './EditorClient'
 import type { Trabalho, SecaoTrabalho } from '@/types'
 
@@ -27,10 +29,20 @@ export default async function EditorPage({ params }: Props) {
 
   if (!fluxo) redirect('/trabalhos')
 
+  // Remove a etapa de Ética/CEP quando a pesquisa não envolve coleta primária
+  // com seres humanos (revisão/dados secundários públicos) — coerente com o
+  // roadmap do projeto, que já não mostra essas etapas.
+  // Ordem coerente também no editor: Introdução → Objetivos → … → Conclusão →
+  // Resumo → Referências (mesma ordem do documento exportado). Evita a Introdução
+  // aparecer depois do Resumo/Abstract na lista de seções.
+  const fases = ordenarSecoesParaDocumento(
+    fasesEfetivas(fluxo.fases, getDadosProjeto(trabalho), trabalho.tipo_trabalho),
+  )
+
   return (
     <EditorClient
       trabalho={trabalho}
-      fases={fluxo.fases}
+      fases={fases}
       secoesIniciais={secoes}
     />
   )

@@ -40,6 +40,8 @@ Você já ajudou centenas de pesquisadores brasileiros a passarem em detectores 
 export function buildHumanizadorPrompt(rascunho: string): string {
   return `Reescreva o texto acadêmico abaixo para que passe em detectores de IA com score abaixo de 15%. Preserve 100% do conteúdo científico, dados, citações e estrutura de seções. Aplique TODAS as transformações abaixo, sem exceção.
 
+REGRA DE EXTENSÃO: mantenha aproximadamente o MESMO número de palavras do rascunho (variação máxima de ~10%). NÃO alongue o texto — a humanização é sobre RITMO e variância de frases, não sobre adicionar conteúdo. Se uma transformação expandir uma frase, compense encurtando outra.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TRANSFORMAÇÃO 0 — LIMPEZA DE METADADOS DE IA [PRIORIDADE MÁXIMA]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

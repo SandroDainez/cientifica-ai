@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { tituloEfetivo } from '@/lib/trabalho/titulo'
+import { fasesEfetivas, getDadosProjeto } from '@/lib/tipos/fases-efetivas'
 import type { StatusSecao, SecaoTrabalho } from '@/types'
 
 export async function POST(request: Request) {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   // Valida ownership
   const { data: trabalho } = await supabase
     .from('trabalhos')
-    .select('id, tipo_trabalho, fases_concluidas, fase_atual')
+    .select('id, tipo_trabalho, fases_concluidas, fase_atual, dados_trabalho')
     .eq('id', trabalhoId)
     .eq('usuario_id', user.id)
     .single()
@@ -82,9 +83,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Marca o trabalho como concluído quando TODAS as fases do fluxo já estão
-    // entre as concluídas (mesmo critério do progresso 100% no card).
-    const todasFases = fluxoParaMeta?.fases.map(f => f.chave_secao) ?? []
+    // Marca o trabalho como concluído quando TODAS as fases EFETIVAS do fluxo já
+    // estão concluídas (mesmo critério do progresso 100% no card — desconsidera
+    // ética/CEP quando a pesquisa não exige).
+    const fasesDoc = fluxoParaMeta
+      ? fasesEfetivas(fluxoParaMeta.fases, getDadosProjeto(trabalho), trabalho.tipo_trabalho)
+      : []
+    const todasFases = fasesDoc.map(f => f.chave_secao)
     const concluido = todasFases.length > 0 && todasFases.every(c => fasesConcluidas.includes(c))
 
     await supabase

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { TrabalhoCard } from '@/components/trabalho/TrabalhoCard'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { totalFasesEfetivas } from '@/lib/tipos/fases-efetivas'
 import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -49,8 +50,8 @@ export default async function DashboardPage() {
   const progressoMedio = lista.length > 0
     ? Math.round(lista.reduce((acc, t) => {
         const fluxo = getFluxo(t.tipo_trabalho)
-        const total = fluxo?.fases.length ?? 1
-        return acc + (t.fases_concluidas.length / total) * 100
+        const total = fluxo ? totalFasesEfetivas(fluxo.fases, t) : 1
+        return acc + Math.min(100, (t.fases_concluidas.length / total) * 100)
       }, 0) / lista.length)
     : 0
 
@@ -142,7 +143,7 @@ export default async function DashboardPage() {
                   <TrabalhoCard
                     key={trabalho.id}
                     trabalho={trabalho}
-                    totalFases={fluxo?.fases.length ?? 1}
+                    totalFases={fluxo ? totalFasesEfetivas(fluxo.fases, trabalho) : 1}
                   />
                 )
               })}
