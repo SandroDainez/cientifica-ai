@@ -338,9 +338,13 @@ export async function GET(request: Request) {
   // numeradas a partir de 1.
   // Apenas a seção de TÍTULO puro é omitida (o título já está na capa).
   // 'tema' (Tema e Delimitação do TCC) é conteúdo real e NÃO deve ser omitido.
+  // 'referencias' também sai do corpo: a lista formatada é montada no bloco
+  // dedicado de Referências (senão apareceria duplicada e numerada errado).
   const ehTitulo = (s: SecaoTrabalho) => /^titulo/.test(s.chave_secao)
   const secaoResumo = secoesOrdenadas.find(s => s.chave_secao === 'resumo')
-  const secoesCorpo = secoesOrdenadas.filter(s => !ehTitulo(s) && s.chave_secao !== 'resumo')
+  const secoesCorpo = secoesOrdenadas.filter(
+    s => !ehTitulo(s) && s.chave_secao !== 'resumo' && s.chave_secao !== 'referencias'
+  )
 
   // Renderiza um bloco de texto (parágrafos justificados) sem cabeçalho
   const pushParagrafos = (txt: string, indent = true) => {

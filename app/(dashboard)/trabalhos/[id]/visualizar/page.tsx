@@ -32,19 +32,26 @@ export default async function VisualizarPage({ params }: Props) {
   // Título da capa: coluna do trabalho ou, se vazia, extraído da seção "titulo"
   const titulo = tituloEfetivo(trabalho.titulo, secoes)
 
-  // Ordena seções na ordem do fluxo. A seção "titulo" não entra no corpo —
-  // o título já aparece na capa (não vira seção numerada "1 TÍTULO E ESCOPO").
+  // Resumo/Abstract: pré-textual (vai ANTES da introdução, sem numeração)
+  const secaoResumo = secoes.find(s => s.chave_secao === 'resumo' && !!s.conteudo?.trim()) ?? null
+
+  // Corpo numerado na ordem do fluxo, SEM as seções tratadas à parte:
+  //  - 'titulo'      → já está na capa
+  //  - 'resumo'      → renderizado antes da introdução, sem número
+  //  - 'referencias' → renderizado no bloco dedicado (lista formatada)
+  const ehForaDoCorpo = (chave: string) => ['titulo', 'resumo', 'referencias'].includes(chave)
   const secoesOrdenadas = (fluxo
     ? fluxo.fases
         .map(f => secoes.find(s => s.chave_secao === f.chave_secao || s.chave_secao === f.id))
         .filter((s): s is SecaoTrabalho => !!s && !!s.conteudo)
     : secoes.filter(s => !!s.conteudo)
-  ).filter(s => s.chave_secao !== 'titulo')
+  ).filter(s => !ehForaDoCorpo(s.chave_secao))
 
   return (
     <VisualizarClient
       trabalho={trabalho}
       tituloTrabalho={titulo}
+      secaoResumo={secaoResumo}
       secoes={secoesOrdenadas}
       referencias={referencias}
       autorNome={pData?.nome}

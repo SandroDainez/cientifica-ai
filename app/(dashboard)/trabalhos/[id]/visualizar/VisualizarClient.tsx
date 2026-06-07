@@ -19,6 +19,7 @@ import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 interface Props {
   trabalho: Trabalho
   tituloTrabalho?: string | null
+  secaoResumo?: SecaoTrabalho | null
   secoes: SecaoTrabalho[]
   referencias: Referencia[]
   autorNome?: string
@@ -70,8 +71,19 @@ function ConteudoSecao({ texto }: { texto: string }) {
   )
 }
 
-export function VisualizarClient({ trabalho, tituloTrabalho, secoes, referencias, autorNome, autorInstituicao }: Props) {
+export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes, referencias, autorNome, autorInstituicao }: Props) {
   const titulo = tituloTrabalho?.trim() || trabalho.titulo?.trim() || ''
+
+  // Resumo/Abstract (pré-textual). A seção é serializada como JSON pelo editor.
+  type ResumoData = { resumo?: string; abstract?: string; palavras_chave?: string[]; keywords?: string[] }
+  const resumo: ResumoData | null = (() => {
+    if (!secaoResumo?.conteudo?.trim()) return null
+    try {
+      const r = JSON.parse(secaoResumo.conteudo) as ResumoData
+      if (r && typeof r === 'object') return r
+    } catch { /* texto puro */ }
+    return { resumo: secaoResumo.conteudo }
+  })()
   const [tocAberto, setTocAberto] = useState(false)
   const [checklistAberto, setChecklistAberto] = useState(false)
   const [relatorioAberto, setRelatorioAberto] = useState(false)
@@ -181,36 +193,82 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secoes, referencias
       {/* Documento */}
       <div ref={contentRef} className="max-w-4xl mx-auto py-8 px-4 space-y-0">
 
-        {/* ── Capa ──────────────────────────────────────────── */}
-        <section id="capa" className="doc-page bg-white shadow-sm rounded-t-lg px-16 py-20 min-h-[60vh] flex flex-col items-center justify-center text-center space-y-6 border border-b-0">
-          {autorInstituicao && (
-            <p className="doc-content text-sm font-medium uppercase tracking-widest text-gray-500">
-              {autorInstituicao}
-            </p>
-          )}
-
-          <div className="space-y-3 my-8">
-            <p className="doc-content text-xs uppercase tracking-widest text-gray-400">
-              {getTipoLabel(trabalho.tipo_trabalho)}
-            </p>
-            <h1 className="doc-content text-2xl font-bold text-gray-900 leading-tight" style={{ textIndent: 0 }}>
-              {titulo || 'Título do Trabalho'}
-            </h1>
+        {/* ── Capa (ABNT NBR 14724 — tudo centralizado) ─────── */}
+        <section id="capa" className="doc-page bg-white shadow-sm rounded-t-lg px-16 py-16 min-h-[80vh] flex flex-col items-center text-center border border-b-0">
+          {/* Topo: instituição + autor */}
+          <div className="space-y-5 w-full">
+            {autorInstituicao && (
+              <p className="doc-content text-sm font-bold uppercase tracking-widest text-gray-700" style={{ textIndent: 0, textAlign: 'center' }}>
+                {autorInstituicao}
+              </p>
+            )}
+            {autorNome && (
+              <p className="doc-content text-base text-gray-800" style={{ textIndent: 0, textAlign: 'center' }}>
+                {autorNome}
+              </p>
+            )}
           </div>
 
-          {autorNome && (
-            <p className="doc-content text-base text-gray-700" style={{ textIndent: 0 }}>
-              {autorNome}
-            </p>
-          )}
+          {/* Centro: título + orientador */}
+          <div className="flex-1 flex flex-col items-center justify-center w-full">
+            <h1 className="doc-content text-2xl font-bold text-gray-900 leading-tight" style={{ textIndent: 0, textAlign: 'center' }}>
+              {titulo || 'Título do Trabalho'}
+            </h1>
+            {trabalho.orientador && (
+              <p className="doc-content text-sm text-gray-600 mt-10" style={{ textIndent: 0, textAlign: 'center' }}>
+                Orientador(a): {trabalho.orientador}
+              </p>
+            )}
+          </div>
 
-          {trabalho.orientador && (
-            <div className="space-y-1">
-              <p className="doc-content text-sm text-gray-500" style={{ textIndent: 0 }}>Orientador(a):</p>
-              <p className="doc-content text-sm text-gray-700" style={{ textIndent: 0 }}>{trabalho.orientador}</p>
-            </div>
-          )}
+          {/* Base: tipo de trabalho + área · ano (local e ano da capa ABNT) */}
+          <div className="space-y-1.5 w-full">
+            <p className="doc-content text-xs uppercase tracking-widest text-gray-500" style={{ textIndent: 0, textAlign: 'center' }}>
+              {getTipoLabel(trabalho.tipo_trabalho)}
+            </p>
+            <p className="doc-content text-sm text-gray-600" style={{ textIndent: 0, textAlign: 'center' }}>
+              {trabalho.area_conhecimento && `${trabalho.area_conhecimento} · `}{anoAtual}
+            </p>
+          </div>
         </section>
+
+        {/* ── Resumo / Abstract (pré-textual, sem número) ────── */}
+        {resumo && (resumo.resumo?.trim() || resumo.abstract?.trim()) && (
+          <section className="doc-page bg-white shadow-sm px-16 py-12 border border-y-0">
+            {resumo.resumo?.trim() && (
+              <>
+                <h2 className="doc-content text-base font-bold uppercase tracking-wide text-center mb-6"
+                  style={{ textIndent: 0, textAlign: 'center', fontFamily: 'inherit' }}>
+                  RESUMO
+                </h2>
+                <div className="doc-content">
+                  <ConteudoSecao texto={resumo.resumo} />
+                </div>
+                {resumo.palavras_chave && resumo.palavras_chave.length > 0 && (
+                  <p className="doc-content mt-4" style={{ textIndent: 0 }}>
+                    <strong>Palavras-chave:</strong> {resumo.palavras_chave.join('; ')}.
+                  </p>
+                )}
+              </>
+            )}
+            {resumo.abstract?.trim() && (
+              <>
+                <h2 className="doc-content text-base font-bold uppercase tracking-wide text-center mt-10 mb-6"
+                  style={{ textIndent: 0, textAlign: 'center', fontFamily: 'inherit' }}>
+                  ABSTRACT
+                </h2>
+                <div className="doc-content">
+                  <ConteudoSecao texto={resumo.abstract} />
+                </div>
+                {resumo.keywords && resumo.keywords.length > 0 && (
+                  <p className="doc-content mt-4" style={{ textIndent: 0 }}>
+                    <strong>Keywords:</strong> {resumo.keywords.join('; ')}.
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         {/* ── Sumário ──────────────────────────────────────── */}
         {secoesComConteudo.length > 0 && (
@@ -300,13 +358,6 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secoes, referencias
             </section>
           )
         })()}
-
-        {/* ── Dados finais (área · ano) ─────────────────────── */}
-        {secoesComConteudo.length > 0 && (
-          <p className="doc-content text-sm text-gray-500 text-center pt-8 pb-2" style={{ textIndent: 0 }}>
-            {trabalho.area_conhecimento && `${trabalho.area_conhecimento} · `}{anoAtual}
-          </p>
-        )}
 
         {/* Estado vazio */}
         {secoesComConteudo.length === 0 && (
