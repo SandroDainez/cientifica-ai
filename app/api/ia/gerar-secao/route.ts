@@ -382,9 +382,9 @@ export async function POST(request: Request) {
     resumo:                ['abstract', 'summary', 'overview'],
   }
 
-  // Alvo: 25 referências reais. Roda se tiver menos de 20.
-  const META_REFS = 25
-  const LIMIAR_IMPORTAR = 20
+  // Alvo: 30 referências reais. Roda se tiver menos de 25.
+  const META_REFS = 30
+  const LIMIAR_IMPORTAR = 25
 
   if (referencias.length < LIMIAR_IMPORTAR) {
     try {
@@ -447,7 +447,7 @@ export async function POST(request: Request) {
         // Busca paralela: para áreas não-biomédicas usa CrossRef com mais resultados
         // (PubMed retorna 0 para direito, educação, agronomia, etc.)
         const resultados = await Promise.all(
-          queriesValidas.map(q => buscarRefsExternas(q, 5, !ehBiomedico))
+          queriesValidas.map(q => buscarRefsExternas(q, 8, !ehBiomedico))
         )
 
         // Achata e deduplica por DOI (primário) e título truncado (fallback)

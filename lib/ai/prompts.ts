@@ -389,17 +389,31 @@ export function buildGerarSecaoPrompt(
 
   if (dadosTrabalho.referencias && dadosTrabalho.referencias.length > 0) {
     const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt')
-    partes.push(`\n## REFERÊNCIAS REAIS DISPONÍVEIS — USE TODAS QUE FOREM PERTINENTES\n${refsFormatadas}`)
+    const fmt = (dadosTrabalho.formato_citacao ?? 'abnt')
+    const exemploCitacao = fmt === 'vancouver'
+      ? 'use o número entre colchetes na ordem de aparição — ex: [1], [2]. Reuse o mesmo número para a mesma referência.'
+      : fmt === 'apa'
+      ? 'use (Sobrenome, Ano) — ex: (Silva, 2020) ou Silva (2020) quando o autor é sujeito da frase.'
+      : 'use (SOBRENOME, ANO) — ex: (SILVA, 2020) ou SILVA (2020) quando o autor é sujeito. Dois autores: (SILVA; COSTA, 2020). Três ou mais: (SILVA et al., 2020).'
+
+    partes.push(`\n## ${dadosTrabalho.referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO SEU TEXTO\nCada linha mostra a citação no texto → o título do estudo. Use o TÍTULO para saber sobre o que cada referência fala e citá-la no ponto certo.\n${refsFormatadas}`)
     partes.push(`
-INSTRUÇÃO DE CITAÇÃO — NÍVEL DE EXCELÊNCIA:
-Você tem ${dadosTrabalho.referencias.length} referências reais acima. USE-AS de forma intensa e precisa:
-- Cite CADA referência pelo sobrenome do 1º autor + ano (ABNT/APA) ou pelo número de ordem (Vancouver).
-- NÃO invente autores, títulos ou anos que não estejam na lista acima.
-- Para cada afirmação factual sobre epidemiologia, fisiopatologia, métodos, achados de outros estudos, prevalência, diretrizes ou recomendações: insira a citação imediatamente após o argumento.
-- Distribua as citações ao longo de TODO o texto — não as concentre apenas em um parágrafo.
-- Se um conceito não for coberto pelas referências disponíveis: marque com (SOBRENOME, ANO) como placeholder — NÃO escreva o argumento sem qualquer citação.
-- Meta de citações por seção: Introdução ≥ 15 | Revisão ≥ 25 | Métodos ≥ 8 | Discussão ≥ 20 | Conclusão ≥ 4
-- PROIBIDO: citar pelo título do documento; inventar sobrenomes não listados acima.`)
+INSTRUÇÃO DE CITAÇÃO — REGRA DE OURO (siga rigorosamente):
+
+1. ANCORE O TEXTO NAS REFERÊNCIAS REAIS. Você NÃO está escrevendo do zero — está sintetizando as ${dadosTrabalho.referencias.length} referências reais listadas acima. Construa cada afirmação a partir do que esses estudos dizem (use os títulos como guia) e cite-os.
+
+2. PREFIRA SEMPRE uma referência real da lista a um placeholder. Para CADA afirmação factual, escolha a referência da lista cujo título seja mais próximo do tema da frase e cite-a. O placeholder (SOBRENOME, ANO) é EXCEÇÃO RARA — use apenas se NENHUMA das ${dadosTrabalho.referencias.length} referências tiver qualquer relação com a afirmação.
+
+3. FORMATO DE CITAÇÃO (${fmt.toUpperCase()}): ${exemploCitacao}
+   Copie a citação EXATAMENTE como aparece na lista acima (mesmo sobrenome, mesmo ano).
+
+4. DISTRIBUIÇÃO: espalhe as citações por TODO o texto. A maioria das referências da lista deve ser citada ao menos uma vez. Não concentre tudo em um parágrafo.
+
+5. DENSIDADE MÍNIMA: Introdução ≥ 12 citações | Revisão ≥ 20 | Métodos ≥ 6 | Discussão ≥ 15 | Conclusão ≥ 3. Conte placeholders separadamente — eles NÃO contam para a meta.
+
+6. PROIBIDO: inventar sobrenome/ano fora da lista; citar pelo título do documento; deixar afirmação factual sem citação.
+
+META PRÁTICA: ao terminar, releia o texto — se houver mais de 2 ou 3 placeholders (SOBRENOME, ANO), você falhou em usar as referências reais disponíveis. Volte e substitua-os por referências reais da lista.`)
   } else {
     partes.push(`
 INSTRUÇÃO DE CITAÇÃO — SEM REFERÊNCIAS AINDA:
