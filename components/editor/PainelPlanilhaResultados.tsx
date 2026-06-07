@@ -99,36 +99,51 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao,
     } catch { /* ignore */ }
   }
 
-  // Converte o markdown gerado (título + tabela + fonte) em HTML no padrão ABNT.
+  // Converte o markdown (título + tabela + fonte) em HTML no padrão ABNT.
+  // IMPORTANTE: o Word ignora bordas no elemento <table> — as bordas precisam
+  // ficar nas CÉLULAS. Por isso aplicamos estilos inline em cada <th>/<td>:
+  //   topo da tabela (cabeçalho), traço sob o cabeçalho e base (última linha).
   function tabelaParaHtml(md: string): string {
+    const TOPO = 'border-top:1.5pt solid #000;'
+    const SOB_CAB = 'border-bottom:1pt solid #000;'
+    const BASE = 'border-bottom:1.5pt solid #000;'
+    const TD = 'padding:4pt 10pt;vertical-align:top;'
+    const TH = 'padding:6pt 10pt;text-align:left;font-weight:bold;vertical-align:bottom;'
+
+    // Quebra em blocos: tabelas (linhas com "|") e texto (título/fonte/parágrafos)
     const linhas = md.split('\n')
     let html = ''
-    let dentroTabela = false
-    let cabecalhoFeito = false
+    let bufTabela: string[] = []
+
+    const emitirTabela = () => {
+      const rows = bufTabela
+        .map(l => l.trim())
+        .filter(l => l.startsWith('|'))
+        .map(l => l.split('|').slice(1, -1).map(c => c.trim()))
+        .filter(cels => !cels.every(c => /^:?-{2,}:?$/.test(c)))   // remove separador |---|
+      bufTabela = []
+      if (rows.length < 2) return
+      const [header, ...corpo] = rows
+      let t = '<table style="border-collapse:collapse;width:100%;margin:6pt 0;font-family:\'Times New Roman\',serif;font-size:12pt;">'
+      t += '<tr>' + header.map(c => `<td style="${TH}${TOPO}${SOB_CAB}">${fmtInline(c)}</td>`).join('') + '</tr>'
+      corpo.forEach((r, i) => {
+        const base = i === corpo.length - 1 ? BASE : ''
+        t += '<tr>' + header.map((_, ci) => `<td style="${TD}${base}">${fmtInline(r[ci] ?? '')}</td>`).join('') + '</tr>'
+      })
+      t += '</table>'
+      html += t
+    }
+
     for (const linha of linhas) {
       const l = linha.trim()
-      if (!l) { if (dentroTabela) { html += '</tbody></table>'; dentroTabela = false; cabecalhoFeito = false } continue }
-      // Linha de tabela markdown
-      if (l.startsWith('|')) {
-        const celulas = l.split('|').slice(1, -1).map(c => c.trim())
-        // Linha separadora |---|---|
-        if (celulas.every(c => /^:?-{2,}:?$/.test(c))) continue
-        if (!dentroTabela) { html += '<table class="abnt"><thead><tr>'; dentroTabela = true }
-        if (!cabecalhoFeito) {
-          html += celulas.map(c => `<th>${fmtInline(c)}</th>`).join('') + '</tr></thead><tbody>'
-          cabecalhoFeito = true
-        } else {
-          html += '<tr>' + celulas.map(c => `<td>${fmtInline(c)}</td>`).join('') + '</tr>'
-        }
-        continue
-      }
-      // Fora da tabela
-      if (dentroTabela) { html += '</tbody></table>'; dentroTabela = false; cabecalhoFeito = false }
-      if (/^\*\*.+\*\*$/.test(l)) html += `<p class="titulo">${fmtInline(l)}</p>`
-      else if (/^fonte:/i.test(l)) html += `<p class="fonte">${fmtInline(l)}</p>`
-      else html += `<p>${fmtInline(l)}</p>`
+      if (l.startsWith('|')) { bufTabela.push(linha); continue }
+      emitirTabela()
+      if (!l) continue
+      if (/^\*\*.+\*\*$/.test(l)) html += `<p style="font-weight:bold;margin:0 0 6pt;">${fmtInline(l)}</p>`
+      else if (/^fonte:/i.test(l)) html += `<p style="font-size:10pt;margin:4pt 0 0;">${fmtInline(l)}</p>`
+      else html += `<p style="margin:0 0 6pt;">${fmtInline(l)}</p>`
     }
-    if (dentroTabela) html += '</tbody></table>'
+    emitirTabela()
     return html
   }
   function fmtInline(s: string): string {
