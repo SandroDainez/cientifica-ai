@@ -151,8 +151,20 @@ function buildValoresIniciais(
   return Object.keys(vals).length > 0 ? vals : undefined
 }
 
+// Tipos de trabalho que NÃO coletam dados empíricos — não mostram o painel de planilha.
+const TIPOS_SEM_DADOS_EMPIRICOS = new Set([
+  'artigo_revisao', 'revisao_sistematica', 'projeto_pesquisa', 'relato_caso',
+])
+
 export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientProps) {
   const router = useRouter()
+
+  // O painel de planilha (dados da pesquisa) só faz sentido em trabalhos com
+  // dados empíricos — nunca em revisão de literatura, projeto ou relato de caso.
+  const dadosProjetoTrabalho = ((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null
+  const trabalhoTemDadosEmpiricos =
+    !TIPOS_SEM_DADOS_EMPIRICOS.has(trabalho.tipo_trabalho) &&
+    dadosProjetoTrabalho?.tipo_coleta !== 'bibliografica'
 
   // Mapa chaveSecao → conteúdo (pré-carregado do servidor)
   const [conteudos, setConteudos] = useState<Record<string, string>>(() =>
@@ -568,7 +580,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                 onGerarNovamenteTitulo={handleGerarNovamenteTitulo}
                 linkReferencias={`/trabalhos/${trabalho.id}/referencias`}
                 slotDados={
-                  /resultado|metodo|metodolog|coleta|discuss/i.test(faseAtualConfig.chave_secao ?? '') ? (
+                  trabalhoTemDadosEmpiricos && /resultado|metodo|metodolog|coleta|discuss/i.test(faseAtualConfig.chave_secao ?? '') ? (
                     <PainelPlanilhaResultados
                       trabalhoId={trabalho.id}
                       dadosProjeto={((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null}
