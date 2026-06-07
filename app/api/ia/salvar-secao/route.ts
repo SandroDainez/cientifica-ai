@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
-import type { StatusSecao } from '@/types'
+import { tituloEfetivo } from '@/lib/trabalho/titulo'
+import type { StatusSecao, SecaoTrabalho } from '@/types'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -51,6 +52,15 @@ export async function POST(request: Request) {
 
   if (secaoError) {
     return NextResponse.json({ error: 'Erro ao salvar seção' }, { status: 500 })
+  }
+
+  // Mantém trabalhos.titulo sincronizado com a seção de TÍTULO, para que os cards
+  // (Meus Trabalhos/Dashboard) e demais telas nunca mostrem "Trabalho sem título".
+  if (/^titulo/.test(chaveSecao) && conteudo?.trim()) {
+    const tituloExtraido = tituloEfetivo(null, [{ chave_secao: 'titulo', conteudo } as SecaoTrabalho])
+    if (tituloExtraido) {
+      await supabase.from('trabalhos').update({ titulo: tituloExtraido }).eq('id', trabalhoId)
+    }
   }
 
   // Marca fase como concluída e atualiza fase_atual

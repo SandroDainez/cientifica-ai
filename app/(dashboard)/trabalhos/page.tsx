@@ -5,9 +5,30 @@ import { createClient } from '@/lib/supabase/server'
 import { TrabalhosListClient } from '@/components/trabalho/TrabalhosListClient'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { Trabalho } from '@/types'
+import type { Trabalho, SecaoTrabalho } from '@/types'
+
+/** Preenche trabalho.titulo (em memória) a partir da seção "titulo" quando vazio. */
+async function preencherTitulos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lista: Trabalho[],
+): Promise<void> {
+  const semTitulo = lista.filter(t => !t.titulo?.trim())
+  if (semTitulo.length === 0) return
+  const { data: secs } = await supabase
+    .from('secoes_trabalho')
+    .select('trabalho_id, conteudo')
+    .eq('chave_secao', 'titulo')
+    .in('trabalho_id', semTitulo.map(t => t.id))
+  for (const s of (secs ?? []) as { trabalho_id: string; conteudo: string | null }[]) {
+    const t = lista.find(x => x.id === s.trabalho_id)
+    if (!t) continue
+    const titulo = tituloEfetivo(null, [{ chave_secao: 'titulo', conteudo: s.conteudo } as SecaoTrabalho])
+    if (titulo) t.titulo = titulo
+  }
+}
 
 const TIPOS_FILTRO: { value: string; label: string }[] = [
   { value: '',                    label: 'Todos os tipos' },
@@ -47,6 +68,7 @@ export default async function TrabalhosPage({ searchParams }: PageProps) {
 
   const { data } = await query
   const lista = (data ?? []) as Trabalho[]
+  await preencherTitulos(supabase, lista)
 
   return (
     <div className="space-y-6">

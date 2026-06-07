@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/server'
 import { TrabalhoCard } from '@/components/trabalho/TrabalhoCard'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { Trabalho } from '@/types'
+import type { Trabalho, SecaoTrabalho } from '@/types'
 
 const DICAS = [
   'Na norma ABNT NBR 14724:2011, o resumo deve ter entre 150 e 500 palavras e não deve conter citações.',
@@ -54,6 +55,23 @@ export default async function DashboardPage() {
     : 0
 
   const recentes = lista.slice(0, 5)
+
+  // Preenche título a partir da seção "titulo" quando trabalho.titulo está vazio
+  // (evita "Trabalho sem título" nos cards).
+  const recentesSemTitulo = recentes.filter(t => !t.titulo?.trim())
+  if (recentesSemTitulo.length > 0) {
+    const { data: secs } = await supabase
+      .from('secoes_trabalho')
+      .select('trabalho_id, conteudo')
+      .eq('chave_secao', 'titulo')
+      .in('trabalho_id', recentesSemTitulo.map(t => t.id))
+    for (const s of (secs ?? []) as { trabalho_id: string; conteudo: string | null }[]) {
+      const t = recentes.find(x => x.id === s.trabalho_id)
+      if (!t) continue
+      const titulo = tituloEfetivo(null, [{ chave_secao: 'titulo', conteudo: s.conteudo } as SecaoTrabalho])
+      if (titulo) t.titulo = titulo
+    }
+  }
 
   const stats = [
     { label: 'Total de trabalhos', value: lista.length,          icon: BookOpen,     color: 'text-blue-600',   bg: 'bg-blue-50' },

@@ -5,6 +5,7 @@ import { ArrowRight, Archive, Eye, Download, BookMarked, Map, Trash2, Presentati
 import { TipoTrabalhoIcon, getTipoLabel } from './TipoTrabalhoIcon'
 import { StatusBadge } from './StatusBadge'
 import { ProgressBar } from './ProgressBar'
+import { capitalizarTitulo } from '@/lib/trabalho/titulo'
 import type { Trabalho } from '@/types'
 
 interface TrabalhoCardProps {
@@ -37,7 +38,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
         <TipoTrabalhoIcon tipo={trabalho.tipo_trabalho} size="md" />
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-foreground truncate text-sm leading-snug">
-            {trabalho.titulo || 'Trabalho sem título'}
+            {capitalizarTitulo(trabalho.titulo) || 'Trabalho sem título'}
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {getTipoLabel(trabalho.tipo_trabalho)}
