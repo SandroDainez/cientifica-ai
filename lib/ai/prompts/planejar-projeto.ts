@@ -35,6 +35,105 @@ const NOTA_CAMPO: Partial<Record<string, string>> = {
   geral: '',
 }
 
+// Fluxo canônico (etapas corretas) de CADA um dos 10 tipos de trabalho.
+// O app é para iniciantes: cada tipo deve mostrar SÓ as etapas que lhe pertencem.
+const FLUXO_CANONICO: Record<string, string> = {
+  artigo_revisao: `FLUXO DA REVISÃO NARRATIVA (100% BIBLIOGRÁFICO):
+1) Definir tema, pergunta e escopo
+2) Busca bibliográfica nas bases (PubMed, SciELO, etc.)
+3) Seleção e leitura crítica dos artigos
+4) Síntese da literatura organizada por temas
+5) Redação (introdução, desenvolvimento, considerações finais)
+6) Submissão ao periódico
+NÃO TEM: CEP, Plataforma Brasil, carta de anuência, TCLE, coleta de dados, análise estatística.`,
+
+  revisao_sistematica: `FLUXO DA REVISÃO SISTEMÁTICA (BIBLIOGRÁFICO, rigoroso):
+1) Elaborar e registrar o protocolo (PROSPERO)
+2) Definir a pergunta PICOS e critérios de elegibilidade
+3) Estratégia de busca em múltiplas bases
+4) Triagem dos estudos (fluxograma PRISMA)
+5) Extração de dados dos estudos incluídos
+6) Avaliação do risco de viés
+7) Síntese qualitativa e/ou meta-análise
+8) Redação e submissão
+NÃO TEM: CEP, Plataforma Brasil, carta de anuência, TCLE, coleta de dados primários.`,
+
+  artigo_original: `FLUXO DO ARTIGO ORIGINAL (pesquisa empírica):
+1) Revisão de literatura e definição da pergunta (PICO)
+2) Métodos (delineamento, população, amostra)
+3) Aspectos éticos: SÓ se coleta primária com seres humanos (CEP/Plataforma Brasil); dados públicos secundários (DATASUS/IBGE) DISPENSAM CEP
+4) Coleta de dados (primária OU extração de base secundária)
+5) Análise estatística
+6) Redação no formato IMRAD
+7) Submissão a periódico`,
+
+  relato_caso: `FLUXO DO RELATO DE CASO:
+1) Seleção e documentação detalhada do caso clínico
+2) Consentimento do paciente para publicação (TCLE de publicação) — e aprovação institucional/CEP se a instituição exigir
+3) Revisão da literatura sobre a condição
+4) Redação (introdução, apresentação do caso, discussão, conclusão)
+5) Submissão
+NÃO TEM: coleta de dados em amostra, cálculo amostral nem análise estatística (é um único caso).`,
+
+  tcc: `FLUXO DO TCC:
+1) Tema, problema e revisão de literatura
+2) Metodologia
+3) Aspectos éticos: SÓ se houver coleta primária com seres humanos (CEP). Se for revisão/pesquisa bibliográfica ou dados públicos → SEM CEP
+4) Coleta/levantamento de dados (apenas se houver pesquisa de campo)
+5) Análise (apenas se houver dados)
+6) Redação (introdução, desenvolvimento, resultados se houver, conclusão)
+7) Preparação para a defesa`,
+
+  monografia: `FLUXO DA MONOGRAFIA DE ESPECIALIZAÇÃO (geralmente revisão bibliográfica):
+1) Tema e delimitação
+2) Revisão de literatura
+3) Desenvolvimento por capítulos temáticos
+4) Redação e conclusão
+5) Entrega
+SÓ inclua CEP/coleta/análise se a descrição indicar pesquisa de campo com pessoas.`,
+
+  dissertacao_mestrado: `FLUXO DA DISSERTAÇÃO DE MESTRADO:
+1) Tema, lacuna e revisão aprofundada
+2) Metodologia detalhada (com cálculo amostral se empírico)
+3) Aspectos éticos: SÓ se coleta primária com seres humanos (CEP)
+4) Coleta de dados (se empírico)
+5) Análise
+6) Redação completa
+7) Defesa`,
+
+  tese_doutorado: `FLUXO DA TESE DE DOUTORADO (contribuição inédita):
+1) Tema, originalidade e estado da arte
+2) Metodologia rigorosa
+3) Aspectos éticos: SÓ se coleta primária com seres humanos (CEP)
+4) Coleta de dados (se empírico)
+5) Análise
+6) Redação (pode ser por artigos)
+7) Defesa`,
+
+  projeto_pesquisa: `FLUXO DO PROJETO DE PESQUISA (é uma PROPOSTA — planeja, NÃO executa a pesquisa):
+1) Tema e problema
+2) Objetivos e hipóteses
+3) Justificativa
+4) Revisão de literatura
+5) Metodologia PROPOSTA
+6) Aspectos éticos: modelo de TCLE e previsão de submissão ao CEP — APENAS se a pesquisa proposta envolver seres humanos
+7) Cronograma
+8) Orçamento
+9) Resultados esperados
+NÃO TEM coleta nem análise REAIS — tudo é planejamento do que será feito no futuro.`,
+
+  relatorio_ic: `FLUXO DO RELATÓRIO DE INICIAÇÃO CIENTÍFICA (relato de atividades já feitas):
+1) Resumo das atividades do período
+2) Introdução e contextualização
+3) Objetivos do período
+4) Metodologia utilizada
+5) Resultados obtidos (mesmo parciais)
+6) Dificuldades e soluções
+7) Atividades de formação (eventos, cursos)
+8) Perspectivas para o próximo período
+NÃO inicie processo de CEP aqui (o projeto de IC já foi aprovado antes).`,
+}
+
 export function buildPlanejadorPrompt(descricao: string, opts: PlanejadorOpts = {}): { system: string; user: string } {
   const { tipoTrabalho, nomeTipo, area, requerCep = false, requerPrisma = false } = opts
   const ehBibliografico = tipoTrabalho ? TIPOS_BIBLIOGRAFICOS.has(tipoTrabalho) : false
@@ -56,6 +155,15 @@ Seja direto, prático e acessível — o pesquisador pode ser iniciante.`
   const blocoArea = (area || notaCampo)
     ? `\nÁREA DO TRABALHO: ${area ?? 'não informada'}.
 O roadmap, o checklist e a terminologia DEVEM ser adequados a esta área — nunca use etapas ou termos de outra área (ex: nada de "pacientes/prontuários/gasometria" fora da saúde).${notaCampo ? `\n${notaCampo}` : ''}`
+    : ''
+
+  const fluxoCanonico = tipoTrabalho && FLUXO_CANONICO[tipoTrabalho]
+    ? `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 FLUXO CORRETO DESTE TIPO DE TRABALHO — SIGA EXATAMENTE ESTAS ETAPAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${FLUXO_CANONICO[tipoTrabalho]}
+
+O roadmap deve conter SOMENTE etapas que pertencem a este fluxo. O usuário é iniciante — qualquer etapa que não pertença a este tipo de trabalho o confunde. NÃO acrescente etapas de outros tipos de trabalho.`
     : ''
 
   const regrasCep = !cepPossivel
@@ -84,7 +192,7 @@ CEP/Plataforma Brasil é necessário APENAS quando a pesquisa COLETA dados prim�
   const user = `O pesquisador descreveu sua ideia assim:
 
 "${descricao}"
-${blocoTipo}${blocoArea}
+${blocoTipo}${blocoArea}${fluxoCanonico}
 
 Com base nessa descrição${tipoTrabalho ? ' e no tipo de trabalho já escolhido' : ''}, analise e crie um plano completo de projeto de pesquisa.
 ${regrasCep}
