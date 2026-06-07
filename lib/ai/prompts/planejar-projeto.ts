@@ -1,4 +1,5 @@
 import type { TipoTrabalho } from '@/types'
+import { detectarCampo } from '@/lib/ai/campos-academicos'
 
 // Unused import kept for type reference; tree-shaken in production
 void (null as unknown as TipoTrabalho)
@@ -6,6 +7,7 @@ void (null as unknown as TipoTrabalho)
 interface PlanejadorOpts {
   tipoTrabalho?: string
   nomeTipo?: string
+  area?: string
   requerCep?: boolean
   requerPrisma?: boolean
 }
@@ -14,11 +16,32 @@ interface PlanejadorOpts {
 // coleta de dados primária com seres humanos, logo NUNCA precisam de CEP.
 const TIPOS_BIBLIOGRAFICOS = new Set(['artigo_revisao', 'revisao_sistematica'])
 
+// Orientação de fluxo/terminologia por grande área — mantém o roadmap adequado
+// à área escolhida (sem termos médicos em trabalhos de direito, educação, etc.).
+const NOTA_CAMPO: Partial<Record<string, string>> = {
+  direito: 'Área DIREITO: o fluxo é doutrinário/jurisprudencial. Etapas típicas: levantamento de legislação, doutrina e jurisprudência; análise dogmática/jurisprudencial; redação por capítulos temáticos. NÃO use termos clínicos (pacientes, prontuários, gasometria). CEP só se houver entrevistas/questionários com pessoas.',
+  educacao: 'Área EDUCAÇÃO: etapas típicas conforme a abordagem (pesquisa-ação, etnografia escolar, survey). Se houver coleta com alunos/professores → CEP (Resolução CNS 510/2016) + TCLE/assentimento. Pesquisa documental/bibliográfica → sem CEP.',
+  agronomia: 'Área AGRONOMIA/AGRÁRIAS: fluxo experimental de campo. Etapas: delineamento experimental (DBC/DIC), instalação do experimento, condução/manejo, coleta de dados agronômicos, análise estatística (ANOVA/Tukey, SISVAR). Sem CEP (salvo experimentação animal → CEUA).',
+  veterinaria: 'Área VETERINÁRIA/ZOOTECNIA: experimentação animal exige CEUA (não CEP). Etapas: delineamento, aprovação CEUA, condução, coleta, análise.',
+  engenharia: 'Área ENGENHARIA: fluxo de projeto/experimento técnico. Etapas: revisão + normas técnicas (ABNT/ISO), modelagem/projeto, ensaios/simulação, análise de resultados. Sem CEP (salvo estudo com usuários humanos).',
+  psicologia: 'Área PSICOLOGIA: pesquisa com seres humanos → CEP obrigatório + TCLE; instrumentos aprovados pelo CFP. Pesquisa teórica/bibliográfica → sem CEP.',
+  administracao: 'Área ADMINISTRAÇÃO/GESTÃO: etapas de coleta (survey/estudo de caso/entrevistas em organizações). Se coleta com pessoas → CEP. Análise documental/dados secundários públicos → sem CEP.',
+  humanas: 'Área HUMANAS (Filosofia/Letras): fluxo de análise textual/conceitual (exegese, hermenêutica). Geralmente bibliográfico → sem CEP. Etapas: seleção do corpus, análise, redação argumentativa.',
+  historia: 'Área HISTÓRIA: fluxo de pesquisa em fontes primárias (arquivos) e secundárias. Etapas: levantamento de fontes, crítica documental, análise, redação. História oral com entrevistados → CEP (CNS 510/2016).',
+  ciencias_sociais: 'Área CIÊNCIAS SOCIAIS: etnografia/entrevistas → CEP (CNS 510/2016) + cuidados com populações vulneráveis. Pesquisa teórica → sem CEP.',
+  servico_social: 'Área SERVIÇO SOCIAL: coleta com usuários/serviços → CEP. Pesquisa documental → sem CEP. Etapas alinhadas ao SUAS quando aplicável.',
+  nutricao: 'Área NUTRIÇÃO: coleta com pessoas (consumo alimentar, antropometria) → CEP + TCLE. Análise de alimentos em laboratório → sem CEP.',
+  exatas: 'Área EXATAS/COMPUTAÇÃO: fluxo de experimento computacional/prova. Etapas: definição do problema, implementação, experimentos/benchmarks, análise. Estudo com usuários → CEP.',
+  geral: '',
+}
+
 export function buildPlanejadorPrompt(descricao: string, opts: PlanejadorOpts = {}): { system: string; user: string } {
-  const { tipoTrabalho, nomeTipo, requerCep = false, requerPrisma = false } = opts
+  const { tipoTrabalho, nomeTipo, area, requerCep = false, requerPrisma = false } = opts
   const ehBibliografico = tipoTrabalho ? TIPOS_BIBLIOGRAFICOS.has(tipoTrabalho) : false
   // CEP só é possível se o TIPO admite (requerCep) E não é um tipo puramente bibliográfico.
   const cepPossivel = requerCep && !ehBibliografico
+  const campo = detectarCampo(area ?? '')
+  const notaCampo = NOTA_CAMPO[campo] ?? ''
 
   const system = `Você é um orientador acadêmico experiente especializado em pesquisa científica brasileira.
 Sua tarefa é analisar a ideia de pesquisa de um estudante/pesquisador e criar um plano de projeto completo, realista e detalhado.
@@ -28,6 +51,11 @@ Seja direto, prático e acessível — o pesquisador pode ser iniciante.`
 
   const blocoTipo = tipoTrabalho
     ? `\nTIPO DE TRABALHO JÁ ESCOLHIDO PELO USUÁRIO: ${nomeTipo ?? tipoTrabalho} (use EXATAMENTE este tipo em "tipo_trabalho_sugerido").`
+    : ''
+
+  const blocoArea = (area || notaCampo)
+    ? `\nÁREA DO TRABALHO: ${area ?? 'não informada'}.
+O roadmap, o checklist e a terminologia DEVEM ser adequados a esta área — nunca use etapas ou termos de outra área (ex: nada de "pacientes/prontuários/gasometria" fora da saúde).${notaCampo ? `\n${notaCampo}` : ''}`
     : ''
 
   const regrasCep = !cepPossivel
@@ -54,7 +82,7 @@ CEP/Plataforma Brasil é necessário APENAS quando a pesquisa COLETA dados prim�
   const user = `O pesquisador descreveu sua ideia assim:
 
 "${descricao}"
-${blocoTipo}
+${blocoTipo}${blocoArea}
 
 Com base nessa descrição${tipoTrabalho ? ' e no tipo de trabalho já escolhido' : ''}, analise e crie um plano completo de projeto de pesquisa.
 ${regrasCep}

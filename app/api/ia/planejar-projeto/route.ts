@@ -25,10 +25,10 @@ export async function POST(request: Request) {
     trabalhoId: string
   }
 
-  // Validate that trabalhoId belongs to the user + carrega o tipo escolhido
+  // Validate that trabalhoId belongs to the user + carrega tipo e área escolhidos
   const { data: trabalho } = await supabase
     .from('trabalhos')
-    .select('id, tipo_trabalho')
+    .select('id, tipo_trabalho, area_conhecimento')
     .eq('id', trabalhoId)
     .eq('usuario_id', user.id)
     .single()
@@ -39,13 +39,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Descreva sua ideia com mais detalhes.' }, { status: 400 })
   }
 
-  // O fluxo correto depende do tipo de trabalho ESCOLHIDO pelo usuário.
+  // O fluxo correto depende do tipo de trabalho E da área ESCOLHIDOS pelo usuário.
   const tipoTrabalho = (trabalho as { tipo_trabalho?: string }).tipo_trabalho ?? undefined
+  const area = (trabalho as { area_conhecimento?: string }).area_conhecimento ?? undefined
   const fluxo = tipoTrabalho ? getFluxo(tipoTrabalho) : null
 
   const { system, user: userPrompt } = buildPlanejadorPrompt(descricao.trim(), {
     tipoTrabalho,
     nomeTipo: fluxo?.nome_completo,
+    area,
     requerCep: fluxo?.requer_cep ?? false,
     requerPrisma: fluxo?.requer_prisma ?? false,
   })
