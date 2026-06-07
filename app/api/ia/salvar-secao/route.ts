@@ -72,11 +72,17 @@ export async function POST(request: Request) {
       }
     }
 
+    // Marca o trabalho como concluído quando TODAS as fases do fluxo já estão
+    // entre as concluídas (mesmo critério do progresso 100% no card).
+    const todasFases = fluxoParaMeta?.fases.map(f => f.chave_secao) ?? []
+    const concluido = todasFases.length > 0 && todasFases.every(c => fasesConcluidas.includes(c))
+
     await supabase
       .from('trabalhos')
       .update({
         fases_concluidas: fasesConcluidas,
         ...(proximaFase ? { fase_atual: proximaFase } : {}),
+        ...(concluido ? { status: 'concluido' } : {}),
       })
       .eq('id', trabalhoId)
   }

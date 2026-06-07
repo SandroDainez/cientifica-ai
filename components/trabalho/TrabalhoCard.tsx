@@ -19,6 +19,12 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
     ? Math.round((trabalho.fases_concluidas.length / totalFases) * 100)
     : 0
 
+  // Status exibido: se o progresso chegou a 100%, mostra "Concluído" mesmo que o
+  // status salvo ainda esteja "em andamento" (corrige trabalhos antigos sem novo
+  // salvamento). Não sobrescreve "arquivado".
+  const statusExibido =
+    trabalho.status !== 'arquivado' && progresso >= 100 ? 'concluido' : trabalho.status
+
   const atualizado = formatDistanceToNow(new Date(trabalho.updated_at), {
     addSuffix: true,
     locale: ptBR,
@@ -37,7 +43,7 @@ export function TrabalhoCard({ trabalho, totalFases, onArquivar, onDeletar }: Tr
             {getTipoLabel(trabalho.tipo_trabalho)}
           </p>
         </div>
-        <StatusBadge status={trabalho.status} />
+        <StatusBadge status={statusExibido} />
       </div>
 
       {/* Progresso */}
