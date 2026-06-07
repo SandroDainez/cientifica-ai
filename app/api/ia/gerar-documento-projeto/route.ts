@@ -4,7 +4,7 @@ import { callAI, streamText } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
-import { garantirReferenciasReais } from '@/lib/referencias/auto-import'
+import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
 import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
 
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
   if (DOCS_COM_REFERENCIAS.has(tipoDocumento)) {
     const { data: refsData } = await supabase
       .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
-    referencias = await garantirReferenciasReais({
+    const todas = await garantirReferenciasReais({
       supabase,
       trabalhoId,
       titulo: trabalho.titulo ?? dadosProjeto.titulo_provisorio,
@@ -122,6 +122,7 @@ export async function POST(request: Request) {
       pergunta: dadosProjeto.pergunta_pesquisa,
       refsExistentes: (refsData ?? []) as Referencia[],
     })
+    referencias = filtrarRefsCitaveis(todas)
   }
 
   const { system, user: userPrompt } = buildDocumentoPrompt(

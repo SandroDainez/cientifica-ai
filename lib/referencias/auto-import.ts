@@ -130,6 +130,22 @@ export function toEnglishQuery(texto: string): string {
   return q
 }
 
+/**
+ * Filtra referências citáveis com qualidade — para uso no texto e na bibliografia.
+ * Remove títulos-como-autor (sem sobrenome) e itens sem ano (citações "(s.d.)" feias).
+ * Mantém referências adicionadas manualmente pelo usuário mesmo sem ano.
+ */
+export function filtrarRefsCitaveis(refs: Referencia[]): Referencia[] {
+  return refs.filter(r => {
+    const temAutor = !!r.autores?.[0]?.sobrenome && r.autores[0].sobrenome.length > 1
+    const adicionadaManual = (r.fonte_tipo as string | undefined) === 'manual' || !r.fonte_tipo
+    // Auto-importadas exigem autor E ano; manuais exigem apenas autor
+    if (!temAutor) return false
+    if (!adicionadaManual && !r.ano) return false
+    return true
+  })
+}
+
 /** Detecta área biomédica — PubMed só é útil para saúde/biologia. */
 export function isBiomedical(texto: string): boolean {
   return /sa[uú]de|m[eé]dic|medicina|cl[ií]nic|hospital|enfermagem|farmac|nutri[cç]|odontol|veterin|fisioterap|psicolog|biolog|bioqu[ií]m|fisiolog|obstet|anestesi|cirurg/i.test(texto)
@@ -188,22 +204,22 @@ export async function garantirReferenciasReais({
     const perguntaEN = toEnglishQuery(perguntaStr)
     const ehBiomedico = isBiomedical(`${areaStr} ${tituloStr} ${perguntaStr}`)
 
-    const queries: string[] = []
-    if (tituloEN.length > 8) queries.push(tituloEN)
-    if (tituloStr && tituloStr !== tituloEN && tituloStr.length > 8) queries.push(tituloStr)
-    if (perguntaEN.length > 10 && perguntaEN !== tituloEN) queries.push(perguntaEN.slice(0, 120))
+    // Queries ANCORADAS NO TÓPICO — prioriza relevância sobre quantidade.
+    // Buscas genéricas por área (ex: "obstetrics review") trazem ruído
+    // (mamografia, pediatria...). O título e a pergunta são o melhor sinal.
     const secKws = SECAO_KEYWORDS[chaveSecao] ?? ['research']
+    const queries: string[] = []
+    // 1-2: título (EN e PT) — o sinal mais específico
+    if (tituloEN.length > 8) queries.push(tituloEN)
+    if (tituloStr && tituloStr.toLowerCase() !== tituloEN.toLowerCase() && tituloStr.length > 8) queries.push(tituloStr)
+    // 3: pergunta de pesquisa
+    if (perguntaEN.length > 10 && perguntaEN.toLowerCase() !== tituloEN.toLowerCase()) queries.push(perguntaEN.slice(0, 140))
+    // 4: título + palavra-chave da seção (continua ancorado no tópico)
+    if (tituloEN.length > 8) queries.push(`${tituloEN.split(/\s+/).slice(0, 8).join(' ')} ${secKws[0]}`)
+    // 5: pergunta + palavra-chave (cobertura adicional do tópico)
+    if (perguntaEN.length > 10) queries.push(`${perguntaEN.split(/\s+/).slice(0, 8).join(' ')} ${secKws[1] ?? secKws[0]}`)
+    // 6: UMA query de área como último recurso (só se faltam refs específicas)
     if (areaEN) queries.push(`${areaEN} ${secKws[0]}`)
-    if (areaStr && areaStr !== areaEN) queries.push(`${areaStr} ${secKws[0]}`)
-    const tipoKw: Record<string, string> = {
-      revisao_sistematica: 'systematic review meta-analysis',
-      artigo_original:     'original research clinical study',
-      relato_caso:         'case report',
-      dissertacao_mestrado: 'cohort study',
-      tese_doutorado:      'clinical trial',
-    }
-    if (tipoTrabalho && tipoKw[tipoTrabalho] && areaEN) queries.push(`${areaEN} ${tipoKw[tipoTrabalho]}`)
-    if (areaEN && secKws[1]) queries.push(`${areaEN} ${secKws[1]}`)
 
     const seen = new Set<string>()
     const queriesValidas = queries
@@ -220,8 +236,15 @@ export async function garantirReferenciasReais({
     const vistosDois = new Set<string>(referencias.map(r => r.doi ?? '').filter(Boolean))
     const vistosTitulos = new Set<string>(referencias.map(r => r.titulo.toLowerCase().slice(0, 80)))
 
+    const anoAtual = new Date().getFullYear()
     const refsUnicas = resultados.flat().filter(ref => {
-      if (!ref.titulo || ref.titulo.length < 5) return false
+      // QUALIDADE: só importa referências que geram citações limpas
+      if (!ref.titulo || ref.titulo.length < 8) return false
+      // Precisa ter autor com sobrenome (elimina títulos-como-autor, ex: "TÓPICOS EM...")
+      if (!ref.autores || ref.autores.length === 0 || !ref.autores[0]?.sobrenome) return false
+      // Precisa ter ano plausível (elimina citações "(SOBRENOME, s.d.)")
+      if (!ref.ano || ref.ano < 1950 || ref.ano > anoAtual) return false
+      // Título não pode ser todo em maiúsculas (sinal de baixa qualidade de indexação)
       const tk = ref.titulo.toLowerCase().slice(0, 80)
       if (vistosTitulos.has(tk)) return false
       vistosTitulos.add(tk)

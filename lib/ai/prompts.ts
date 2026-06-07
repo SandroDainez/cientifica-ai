@@ -197,9 +197,9 @@ Você tem ${referencias.length} referências reais disponíveis. O texto é uma 
 
 1. CITAÇÃO EM CADA SENTENÇA FACTUAL: toda frase que afirme um fato, dado, achado, mecanismo, prevalência, definição ou recomendação DEVE terminar com uma citação real. Em uma revisão de literatura, espere que praticamente TODA sentença tenha citação. Frases de transição/conexão (poucas) podem não ter.
 
-2. REUTILIZE AS REFERÊNCIAS LIVREMENTE: a MESMA referência pode (e deve) ser citada várias vezes ao longo do texto — em 3, 5, 10 frases diferentes, se ela embasa cada uma. NÃO evite repetir uma referência. Reutilizar é correto e esperado. NÃO pare de citar só porque "já usou" uma referência.
+2. VARIE AS REFERÊNCIAS — distribua bem: use o MAIOR número possível de referências DIFERENTES da lista. Um bom texto cita muitas fontes distintas, não as mesmas 2-3 repetidamente. Como regra prática, evite citar a mesma referência mais de 3-4 vezes no texto inteiro. Reutilizar é permitido quando uma referência é realmente a melhor para a frase, mas SEMPRE prefira trazer uma referência ainda não usada se ela também embasar a afirmação. Antes de repetir uma referência, pergunte-se: "há outra na lista que sirva e que eu ainda não citei?"
 
-3. ESCOLHA POR PROXIMIDADE: para cada sentença, escolha da lista a referência cujo TÍTULO seja mais próximo do tema da frase e cite-a. Sempre há uma referência razoavelmente próxima entre as ${referencias.length} disponíveis.
+3. ESCOLHA POR PROXIMIDADE: para cada sentença, escolha da lista a referência cujo TÍTULO seja mais próximo do tema da frase. Percorra TODA a lista — há ${referencias.length} referências, use a diversidade delas.
 
 4. FORMATO ${fmt}: ${exemplo}
    Copie a citação EXATAMENTE como aparece na lista (mesmo sobrenome, mesmo ano).
