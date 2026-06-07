@@ -329,7 +329,54 @@ export async function GET(request: Request) {
     return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows })
   }
 
-  secoesOrdenadas.forEach((secao, i) => {
+  // ── Ordem do documento final (ABNT) — diferente da ordem de elaboração ──────
+  // O título já está na capa (não vira seção "1 TÍTULO E ESCOPO"); o Resumo/
+  // Abstract vêm ANTES da introdução, sem numeração. As demais seções seguem
+  // numeradas a partir de 1.
+  // Apenas a seção de TÍTULO puro é omitida (o título já está na capa).
+  // 'tema' (Tema e Delimitação do TCC) é conteúdo real e NÃO deve ser omitido.
+  const ehTitulo = (s: SecaoTrabalho) => /^titulo/.test(s.chave_secao)
+  const secaoResumo = secoesOrdenadas.find(s => s.chave_secao === 'resumo')
+  const secoesCorpo = secoesOrdenadas.filter(s => !ehTitulo(s) && s.chave_secao !== 'resumo')
+
+  // Renderiza um bloco de texto (parágrafos justificados) sem cabeçalho
+  const pushParagrafos = (txt: string, indent = true) => {
+    txt.split('\n').map(l => l.trim()).filter(Boolean).forEach(linha => {
+      children.push(new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO, after: 0 },
+        indent: indent ? { firstLine: convertInchesToTwip(0.5) } : undefined,
+        children: textRunsFromMarkdown(linha),
+      }))
+    })
+  }
+
+  // ── Resumo / Abstract (antes da introdução, sem número) ─────────────────────
+  if (secaoResumo?.conteudo?.trim()) {
+    let r: { resumo?: string; abstract?: string; palavras_chave?: string[]; keywords?: string[] } = {}
+    try { r = JSON.parse(secaoResumo.conteudo) } catch { r = { resumo: secaoResumo.conteudo } }
+
+    if (r.resumo?.trim()) {
+      children.push(new Paragraph({ children: [new PageBreak()] }))
+      children.push(paragrafo('RESUMO', { center: true, bold: true, indent: false }))
+      pushParagrafos(r.resumo, false)
+      if (r.palavras_chave?.length) {
+        children.push(empty())
+        children.push(paragrafo(`Palavras-chave: ${r.palavras_chave.join('; ')}.`, { indent: false }))
+      }
+    }
+    if (r.abstract?.trim()) {
+      children.push(empty())
+      children.push(paragrafo('ABSTRACT', { center: true, bold: true, indent: false }))
+      pushParagrafos(r.abstract, false)
+      if (r.keywords?.length) {
+        children.push(empty())
+        children.push(paragrafo(`Keywords: ${r.keywords.join('; ')}.`, { indent: false }))
+      }
+    }
+  }
+
+  secoesCorpo.forEach((secao, i) => {
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       secaoHeading(i + 1, secao.nome_secao),
