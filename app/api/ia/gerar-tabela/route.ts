@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
-import { detectarCampo, getRegrasCampoAcademico } from '@/lib/ai/campos-academicos'
-import { streamText, callAI } from '@/lib/ai/stream'
+import { callAI } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, DadosProjeto } from '@/types'
 
@@ -65,11 +64,9 @@ export async function POST(request: Request) {
   const fase = fluxo?.fases.find(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
   const nomeSecao = fase?.nome ?? 'Resultados'
 
-  const campo = detectarCampo(trabalho.area_conhecimento ?? '')
-  const regrasCampo = getRegrasCampoAcademico(campo, trabalho.tipo_trabalho)
-
-  const systemPrompt = `Você é um especialista em apresentação de dados científicos na área de ${trabalho.area_conhecimento ?? 'pesquisa'}. Monta tabelas seguindo rigorosamente as normas ABNT (IBGE) e as convenções da área.
-${regrasCampo}`
+  // System prompt CURTO e focado — o bloco completo de regras do campo é longo e,
+  // somado aos dados, fazia o modelo retornar vazio. Para tabela basta o essencial.
+  const systemPrompt = `Você é um especialista em apresentação de dados científicos na área de ${trabalho.area_conhecimento ?? 'pesquisa'}. Monta tabelas no padrão ABNT/IBGE (tabela aberta), de forma objetiva e usando SOMENTE os números reais fornecidos.`
 
   const userPrompt = `Monte a(s) TABELA(S) CIENTÍFICA(S) apropriada(s) a partir dos dados reais abaixo. Siga as normas rigorosas de tabela científica.
 
@@ -101,22 +98,27 @@ REGRAS CRÍTICAS:
 - Responda APENAS com a(s) tabela(s) formatada(s) — título, tabela markdown, fonte e notas. Sem texto explicativo antes ou depois.
 - Após a tabela, em UMA linha, sugira: "💡 No texto, descreva esta tabela assim: [exemplo de 1 frase de chamada da tabela no corpo do texto]."`
 
-  // Geração confiável: callAI (temperatura baixa) com retry. O streamText a 0.9
-  // ocasionalmente retornava vazio — uma tabela é curta e determinística, então
-  // gerar de uma vez e validar é mais robusto.
+  // Geração confiável: callAI com retry e tokens folgados. Tenta o modelo smart
+  // e, se vier vazio, tenta o modelo fast (mais resistente a respostas vazias).
   let tabela = ''
-  for (let tentativa = 0; tentativa < 2 && !tabela.trim(); tentativa++) {
+  let ultimoErro = ''
+  const tentativas: Array<{ fast: boolean }> = [{ fast: false }, { fast: false }, { fast: true }]
+  for (const t of tentativas) {
+    if (tabela.trim()) break
     try {
-      const out = await callAI(systemPrompt, userPrompt, false, 3000)
-      if (out && out.includes('|')) tabela = out.trim()   // precisa conter ao menos uma tabela markdown
+      const out = await callAI(systemPrompt, userPrompt, t.fast, 5000)
+      console.log('[gerar-tabela] resposta len=', out?.length ?? 0, 'fast=', t.fast)
+      if (out && out.includes('|')) tabela = out.trim()
     } catch (err) {
-      console.error('[gerar-tabela] tentativa', tentativa, 'falhou:', err)
+      ultimoErro = err instanceof Error ? err.message : String(err)
+      console.error('[gerar-tabela] tentativa falhou:', ultimoErro)
     }
   }
 
   if (!tabela) {
-    // Último recurso: streaming direto (ainda pode funcionar)
-    return streamText(systemPrompt, userPrompt, false, 3000)
+    // Mensagem clara em vez de stream vazio silencioso
+    const msg = `⚠️ A IA não retornou a tabela desta vez${ultimoErro ? ` (${ultimoErro})` : ''}. Tente novamente em alguns segundos. Se persistir, cole os dados em formato de tabela (colunas separadas) e tente de novo.`
+    return streamStringComEfeito(msg)
   }
 
   return streamStringComEfeito(tabela)
