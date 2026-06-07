@@ -377,7 +377,17 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao,
                   </div>
                 )}
               </div>
-              <div className="overflow-x-auto text-sm text-foreground leading-relaxed [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_th]:text-left [&_th]:font-semibold [&_th]:px-2 [&_th]:py-1.5 [&_th]:border-y [&_th]:border-foreground/30 [&_td]:px-2 [&_td]:py-1 [&_td]:border-b [&_td]:border-border/30 [&_p]:my-1 [&_strong]:font-semibold [&_em]:text-muted-foreground [&_em]:text-xs">
+              {/* Renderização no padrão ABNT (tabela aberta): apenas 3 traços
+                  horizontais — topo, sob o cabeçalho e base. SEM linhas verticais
+                  e SEM linhas entre as linhas do corpo. Título acima, fonte abaixo. */}
+              <div className="overflow-x-auto text-sm text-foreground leading-relaxed
+                [&_table]:w-full [&_table]:border-collapse [&_table]:my-3
+                [&_table]:border-t-2 [&_table]:border-b-2 [&_table]:border-foreground
+                [&_thead_th]:border-b [&_thead_th]:border-foreground
+                [&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2 [&_th]:align-bottom
+                [&_td]:px-3 [&_td]:py-1.5 [&_td]:align-top [&_td]:border-0
+                [&_tr]:border-0
+                [&_p]:my-1 [&_strong]:font-semibold [&_em]:text-muted-foreground [&_em]:text-xs">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{tabela}</ReactMarkdown>
               </div>
             </div>

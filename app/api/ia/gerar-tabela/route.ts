@@ -69,10 +69,10 @@ ${dadosProjeto?.objetivo_geral ? `- Objetivo: ${dadosProjeto.objetivo_geral}` : 
 DADOS REAIS DA PLANILHA:
 ${dadosPlanilha.slice(0, 8000)}
 
-NORMAS OBRIGATÓRIAS DE TABELA CIENTÍFICA (ABNT NBR 14724 / IBGE):
-1. TÍTULO acima da tabela: "**Tabela 1 — [título descritivo do conteúdo]**" (numeração sequencial; título conciso e autoexplicativo).
-2. Use formato markdown de tabela (| coluna | coluna |) para a estrutura.
-3. Cabeçalho de colunas claro, com unidades entre parênteses quando aplicável (ex: "Idade (anos)", "Peso (kg)").
+NORMAS OBRIGATÓRIAS DE TABELA CIENTÍFICA (ABNT NBR 14724 / IBGE — "tabela aberta"):
+1. TÍTULO acima da tabela, em uma linha própria: "**Tabela 1 — [título descritivo do conteúdo]**" (numeração sequencial; título conciso e autoexplicativo). Deixe uma linha em branco entre o título e a tabela.
+2. Use UMA tabela markdown limpa e simples: linha de cabeçalho, linha separadora (|---|---|) e linhas de dados. Uma coluna por variável. NÃO desenhe bordas com caracteres (sem +---+, sem ═). O sistema renderiza no padrão ABNT (tabela aberta: só traços horizontais no topo, sob o cabeçalho e na base; sem linhas verticais).
+3. Cabeçalho de colunas claro, com unidades entre parênteses quando aplicável (ex: "Idade (anos)", "Peso (kg)"). A primeira coluna identifica a variável/categoria.
 4. Variáveis quantitativas: apresente como média ± desvio-padrão OU mediana [intervalo interquartil] conforme apropriado.
 5. Variáveis categóricas: apresente como n (%).
 6. Quando houver comparação entre grupos: inclua coluna de valor-p e indique o teste usado em nota de rodapé.
