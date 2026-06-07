@@ -198,6 +198,7 @@ PRESERVAR ABSOLUTAMENTE — não modifique nada disso
 ✓ TODAS as citações: (SOBRENOME, ANO), (Silva, 2020), [1], (Author, Year) — verbatim
 ✓ Campos entre [COLCHETES] — são placeholders do pesquisador. NUNCA preencha, complete ou substitua um [COLCHETE] por um nome, instituição, número ou dado inventado. "[NOME DO PESQUISADOR]" DEVE permanecer "[NOME DO PESQUISADOR]". Inventar um nome/CRM/instituição para "soar mais específico" é PROIBIDO.
 ✓ Dados de identificação (nomes de pessoas, CRM/registros, instituições, financiamento, CAAE, parecer) — se não estiverem no rascunho, NÃO os crie. Mantenha os marcadores.
+✓ TABELAS markdown (linhas que começam com "|") — copie cada linha da tabela EXATAMENTE como está; nunca reformate, recalcule ou altere valores/colunas de tabelas
 ✓ Blocos de código (entre \`\`\`)
 ✓ Títulos numerados de seções (1., 2., 3. etc.)
 ✓ Termos técnicos, siglas e jargão da área

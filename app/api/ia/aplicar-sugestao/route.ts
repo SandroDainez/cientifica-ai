@@ -64,7 +64,8 @@ REGRAS ABSOLUTAS:
 2. Preserve 100% do conteúdo, dados, citações e estrutura que não se relacionam à sugestão
 3. Mantenha a formatação markdown (**, ##, listas, etc.)
 4. Preserve todas as citações bibliográficas intactas — (SOBRENOME, ANO), [1], etc.
-5. Entregue SOMENTE o texto corrigido — sem comentários, sem explicações, sem títulos extras
+5. TABELAS são INTOCÁVEIS: copie cada linha de tabela markdown (que começa com "|") EXATAMENTE como está — mesmos valores, mesmas colunas, mesma ordem. NUNCA reformate, recalcule ou altere uma tabela. Modifique apenas o TEXTO em prosa.
+6. Entregue SOMENTE o texto corrigido — sem comentários, sem explicações, sem títulos extras
 
 TEXTO ORIGINAL A CORRIGIR:
 ${conteudo}

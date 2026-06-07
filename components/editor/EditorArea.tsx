@@ -6,9 +6,11 @@ import {
   Sparkles, CheckCircle2, Lightbulb, Save,
   Loader2, ChevronRight, AlignLeft, MousePointerClick,
   PenLine, AlertTriangle, XCircle, Trophy, ArrowRight,
-  BookOpen, Target, ListChecks, BookMarked, RefreshCw,
+  BookOpen, Target, ListChecks, BookMarked, RefreshCw, Eye, EyeOff,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { ValidadorSecao } from './ValidadorSecao'
 import type { FaseConfig, ResultadoValidacao } from '@/types'
@@ -73,10 +75,13 @@ export function EditorArea({
   const [mostraIntro, setMostraIntro] = useState(true)
   const [confirmandoAvanco, setConfirmandoAvanco] = useState(false)
   const [refinamentoTitulo, setRefinamentoTitulo] = useState('')
+  const [mostrarPreview, setMostrarPreview] = useState(false)
 
   const palavras = conteudo.trim() ? conteudo.trim().split(/\s+/).length : 0
   const statusPalavras = avaliarPalavras(palavras, fase.min_palavras, fase.max_palavras)
   const temConteudo = conteudo.trim().length > 0
+  // Detecta tabela markdown no conteúdo (≥2 linhas começando com "|")
+  const temTabela = (conteudo.match(/^\s*\|.*\|/gm) ?? []).length >= 2
   const busy = statusIA !== 'idle'
 
   // Esconde o card intro assim que o usuário começa a escrever ou gerar
@@ -397,6 +402,33 @@ export function EditorArea({
           className="w-full resize-none p-5 text-sm text-foreground leading-relaxed placeholder:text-muted-foreground/50 focus:outline-none disabled:opacity-70 bg-transparent"
           style={{ minHeight: 280 }}
         />
+
+        {/* Pré-visualização formatada (tabelas, negrito, títulos) */}
+        {temConteudo && (
+          <div className="border-t">
+            <button
+              type="button"
+              onClick={() => setMostrarPreview(v => !v)}
+              className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {mostrarPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {mostrarPreview ? 'Ocultar pré-visualização' : 'Pré-visualizar formatado'}
+              {temTabela && !mostrarPreview && <span className="text-[10px] text-primary">(tabela)</span>}
+            </button>
+            {mostrarPreview && (
+              <div className="px-5 pb-5 pt-1 border-t bg-muted/20 overflow-x-auto text-sm text-foreground leading-relaxed
+                [&_h1]:text-base [&_h1]:font-bold [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-3 [&_h3]:font-semibold
+                [&_p]:my-1.5 [&_strong]:font-semibold [&_em]:italic
+                [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5
+                [&_table]:w-full [&_table]:border-collapse [&_table]:my-3
+                [&_table]:border-t-2 [&_table]:border-b-2 [&_table]:border-foreground
+                [&_thead_th]:border-b [&_thead_th]:border-foreground
+                [&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2 [&_td]:px-3 [&_td]:py-1.5 [&_td]:border-0 [&_tr]:border-0">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{conteudo}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Aviso de placeholders de citação ────────────────────────── */}
