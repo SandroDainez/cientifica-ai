@@ -548,7 +548,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
 
         {/* Editor + painel IA */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="flex-1 min-w-0 overflow-y-auto px-6 py-6">
             {faseAtualConfig.chave_secao === 'resumo' ? (
               <ResumoEditor
                 trabalho={trabalho}
