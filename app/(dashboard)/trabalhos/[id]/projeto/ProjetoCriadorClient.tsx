@@ -1478,83 +1478,87 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                         </div>
 
                         {/* Card footer */}
-                        <div className="px-4 py-2.5 flex items-center justify-between gap-2 bg-background border-t mt-auto">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {/* Status badge — click to cycle */}
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation()
-                                handleEtapaStatusChange(etapa.id)
-                              }}
-                              className={cn(
-                                'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80',
-                                etapaStatusBadge(etapaStatus)
-                              )}
-                            >
-                              {etapaStatusLabel(etapaStatus)}
-                            </button>
-                            {/* Botões de gerar documento — um por documento, com o NOME do doc */}
-                            {documentosEtapa.length > 0 && documentosEtapa.map(doc => {
-                              const key = `${etapa.id}_${doc.tipo}`
-                              const docState = docsMap[key]
-                              // Nome curto do documento (parte antes do "—"), para diferenciar os botões
-                              const nomeCurto = doc.label.split('—')[0].trim()
-                              const acao = docState?.status === 'gerado' ? 'Regerar' : 'Gerar'
-                              return (
-                                <button
-                                  key={doc.tipo}
-                                  type="button"
-                                  title={`${acao}: ${doc.label}`}
-                                  onClick={e => {
-                                    e.stopPropagation()
-                                    // Expande o card para mostrar o resultado
-                                    if (!isExpanded) toggleEtapa(etapa.id)
-                                    void handleGerarDocumento(etapa.id, doc.tipo as TipoDocumento)
-                                  }}
-                                  disabled={docState?.status === 'gerando'}
-                                  className={cn(
-                                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors max-w-[160px]',
-                                    docState?.status === 'gerando'
-                                      ? 'bg-muted text-muted-foreground opacity-60 cursor-not-allowed'
-                                      : docState?.status === 'gerado'
-                                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60'
-                                      : 'bg-primary/10 text-primary hover:bg-primary/20'
-                                  )}
-                                >
-                                  {docState?.status === 'gerando' ? (
-                                    <><Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" /> Gerando...</>
-                                  ) : (
-                                    <>
-                                      {docState?.status === 'gerado'
-                                        ? <RefreshCw className="h-2.5 w-2.5 shrink-0" />
-                                        : <FileText className="h-2.5 w-2.5 shrink-0" />}
-                                      <span className="truncate">{acao}: {nomeCurto}</span>
-                                    </>
-                                  )}
-                                </button>
-                              )
-                            })}
-
-                            {hasDetails && (
+                        <div className="px-4 py-2.5 bg-background border-t mt-auto space-y-2">
+                          {/* Linha 1: duração + status + expandir */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" /> {etapa.duracao_estimada}
+                            </span>
+                            <div className="flex items-center gap-2">
                               <button
                                 type="button"
                                 onClick={e => {
                                   e.stopPropagation()
-                                  toggleEtapa(etapa.id)
+                                  handleEtapaStatusChange(etapa.id)
                                 }}
-                                className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                                title={isExpanded ? 'Recolher' : 'Ver detalhes'}
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80',
+                                  etapaStatusBadge(etapaStatus)
+                                )}
                               >
-                                {isExpanded
-                                  ? <ChevronUp className="h-3.5 w-3.5" />
-                                  : <ChevronDown className="h-3.5 w-3.5" />}
+                                {etapaStatusLabel(etapaStatus)}
                               </button>
-                            )}
+                              {hasDetails && (
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    toggleEtapa(etapa.id)
+                                  }}
+                                  className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                                  title={isExpanded ? 'Recolher' : 'Ver detalhes'}
+                                >
+                                  {isExpanded
+                                    ? <ChevronUp className="h-3.5 w-3.5" />
+                                    : <ChevronDown className="h-3.5 w-3.5" />}
+                                </button>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Linha 2: botões de gerar documento (um por documento, com quebra) */}
+                          {documentosEtapa.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {documentosEtapa.map(doc => {
+                                const key = `${etapa.id}_${doc.tipo}`
+                                const docState = docsMap[key]
+                                const nomeCurto = doc.label.split('—')[0].trim()
+                                const acao = docState?.status === 'gerado' ? 'Regerar' : 'Gerar'
+                                return (
+                                  <button
+                                    key={doc.tipo}
+                                    type="button"
+                                    title={`${acao}: ${doc.label}`}
+                                    onClick={e => {
+                                      e.stopPropagation()
+                                      if (!isExpanded) toggleEtapa(etapa.id)
+                                      void handleGerarDocumento(etapa.id, doc.tipo as TipoDocumento)
+                                    }}
+                                    disabled={docState?.status === 'gerando'}
+                                    className={cn(
+                                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors',
+                                      docState?.status === 'gerando'
+                                        ? 'bg-muted text-muted-foreground opacity-60 cursor-not-allowed'
+                                        : docState?.status === 'gerado'
+                                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                                        : 'bg-primary/10 text-primary hover:bg-primary/20'
+                                    )}
+                                  >
+                                    {docState?.status === 'gerando' ? (
+                                      <><Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" /> Gerando...</>
+                                    ) : (
+                                      <>
+                                        {docState?.status === 'gerado'
+                                          ? <RefreshCw className="h-2.5 w-2.5 shrink-0" />
+                                          : <FileText className="h-2.5 w-2.5 shrink-0" />}
+                                        <span>{acao}: {nomeCurto}</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
 
                         {/* Expanded details */}
