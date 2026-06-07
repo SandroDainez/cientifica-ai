@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
-import type { Trabalho } from '@/types'
 
 export const maxDuration = 120
 
@@ -43,56 +42,72 @@ export async function POST(request: Request) {
     .single()
 
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
-  const trabalho = trabalhoData as Trabalho
 
-  // Prompt FOCADO de editor cirúrgico (não o de geração, que faz reescrever tudo).
-  const systemPrompt = `Você é um EDITOR de textos acadêmicos especializado em correções CIRÚRGICAS. Você recebe um texto pronto e UMA instrução de melhoria específica. Sua única função é APLICAR essa instrução, mudando o MÍNIMO necessário no texto.
+  const nPalavras = conteudo.split(/\s+/).filter(Boolean).length
+  const maxTokens = Math.max(4000, nPalavras * 3)
+  let ultimoErro = ''
 
-Princípios inegociáveis:
-- Faça SOMENTE o que a instrução pede. NÃO reescreva frases ou parágrafos que a instrução não menciona.
-- NÃO adicione conteúdo, ideias ou citações novas. NÃO remova dados, números ou citações existentes (a menos que a instrução peça explicitamente).
-- Preserve o estilo, o tom, a formatação markdown e as TABELAS (linhas que começam com "|") exatamente como estão.
-- NUNCA INVENTE: se a instrução pedir para completar/adicionar uma referência, dado, número, autor, ano, título ou periódico que você NÃO tem com certeza, NÃO fabrique nada — mantenha a citação/marcador como está. É melhor deixar como está do que inventar.
-- NÃO "encha linguiça": se a instrução for expandir/aprofundar, agregue apenas conteúdo com substância real e ancorado em citações já presentes; jamais adicione frases vazias só para aumentar o tamanho.
-- O texto resultante deve ser claramente MELHOR após a correção — nunca pior, mais confuso ou mais raso. Se a única forma de cumprir a instrução for piorar o texto ou inventar, prefira fazer uma melhora mínima e segura.
-- Responda SOMENTE com o texto completo já corrigido, sem comentários, sem aspas, sem títulos extras.`
+  // ── ESTRATÉGIA 1 (preferida): EDIÇÕES PONTUAIS ─────────────────────────────
+  // O modelo devolve só os trechos a trocar (buscar→substituir); o código aplica
+  // a substituição. Assim o resto do texto fica IDÊNTICO — sem reescrita, sem
+  // truncamento, sem paráfrase. Muito mais confiável que pedir o texto inteiro.
+  const sysDiff = `Você é um editor cirúrgico de textos acadêmicos. Recebe um texto e UMA instrução de melhoria. Responda APENAS com JSON no formato:
+{"edicoes":[{"buscar":"<trecho EXATO copiado do texto>","substituir":"<novo trecho>"}]}
 
-  const userPrompt = `INSTRUÇÃO DE MELHORIA (aplique exatamente isto, e nada além):
-• ${sugestaoTitulo}
-• ${sugestaoDescricao}
+Regras:
+- "buscar" deve ser copiado LETRA POR LETRA do texto (mesma pontuação, acentos e maiúsculas), com tamanho suficiente para ser único (use uma frase inteira quando possível).
+- Faça SOMENTE o que a instrução pede; cada edição muda o mínimo necessário. Não toque em nada que a instrução não menciona.
+- NUNCA invente referência, autor, ano, dado ou número. Para apagar um trecho, use "substituir":"".
+- NÃO altere tabelas (linhas que começam com "|").
+- No máximo 12 edições. Se nada precisa mudar, responda {"edicoes":[]}.`
+  const userDiff = `INSTRUÇÃO: ${sugestaoTitulo} — ${sugestaoDescricao}
 
-Aplique a instrução acima ao TEXTO abaixo, alterando apenas o que for necessário para cumpri-la. Devolva o texto inteiro já corrigido (as partes não afetadas devem permanecer idênticas).
+TEXTO:
+${conteudo}`
+
+  try {
+    const raw = await callAI(sysDiff, userDiff, false, Math.min(maxTokens, 6000))
+    const edicoes = parseEdicoes(raw)
+    if (edicoes.length > 0) {
+      const { texto, aplicadas } = aplicarEdicoes(conteudo, edicoes)
+      if (aplicadas > 0 && texto.trim() && texto !== conteudo) {
+        return streamStringComEfeito(texto)
+      }
+    }
+  } catch (err) {
+    ultimoErro = err instanceof Error ? err.message : String(err)
+    console.error('[aplicar-sugestao] edições pontuais falharam:', ultimoErro)
+  }
+
+  // ── ESTRATÉGIA 2 (fallback): REESCRITA CIRÚRGICA do texto inteiro ──────────
+  const sysReescrita = `Você é um EDITOR de textos acadêmicos especializado em correções CIRÚRGICAS. Aplique a instrução mudando o MÍNIMO necessário.
+- Faça SOMENTE o que a instrução pede; não reescreva o que ela não menciona.
+- NUNCA invente referência/dado/autor/ano. Não remova dados/citações existentes.
+- Preserve estilo, formatação markdown e TABELAS (linhas com "|").
+- Não encha linguiça. O texto deve ficar MELHOR, nunca pior.
+- Responda SOMENTE com o texto completo corrigido, sem comentários.`
+  const userReescrita = `INSTRUÇÃO: ${sugestaoTitulo} — ${sugestaoDescricao}
 
 TEXTO:
 ${conteudo}
 
 TEXTO CORRIGIDO (completo):`
 
-  // Correção CIRÚRGICA: callAI com temperatura baixa (0.3) — preciso, não
-  // criativo. streamText (temp 0.9) reescrevia o texto e às vezes piorava.
-  // Retry com fallback de modelo; valida o resultado antes de aplicar.
-  const nPalavras = conteudo.split(/\s+/).filter(Boolean).length
-  const maxTokens = Math.max(6000, nPalavras * 3)
   let corrigido = ''
-  let ultimoErro = ''
-  for (const fast of [false, false, true]) {
+  for (const fast of [false, true]) {
     if (corrigido) break
     try {
-      const out = await callAI(systemPrompt, userPrompt, fast, maxTokens)
-      // Aceita só se vier conteúdo plausível (não vazio e sem truncar demais).
-      // Permite encurtar (ex.: "reduzir extensão"), mas rejeita perda > 55%.
+      const out = await callAI(sysReescrita, userReescrita, fast, maxTokens)
       if (out?.trim() && out.split(/\s+/).filter(Boolean).length >= nPalavras * 0.45) {
         corrigido = out.trim()
       }
     } catch (err) {
       ultimoErro = err instanceof Error ? err.message : String(err)
-      console.error('[aplicar-sugestao] tentativa falhou:', ultimoErro)
+      console.error('[aplicar-sugestao] reescrita falhou:', ultimoErro)
     }
   }
 
   if (!corrigido) {
-    // NÃO devolve texto ruim/erro como conteúdo — retorna erro para o cliente
-    // manter o texto original intacto.
     return NextResponse.json(
       { error: `Não foi possível aplicar a sugestão agora${ultimoErro ? ` (${ultimoErro})` : ''}. Tente novamente.` },
       { status: 502 }
@@ -100,4 +115,42 @@ TEXTO CORRIGIDO (completo):`
   }
 
   return streamStringComEfeito(corrigido)
+}
+
+interface Edicao { buscar: string; substituir: string }
+
+/** Extrai e valida o array de edições do JSON retornado pelo modelo. */
+function parseEdicoes(raw: string): Edicao[] {
+  if (!raw) return []
+  // Remove cercas de código e isola o objeto JSON
+  let txt = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
+  const ini = txt.indexOf('{')
+  const fim = txt.lastIndexOf('}')
+  if (ini >= 0 && fim > ini) txt = txt.slice(ini, fim + 1)
+  try {
+    const obj = JSON.parse(txt) as { edicoes?: Edicao[] }
+    if (!Array.isArray(obj.edicoes)) return []
+    return obj.edicoes
+      .filter(e => e && typeof e.buscar === 'string' && typeof e.substituir === 'string' && e.buscar.length > 0)
+      .slice(0, 12)
+  } catch {
+    return []
+  }
+}
+
+/** Aplica as edições por substituição literal (1ª ocorrência). Protege tabelas. */
+function aplicarEdicoes(texto: string, edicoes: Edicao[]): { texto: string; aplicadas: number } {
+  let resultado = texto
+  let aplicadas = 0
+  for (const e of edicoes) {
+    // Nunca aceita edição que mexa em linha de tabela
+    if (/^\s*\|/m.test(e.buscar) || /^\s*\|/m.test(e.substituir)) continue
+    const idx = resultado.indexOf(e.buscar)
+    if (idx === -1) continue // trecho não bate verbatim → ignora (não arrisca)
+    resultado = resultado.slice(0, idx) + e.substituir + resultado.slice(idx + e.buscar.length)
+    aplicadas++
+  }
+  // Limpa eventuais linhas em branco triplas deixadas por remoções
+  resultado = resultado.replace(/\n{3,}/g, '\n\n')
+  return { texto: resultado, aplicadas }
 }
