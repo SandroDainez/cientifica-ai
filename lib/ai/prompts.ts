@@ -1,6 +1,7 @@
 import type { TipoTrabalho, FormatoCitacao, NivelExperiencia, FaseConfig, Referencia } from '@/types'
 import { citacaoInTexto } from '@/lib/referencias/formatar'
 import { detectarCampo, getRegrasCampoAcademico } from '@/lib/ai/campos-academicos'
+import { getNormasSecao } from '@/lib/ai/normas-cientificas'
 
 // ============================================================
 // Sistema base — personaliza o tom conforme nível do usuário
@@ -469,6 +470,9 @@ Meta: em uma Introdução de 300 palavras, espera-se 10-20 marcadores (SOBRENOME
   if (fase.min_palavras || fase.max_palavras) {
     partes.push(`\n**Extensão:** entre ${fase.min_palavras ?? '—'} e ${fase.max_palavras ?? '—'} palavras.`)
   }
+
+  // ── Portão de qualidade: normas rigorosas da seção (verificar antes/depois) ──
+  partes.push(getNormasSecao(fase.chave_secao ?? fase.id ?? '', fase.nome))
 
   // ── Formato técnico específico da seção (estrutura rigorosa) ────────────────
   const formatoSecao = getRegrasFormatoSecao(fase.chave_secao ?? fase.id ?? '')

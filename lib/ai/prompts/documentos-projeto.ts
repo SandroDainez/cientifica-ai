@@ -1,5 +1,6 @@
 import type { TipoDocumento, DadosProjeto, Referencia, FormatoCitacao } from '@/types'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias } from '@/lib/ai/prompts'
+import { getNormasSecao } from '@/lib/ai/normas-cientificas'
 
 const SYSTEM_PROMPT = `Você é um especialista em pesquisa científica brasileira com profundo domínio em normas ABNT, regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos e prontos para uso.
 
@@ -711,8 +712,13 @@ export function buildDocumentoPrompt(
     }
   }
 
-  // Injeta as referências reais + instrução de ancoragem (densidade máxima) no system prompt
+  // Portão de qualidade — normas rigorosas da seção (Revisão de Literatura)
   let system = SYSTEM_PROMPT
+  if (tipo === 'revisao_literatura') {
+    system += `\n${getNormasSecao('revisao_literatura', 'Revisão de Literatura')}`
+  }
+
+  // Injeta as referências reais + instrução de ancoragem (densidade máxima) no system prompt
   if (referencias && referencias.length > 0) {
     system += `
 
