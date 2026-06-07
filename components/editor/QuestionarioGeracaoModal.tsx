@@ -83,6 +83,14 @@ function getPerguntasParaSecao(chaveSecao: string, tipoTrabalho = ''): Pergunta[
         obrigatoria: true,
       },
       {
+        id: 'objetivo_geral',
+        pergunta: 'Qual é o OBJETIVO do seu trabalho? (o que ele pretende alcançar)',
+        tipo: 'textarea',
+        placeholder: 'Ex: Analisar a associação entre o uso de redes sociais e sintomas depressivos em adolescentes de escolas públicas brasileiras',
+        obrigatoria: true,
+        dica: 'Em artigos, o objetivo entra no último parágrafo da Introdução. Comece com um verbo: analisar, comparar, avaliar, descrever, identificar…',
+      },
+      {
         id: 'justificativa_intro',
         pergunta: 'Por que este problema merece ser estudado agora? (dados, epidemiologia, relevância)',
         tipo: 'textarea',
