@@ -4,6 +4,7 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import { tituloEfetivo } from '@/lib/trabalho/titulo'
+import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   PageBreak, convertInchesToTwip, LineRuleType,
@@ -97,11 +98,14 @@ export async function GET(request: Request) {
   // Título da capa: coluna do trabalho ou, se vazia, extraído da seção "titulo"
   const tituloCapa = tituloEfetivo(trabalho.titulo, secoes)
 
-  const secoesOrdenadas = fluxo
-    ? fluxo.fases
-        .map(f => secoes.find(s => s.chave_secao === f.chave_secao || s.chave_secao === f.id))
-        .filter((s): s is SecaoTrabalho => !!s && !!s.conteudo?.trim())
-    : secoes.filter(s => !!s.conteudo?.trim())
+  // Ordem do DOCUMENTO final (ABNT), não a de elaboração do editor.
+  const secoesOrdenadas = ordenarSecoesParaDocumento(
+    fluxo
+      ? fluxo.fases
+          .map(f => secoes.find(s => s.chave_secao === f.chave_secao || s.chave_secao === f.id))
+          .filter((s): s is SecaoTrabalho => !!s && !!s.conteudo?.trim())
+      : secoes.filter(s => !!s.conteudo?.trim())
+  )
 
   // ── Helpers de estilo ──────────────────────────────────────
   const FONT = 'Times New Roman'

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { tituloEfetivo } from '@/lib/trabalho/titulo'
+import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
 import { VisualizarClient } from './VisualizarClient'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
@@ -40,12 +41,15 @@ export default async function VisualizarPage({ params }: Props) {
   //  - 'resumo'      → renderizado antes da introdução, sem número
   //  - 'referencias' → renderizado no bloco dedicado (lista formatada)
   const ehForaDoCorpo = (chave: string) => ['titulo', 'resumo', 'referencias'].includes(chave)
-  const secoesOrdenadas = (fluxo
+  const corpo = (fluxo
     ? fluxo.fases
         .map(f => secoes.find(s => s.chave_secao === f.chave_secao || s.chave_secao === f.id))
         .filter((s): s is SecaoTrabalho => !!s && !!s.conteudo)
     : secoes.filter(s => !!s.conteudo)
   ).filter(s => !ehForaDoCorpo(s.chave_secao))
+  // Reordena para a ordem ABNT do documento final (Introdução → Objetivos → … →
+  // Conclusão), independente da ordem de elaboração no editor.
+  const secoesOrdenadas = ordenarSecoesParaDocumento(corpo)
 
   return (
     <VisualizarClient
