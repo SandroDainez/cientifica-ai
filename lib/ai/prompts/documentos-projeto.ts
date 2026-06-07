@@ -147,7 +147,15 @@ O protocolo deve conter as seguintes seções obrigatórias, com conteúdo compl
    Tabela de recursos humanos, materiais, deslocamentos e outros
 
 8. REFERÊNCIAS BIBLIOGRÁFICAS
-   Mínimo 10 referências relevantes no formato ABNT
+   Liste APENAS as referências reais que você efetivamente citou ao longo do texto.
+   FORMATO DA LISTA (siga rigorosamente o estilo de citação do trabalho):
+   • ABNT → ordem ALFABÉTICA pelo sobrenome do 1º autor, SEM numeração. Cada entrada: SOBRENOME, Nome. Título. Periódico, volume, número, páginas, ano.
+   • Vancouver → NUMERADA na ordem em que as referências aparecem no texto (1, 2, 3...).
+   • APA → ordem ALFABÉTICA pelo sobrenome, SEM numeração.
+   NUNCA misture estilos (ex: lista numerada com entradas ABNT). A lista e as citações no texto devem usar o MESMO estilo.
+   REGRA: toda referência listada aqui DEVE ter sido citada no texto; e toda citação do texto DEVE constar nesta lista.
+
+CITAÇÕES NO CORPO DO TEXTO: cite as referências reais ao longo das seções 2 (Introdução/Justificativa), 4 (Metodologia — instrumentos, escalas, cálculo amostral) e 5 (Aspectos Éticos — Resolução 466/2012). Cada afirmação factual deve ter citação. NÃO deixe a lista de referências órfã (referências listadas mas não citadas no texto).
 
 Produza o documento completo, formal, em português brasileiro, pronto para ser copiado e inserido na Plataforma Brasil.
 

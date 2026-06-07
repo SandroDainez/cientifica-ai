@@ -6,6 +6,7 @@ import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
 import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
+import { substituirListaReferencias } from '@/lib/referencias/lista-referencias'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
 
 /** Tipos de documento que devem ser embasados em referências reais e citados no texto. */
@@ -139,8 +140,15 @@ export async function POST(request: Request) {
   // Documentos narrativos passam por uma segunda chamada de IA que aplica
   // transformações estruturais (burstiness, variação lexical, remoção de
   // conectivos de IA) que reduzem o score nos detectores para < 30%.
-  const validar = (texto: string) =>
-    DOCS_COM_REFERENCIAS.has(tipoDocumento) ? validarCitacoesReais(texto, referencias, formato) : texto
+  // Valida citações no texto E substitui a lista final de referências pela lista
+  // real formatada no estilo correto (ABNT alfabético / Vancouver numerado).
+  const temListaRefs = tipoDocumento === 'revisao_literatura' || tipoDocumento === 'protocolo_cep'
+  const validar = (texto: string) => {
+    if (!DOCS_COM_REFERENCIAS.has(tipoDocumento)) return texto
+    let t = validarCitacoesReais(texto, referencias, formato)
+    if (temListaRefs && referencias.length > 0) t = substituirListaReferencias(t, referencias, formato)
+    return t
+  }
 
   if (HUMANIZAR_TIPOS.has(tipoDocumento)) {
     try {
