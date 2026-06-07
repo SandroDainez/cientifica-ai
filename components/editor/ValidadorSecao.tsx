@@ -10,9 +10,33 @@ interface ValidadorSecaoProps {
   onAplicarSugestao?: (id: string) => void
   /** Quando fornecido, habilita o botão "Aplicar com IA" que reescreve o texto */
   onAplicarComIA?: (sugestao: SugestaoIA) => Promise<void>
+  /** chave_secao atual — usada para classificar sugestões e redirecionamentos */
+  chaveSecao?: string
 }
 
-export function ValidadorSecao({ resultado, onAplicarSugestao, onAplicarComIA }: ValidadorSecaoProps) {
+/**
+ * Classifica uma sugestão: nem toda sugestão é segura para "Aplicar com IA".
+ * Expandir extensão (gera enchimento), completar referência (risco de inventar)
+ * e conteúdo que pertence a OUTRA seção devem ser revisados manualmente.
+ */
+function classificarSugestao(s: SugestaoIA, chaveSecao?: string): { autoAplicavel: boolean; aviso?: string } {
+  const txt = `${s.titulo} ${s.descricao}`.toLowerCase()
+  const ehMetodologia = /metodolog|busca|estrategia/.test(chaveSecao ?? '')
+
+  if (!ehMetodologia && /(estrat[ée]gia de busca|bases de dados|crit[ée]rios de inclus|descritores|protocolo prisma|prisma)/.test(txt)) {
+    return { autoAplicavel: false, aviso: 'Isto pertence à seção "Metodologia da Busca" — faça lá, não nesta seção.' }
+  }
+  // Só EXPANSÃO é arriscada (gera enchimento). Reduzir/compactar é seguro.
+  if (/(expand|aprofund|aumente|amplie|mais palavras|texto mais longo|extens[ãa]o insuficiente|insuficiente|abaixo do esperado|abaixo do recomendado|inclua mais|adicione mais)/.test(txt)) {
+    return { autoAplicavel: false, aviso: 'Aplicar automaticamente tende a gerar enchimento e baixar a qualidade. Expanda você mesmo com conteúdo real, ou regenere a seção.' }
+  }
+  if (/(refer[êe]ncia incompleta|complete a refer|complementar a refer|dados da refer|t[íi]tulo, peri[óo]dico)/.test(txt)) {
+    return { autoAplicavel: false, aviso: 'A IA não deve inventar dados da referência. Complete no painel de Referências (busca automática) ou manualmente.' }
+  }
+  return { autoAplicavel: true }
+}
+
+export function ValidadorSecao({ resultado, onAplicarSugestao, onAplicarComIA, chaveSecao }: ValidadorSecaoProps) {
   const scoreColor =
     resultado.score >= 80 ? 'text-green-600' :
     resultado.score >= 60 ? 'text-yellow-500' :
@@ -60,6 +84,7 @@ export function ValidadorSecao({ resultado, onAplicarSugestao, onAplicarComIA }:
               sugestao={s}
               onMarcar={onAplicarSugestao}
               onAplicarComIA={onAplicarComIA}
+              chaveSecao={chaveSecao}
             />
           ))}
         </div>
@@ -72,12 +97,16 @@ function SugestaoCard({
   sugestao,
   onMarcar,
   onAplicarComIA,
+  chaveSecao,
 }: {
   sugestao: SugestaoIA
   onMarcar?: (id: string) => void
   onAplicarComIA?: (sugestao: SugestaoIA) => Promise<void>
+  chaveSecao?: string
 }) {
   const [aplicando, setAplicando] = useState(false)
+  const [forcar, setForcar] = useState(false)
+  const { autoAplicavel, aviso } = classificarSugestao(sugestao, chaveSecao)
 
   const { icon: Icon, color, bg } = {
     critico:    { icon: XCircle,       color: 'text-red-600',    bg: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800' },
@@ -104,10 +133,20 @@ function SugestaoCard({
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed pl-5">{sugestao.descricao}</p>
 
+      {/* Aviso para sugestões que NÃO devem ser aplicadas automaticamente */}
+      {!sugestao.aplicado && !autoAplicavel && aviso && (
+        <div className="ml-5 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-2 py-1.5">
+          <AlertTriangle className="h-3 w-3 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-snug">
+            <span className="font-semibold">Revisar manualmente.</span> {aviso}
+          </p>
+        </div>
+      )}
+
       {!sugestao.aplicado && (
         <div className="flex items-center gap-2 pl-5">
-          {/* Aplicar com IA — reescreve o texto automaticamente */}
-          {onAplicarComIA && (
+          {/* Aplicar com IA — só destacado quando é seguro aplicar */}
+          {onAplicarComIA && autoAplicavel && (
             <button
               onClick={handleAplicarComIA}
               disabled={aplicando}
@@ -122,6 +161,32 @@ function SugestaoCard({
                 : <><Sparkles className="h-3 w-3" /> Aplicar com IA</>
               }
             </button>
+          )}
+          {/* Sugestão de risco: aplicar fica como ação secundária discreta */}
+          {onAplicarComIA && !autoAplicavel && (
+            forcar ? (
+              <button
+                onClick={handleAplicarComIA}
+                disabled={aplicando}
+                className={cn(
+                  'inline-flex items-center gap-1 text-xs rounded px-2 py-1 font-medium transition-all',
+                  'border border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30',
+                  aplicando && 'opacity-60 cursor-not-allowed'
+                )}
+              >
+                {aplicando
+                  ? <><Loader2 className="h-3 w-3 animate-spin" /> Aplicando...</>
+                  : <><Sparkles className="h-3 w-3" /> Aplicar mesmo assim</>
+                }
+              </button>
+            ) : (
+              <button
+                onClick={() => setForcar(true)}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
+                Aplicar mesmo assim
+              </button>
+            )
           )}
           {/* Marcar como aplicado manualmente */}
           {onMarcar && (

@@ -476,6 +476,7 @@ export function EditorArea({
             resultado={validacao}
             onAplicarSugestao={onAplicarSugestao}
             onAplicarComIA={onAplicarComIA}
+            chaveSecao={fase.chave_secao}
           />
         </div>
       )}
