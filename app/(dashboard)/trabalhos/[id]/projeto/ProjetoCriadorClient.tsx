@@ -135,38 +135,67 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
 // A IA às vezes tipifica etapas de ética como "preparacao".
 // Baseado no título, corrigimos o tipo antes de qualquer outra lógica.
 
+// Tipos de trabalho SEMPRE bibliográficos (sem coleta de dados, sem CEP).
+const TIPOS_BIBLIOGRAFICOS = new Set(['artigo_revisao', 'revisao_sistematica'])
+
+const RE_ETICA = /cep\b|plataforma brasil|tcle|consentimento|anu[êe]ncia|comit[êe] de [ée]tica|parecer [ée]tico|conep|caae/i
+const RE_COLETA_DADOS = /coleta de dados|instrumento de coleta|question[aá]rio|entrevista|cálculo amostral|calculo amostral|trabalho de campo|aplica[çc][aã]o do/i
+const RE_ANALISE_DADOS = /análise estat|analise estat|tratamento estat|spss|teste de hip[óo]tese|regress[aã]o/i
+const RE_BIBLIOGRAFICO = /bibliogr|literatura|busca|sele[çc]|triagem|prisma|s[íi]ntese|revis[aã]o/i
+
 /**
- * Guardião determinístico do fluxo: se o trabalho NÃO envolve seres humanos e
- * NÃO precisa de CEP, remove do roadmap/checklist toda etapa de ética
- * (CEP, Plataforma Brasil, TCLE, carta de anuência) que a IA tenha incluído por
- * engano. Garante o fluxo correto para cada tipo de trabalho.
+ * Guardião determinístico do fluxo — garante o roadmap correto para o tipo de
+ * trabalho e o tipo de coleta:
+ *  - Tipo bibliográfico / coleta bibliográfica → só fluxo de literatura
+ *    (remove ética, coleta de dados primários/secundários e análise estatística).
+ *  - Coleta secundária (dados públicos: DATASUS, IBGE) → remove CEP, carta de
+ *    anuência e espera de aprovação (dados públicos dispensam aprovação ética),
+ *    mas mantém coleta e análise dos dados secundários.
+ *  - Coleta primária com seres humanos → mantém tudo (CEP é legítimo).
+ * @param tipoTrabalho tipo escolhido pelo usuário (reforça o caso bibliográfico)
  */
-function limparFluxoConformeTipo(dados: DadosProjeto): DadosProjeto {
-  const precisaEtica = Boolean(dados.envolve_seres_humanos) || Boolean(dados.precisa_cep)
-  if (precisaEtica) return dados
+function limparFluxoConformeTipo(dados: DadosProjeto, tipoTrabalho?: string): DadosProjeto {
+  const coleta = dados.tipo_coleta
+  const ehBibliografico = coleta === 'bibliografica' || (tipoTrabalho ? TIPOS_BIBLIOGRAFICOS.has(tipoTrabalho) : false)
+  const ehSecundaria = coleta === 'secundaria'
+  const semHumanos = !dados.envolve_seres_humanos && !dados.precisa_cep
 
-  // Sem ética: força flags e remove etapas/itens de CEP
-  const reEtica = /cep\b|plataforma brasil|tcle|consentimento|anu[êe]ncia|comit[êe] de [ée]tica|parecer [ée]tico|conep|caae/i
+  // Pesquisa primária com seres humanos / CEP legítimo: não mexe.
+  if (!ehBibliografico && !ehSecundaria && !semHumanos) return dados
 
-  const roadmap = (dados.roadmap ?? []).filter(e => {
+  // Remove ética (CEP, carta de anuência, TCLE, aguardar aprovação)
+  const semEtica = (e: { tipo: string; titulo: string; descricao?: string }) => {
     if (e.tipo === 'etica') return false
-    if (e.tipo === 'aguardar' && reEtica.test(`${e.titulo} ${e.descricao ?? ''}`)) return false
-    if (reEtica.test(e.titulo)) return false
+    if (e.tipo === 'aguardar' && RE_ETICA.test(`${e.titulo} ${e.descricao ?? ''}`)) return false
+    if (RE_ETICA.test(e.titulo)) return false
     return true
-  })
+  }
+
+  let roadmap = (dados.roadmap ?? []).filter(semEtica)
+
+  if (ehBibliografico) {
+    // Revisão pura: remove coleta de dados e análise estatística (mantém busca
+    // bibliográfica e síntese da literatura).
+    roadmap = roadmap.filter(e => {
+      const txt = `${e.titulo} ${e.descricao ?? ''}`
+      if (e.tipo === 'coleta' && !RE_BIBLIOGRAFICO.test(txt) && RE_COLETA_DADOS.test(txt)) return false
+      if (e.tipo === 'analise' && RE_ANALISE_DADOS.test(txt) && !RE_BIBLIOGRAFICO.test(txt)) return false
+      return true
+    })
+  }
 
   const checklist = (dados.checklist ?? []).filter(item => {
-    if (item.categoria === 'etica') return false
-    if (item.etapa_tipo === 'etica') return false
-    if (reEtica.test(`${item.item} ${item.descricao ?? ''}`)) return false
+    if (item.categoria === 'etica' || item.etapa_tipo === 'etica') return false
+    if (RE_ETICA.test(`${item.item} ${item.descricao ?? ''}`)) return false
+    if (ehBibliografico && RE_COLETA_DADOS.test(`${item.item} ${item.descricao ?? ''}`)) return false
     return true
   })
 
-  const alertas = (dados.alertas ?? []).filter(a => !reEtica.test(a))
+  const alertas = (dados.alertas ?? []).filter(a => !RE_ETICA.test(a))
 
   return {
     ...dados,
-    envolve_seres_humanos: false,
+    envolve_seres_humanos: ehBibliografico || ehSecundaria ? false : dados.envolve_seres_humanos,
     precisa_cep: false,
     precisa_carta_anuencia: false,
     precisa_tcle: false,
@@ -499,7 +528,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   const [dadosColetados, setDadosColetados] = useState('')
 
   const [streamingText, setStreamingText] = useState('')
-  const [planData, setPlanData] = useState<DadosProjeto | null>(dadosProjetoInicial)
+  // Aplica o guardião de fluxo também ao abrir um trabalho já salvo, para
+  // corrigir roadmaps antigos gerados antes das regras de fluxo por tipo.
+  const [planData, setPlanData] = useState<DadosProjeto | null>(
+    dadosProjetoInicial ? limparFluxoConformeTipo(dadosProjetoInicial, trabalho.tipo_trabalho) : null
+  )
   const [salvando, setSalvando] = useState(false)
 
   // Roadmap interaction state
@@ -943,7 +976,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
         dados_coletados: temDados && dadosColetados.trim() ? dadosColetados.trim() : undefined,
         criado_em: new Date().toISOString(),
         confirmado: false,
-      })
+      }, trabalho.tipo_trabalho)
 
       // Init local status state from new plan
       const statuses: Record<string, EtapaStatus> = {}

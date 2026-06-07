@@ -75,9 +75,11 @@ ${ehBibliografico ? 'É uma pesquisa BIBLIOGRÁFICA/DOCUMENTAL (análise de lite
 ⚖️ REGRA DE CEP — DECIDA COM RIGOR
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CEP/Plataforma Brasil é necessário APENAS quando a pesquisa COLETA dados primários diretamente de seres humanos (entrevistas, questionários, dados clínicos, prontuários identificáveis) ou animais.
-- Se a descrição indica coleta primária com pessoas/animais → "tipo_coleta":"primaria", "envolve_seres_humanos":true, "precisa_cep":true e inclua as etapas de ética.
-- Se é análise de dados públicos/secundários anonimizados, ou pesquisa bibliográfica → "envolve_seres_humanos":false, "precisa_cep":false e NÃO inclua etapas de ética.
-- Defina cada flag (envolve_seres_humanos, precisa_cep, precisa_carta_anuencia, precisa_tcle) conforme a REALIDADE da descrição — NÃO copie os valores do exemplo do schema.`
+- Coleta PRIMÁRIA com pessoas/animais → "tipo_coleta":"primaria", "envolve_seres_humanos":true, "precisa_cep":true, e inclua as etapas de ética.
+- DADOS SECUNDÁRIOS PÚBLICOS E ANONIMIZADOS (DATASUS, SIM/SIH, IBGE, TabNet, bases abertas) → "tipo_coleta":"secundaria", "envolve_seres_humanos":false, "precisa_cep":false, "precisa_carta_anuencia":false, "precisa_tcle":false. Bases públicas DISPENSAM CEP e NÃO exigem carta de anuência. NÃO inclua etapas de CEP, Plataforma Brasil, carta de anuência nem "aguardar aprovação". O fluxo é: definição da base → extração dos dados → organização → análise → escrita → submissão.
+- Pesquisa BIBLIOGRÁFICA → "tipo_coleta":"bibliografica", sem ética, sem coleta de dados primários/secundários e sem análise estatística (apenas síntese da literatura).
+- Carta de anuência só é necessária para acessar dados RESTRITOS de uma instituição específica (ex.: prontuários de um hospital), NUNCA para bases públicas abertas.
+- Defina cada flag conforme a REALIDADE da descrição — NÃO copie os valores do exemplo do schema.`
 
   const user = `O pesquisador descreveu sua ideia assim:
 
