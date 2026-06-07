@@ -11,6 +11,45 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Referencia } from '@/types'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
+import { callAI } from '@/lib/ai/stream'
+
+/**
+ * Gera queries de busca OTIMIZADAS em inglês (termos-chave/MeSH) a partir do tema.
+ * A tradução por regex é parcial e deixa palavras em português que quebram o PubMed;
+ * a IA extrai os termos científicos corretos, garantindo recall de artigos reais.
+ * Retorna [] em caso de falha (o chamador cai no fallback de regex).
+ */
+async function gerarQueriesIA(titulo: string, area: string, pergunta: string): Promise<string[]> {
+  const tema = [titulo, pergunta, area].filter(Boolean).join('. ').slice(0, 600)
+  if (tema.length < 10) return []
+  try {
+    const system = 'Você é um bibliotecário de pesquisa científica especialista em estratégias de busca em PubMed e CrossRef.'
+    const user = `Tema de pesquisa (em português):
+"${tema}"
+
+Gere de 4 a 6 QUERIES de busca em INGLÊS para encontrar artigos científicos reais sobre este tema em PubMed e CrossRef.
+REGRAS:
+- Use os termos científicos/técnicos corretos em inglês (estilo MeSH quando aplicável).
+- Cada query: 2 a 5 palavras-chave essenciais (sem frases longas, sem palavras em português, sem pontuação).
+- Cubra os diferentes ângulos do tema (intervenção, desfecho, população, método).
+- Não inclua aspas, operadores booleanos nem números.
+
+Responda APENAS com um array JSON de strings. Exemplo: ["tirzepatide gastric emptying","GLP-1 agonist aspiration risk surgery","gastric ultrasound residual volume","preoperative fasting GLP-1"]`
+    const raw = await callAI(system, user, true, 500)
+    const match = raw.match(/\[[\s\S]*\]/)
+    if (!match) return []
+    const arr = JSON.parse(match[0]) as unknown
+    if (!Array.isArray(arr)) return []
+    return arr
+      .filter((q): q is string => typeof q === 'string')
+      .map(q => q.trim())
+      .filter(q => q.length >= 4 && q.length <= 100)
+      .slice(0, 6)
+  } catch (err) {
+    console.error('[auto-import] gerarQueriesIA falhou:', err)
+    return []
+  }
+}
 
 /** Traduz termos acadêmicos PT → EN para melhorar buscas internacionais (todas as áreas). */
 export function toEnglishQuery(texto: string): string {
@@ -213,30 +252,29 @@ export async function garantirReferenciasReais({
     const perguntaEN = toEnglishQuery(perguntaStr)
     const ehBiomedico = isBiomedical(`${areaStr} ${tituloStr} ${perguntaStr}`)
 
-    // Queries ANCORADAS NO TÓPICO — prioriza relevância sobre quantidade.
-    // Buscas genéricas por área (ex: "obstetrics review") trazem ruído
-    // (mamografia, pediatria...). O título e a pergunta são o melhor sinal.
     const secKws = SECAO_KEYWORDS[chaveSecao] ?? ['research']
-    const queries: string[] = []
-    // 1-2: título (EN e PT) — o sinal mais específico
-    if (tituloEN.length > 8) queries.push(tituloEN)
-    if (tituloStr && tituloStr.toLowerCase() !== tituloEN.toLowerCase() && tituloStr.length > 8) queries.push(tituloStr)
-    // 3: pergunta de pesquisa
-    if (perguntaEN.length > 10 && perguntaEN.toLowerCase() !== tituloEN.toLowerCase()) queries.push(perguntaEN.slice(0, 140))
-    // 4: título + palavra-chave da seção (continua ancorado no tópico)
-    if (tituloEN.length > 8) queries.push(`${tituloEN.split(/\s+/).slice(0, 8).join(' ')} ${secKws[0]}`)
-    // 5: pergunta + palavra-chave (cobertura adicional do tópico)
-    if (perguntaEN.length > 10) queries.push(`${perguntaEN.split(/\s+/).slice(0, 8).join(' ')} ${secKws[1] ?? secKws[0]}`)
-    // 6: UMA query de área como último recurso (só se faltam refs específicas)
-    if (areaEN) queries.push(`${areaEN} ${secKws[0]}`)
 
+    // PRIMÁRIO: queries em inglês geradas pela IA (termos-chave/MeSH corretos).
+    // A tradução por regex é parcial e deixa português que quebra o PubMed —
+    // por isso a IA é o caminho confiável para recall de artigos reais.
+    const queriesIA = await gerarQueriesIA(tituloStr, areaStr, perguntaStr)
+
+    // FALLBACK: queries por regex (caso a IA falhe), ancoradas no tópico.
+    const queriesRegex: string[] = []
+    if (tituloEN.length > 8) queriesRegex.push(tituloEN.split(/\s+/).slice(0, 8).join(' '))
+    if (perguntaEN.length > 10 && perguntaEN.toLowerCase() !== tituloEN.toLowerCase()) queriesRegex.push(perguntaEN.split(/\s+/).slice(0, 8).join(' '))
+    if (tituloEN.length > 8) queriesRegex.push(`${tituloEN.split(/\s+/).slice(0, 6).join(' ')} ${secKws[0]}`)
+    if (areaEN) queriesRegex.push(`${areaEN} ${secKws[0]}`)
+
+    // Une: prioriza IA, completa com regex até 6 queries
     const seen = new Set<string>()
-    const queriesValidas = queries
+    const queriesValidas = [...queriesIA, ...queriesRegex]
       .map(q => q.trim())
-      .filter(q => q.length >= 6 && !seen.has(q.toLowerCase().slice(0, 50)) && seen.add(q.toLowerCase().slice(0, 50)))
+      .filter(q => q.length >= 4 && !seen.has(q.toLowerCase().slice(0, 50)) && seen.add(q.toLowerCase().slice(0, 50)))
       .slice(0, 6)
 
     if (queriesValidas.length === 0) return referencias
+    console.log('[auto-import] queries:', queriesValidas)
 
     const resultados = await Promise.all(
       queriesValidas.map(q => buscarRefsExternas(q, 8, !ehBiomedico))
