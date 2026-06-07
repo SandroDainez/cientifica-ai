@@ -184,10 +184,19 @@ Para CADA sentença que faça uma afirmação factual da literatura, marque ao f
 
   const fmt = formato.toUpperCase()
   const exemplo = formato === 'vancouver'
-    ? 'número entre colchetes na ordem de aparição: [1], [2]. Reuse o MESMO número sempre que citar a mesma referência.'
+    ? `número entre colchetes na ordem de aparição: [1], [2]. Reuse o MESMO número sempre que citar a mesma referência.`
     : formato === 'apa'
-    ? '(Sobrenome, Ano) — ex: (Silva, 2020); ou Silva (2020) quando o autor é sujeito da frase.'
-    : '(SOBRENOME, ANO) — ex: (SILVA, 2020); dois autores (SILVA; COSTA, 2020); três ou mais (SILVA et al., 2020). Ou SILVA (2020) quando o autor é sujeito.'
+    ? `DUAS formas (escolha conforme a posição do autor na frase):
+   • Autor FORA da frase → tudo entre parênteses, formato normal: "...é eficaz (Silva, 2020)." | dois autores: (Silva & Costa, 2020) | três+: (Silva et al., 2020).
+   • Autor DENTRO da frase (sujeito) → só o ANO entre parênteses: "Segundo Silva (2020), ..." | "Silva e Costa (2020) observaram..."
+   NUNCA escreva o sobrenome com o ano fora dos parênteses sem que o autor seja sujeito da frase.`
+    : `REGRA DE PARÊNTESES (ABNT NBR 10520) — DUAS formas, conforme a posição do autor:
+   • Autor FORA da frase → TUDO entre parênteses e em MAIÚSCULAS, separador ponto-e-vírgula:
+     "...é eficaz (SILVA, 2020)." | dois autores: (SILVA; COSTA, 2020) | três ou mais: (SILVA et al., 2020).
+   • Autor DENTRO da frase (é o sujeito) → sobrenome em minúsculas (só inicial maiúscula), separador "e", e SÓ o ano entre parênteses:
+     "Segundo Silva (2020), ..." | "Silva e Costa (2020) demonstraram..." | "Silva et al. (2020) observaram..."
+   ERRO PROIBIDO: escrever o sobrenome em MAIÚSCULAS com o ano fora dos parênteses (ex: "GAN; GOLDBERG (2018)" está ERRADO).
+   O correto seria "(GAN; GOLDBERG, 2018)" (fora da frase) OU "Gan e Goldberg (2018)" (na frase).`
 
   return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

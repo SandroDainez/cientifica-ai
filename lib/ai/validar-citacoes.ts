@@ -54,6 +54,21 @@ function normalizar(s: string): string {
  * @param formato     formato de citação escolhido (não converte Vancouver numérico)
  * @returns texto com citações inventadas substituídas pelo placeholder
  */
+/**
+ * Corrige o formato híbrido errado de citação ABNT:
+ *   "GAN; GOLDBERG (2018)"  → "(GAN; GOLDBERG, 2018)"   (autor em maiúsculas com ano fora)
+ *   "JOHNSON et al. (1997)" → "(JOHNSON et al., 1997)"
+ * Não toca em citações narrativas corretas (autor em minúsculas: "Silva (2020)")
+ * nem em citações já parentéticas: "(SILVA, 2020)".
+ */
+export function normalizarFormatoCitacoesAbnt(texto: string): string {
+  return texto.replace(
+    // Sobrenome(s) em MAIÚSCULAS, opcionalmente com "; SOBRENOME" e "et al.", seguido de (ANO)
+    /(?<![(\wÀ-ÿ])([A-ZÀ-Ý][A-ZÀ-Ý]+(?:\s*;\s*[A-ZÀ-Ý][A-ZÀ-Ý]+)*(?:\s+et\s+al\.?)?)\s+\(((?:19|20)\d{2}[a-z]?)\)/g,
+    (_match, autor, ano) => `(${autor.trim()}, ${ano})`
+  )
+}
+
 export function validarCitacoesReais(
   texto: string,
   referencias: Referencia[],
@@ -61,6 +76,9 @@ export function validarCitacoesReais(
 ): string {
   // Vancouver usa [1], [2] — validação numérica é tratada à parte; não mexe aqui
   if (formato === 'vancouver') return texto
+
+  // Primeiro corrige o formato híbrido errado (maiúsculas + ano fora dos parênteses)
+  if (formato === 'abnt') texto = normalizarFormatoCitacoesAbnt(texto)
 
   const validos = sobrenomesValidos(referencias)
 
