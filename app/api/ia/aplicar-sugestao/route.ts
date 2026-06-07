@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho } from '@/types'
@@ -46,31 +45,26 @@ export async function POST(request: Request) {
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
   const trabalho = trabalhoData as Trabalho
 
-  const systemPrompt = buildSystemPrompt(
-    trabalho.tipo_trabalho,
-    trabalho.nivel_experiencia,
-    trabalho.formato_citacao,
-    trabalho.area_conhecimento ?? undefined,
-  )
+  // Prompt FOCADO de editor cirúrgico (não o de geração, que faz reescrever tudo).
+  const systemPrompt = `Você é um EDITOR de textos acadêmicos especializado em correções CIRÚRGICAS. Você recebe um texto pronto e UMA instrução de melhoria específica. Sua única função é APLICAR essa instrução, mudando o MÍNIMO necessário no texto.
 
-  const userPrompt = `Você recebeu um texto acadêmico e uma sugestão de melhoria específica. Sua tarefa é aplicar EXATAMENTE essa sugestão ao texto e devolver o texto completo corrigido.
+Princípios inegociáveis:
+- Faça SOMENTE o que a instrução pede. NÃO reescreva frases ou parágrafos que a instrução não menciona.
+- NÃO adicione conteúdo, ideias ou citações novas. NÃO remova dados, números ou citações existentes (a menos que a instrução peça explicitamente).
+- Preserve o estilo, o tom, a formatação markdown e as TABELAS (linhas que começam com "|") exatamente como estão.
+- O texto resultante deve ser claramente MELHOR após a correção — nunca pior nem mais confuso.
+- Responda SOMENTE com o texto completo já corrigido, sem comentários, sem aspas, sem títulos extras.`
 
-SUGESTÃO A APLICAR:
-Título: "${sugestaoTitulo}"
-Descrição: "${sugestaoDescricao}"
+  const userPrompt = `INSTRUÇÃO DE MELHORIA (aplique exatamente isto, e nada além):
+• ${sugestaoTitulo}
+• ${sugestaoDescricao}
 
-REGRAS ABSOLUTAS:
-1. Aplique APENAS a mudança descrita na sugestão — não altere o restante do texto
-2. Preserve 100% do conteúdo, dados, citações e estrutura que não se relacionam à sugestão
-3. Mantenha a formatação markdown (**, ##, listas, etc.)
-4. Preserve todas as citações bibliográficas intactas — (SOBRENOME, ANO), [1], etc.
-5. TABELAS são INTOCÁVEIS: copie cada linha de tabela markdown (que começa com "|") EXATAMENTE como está — mesmos valores, mesmas colunas, mesma ordem. NUNCA reformate, recalcule ou altere uma tabela. Modifique apenas o TEXTO em prosa.
-6. Entregue SOMENTE o texto corrigido — sem comentários, sem explicações, sem títulos extras
+Aplique a instrução acima ao TEXTO abaixo, alterando apenas o que for necessário para cumpri-la. Devolva o texto inteiro já corrigido (as partes não afetadas devem permanecer idênticas).
 
-TEXTO ORIGINAL A CORRIGIR:
+TEXTO:
 ${conteudo}
 
-Texto corrigido (completo, com a sugestão aplicada):`
+TEXTO CORRIGIDO (completo):`
 
   // Correção CIRÚRGICA: callAI com temperatura baixa (0.3) — preciso, não
   // criativo. streamText (temp 0.9) reescrevia o texto e às vezes piorava.
