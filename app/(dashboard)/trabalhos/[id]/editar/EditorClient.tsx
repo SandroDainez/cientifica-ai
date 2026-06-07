@@ -396,8 +396,21 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
 
   // ── Aplicar sugestão com IA (reescreve o texto automaticamente) ──
   const handleAplicarComIA = useCallback(async (sugestao: import('@/types').SugestaoIA) => {
-    const conteudo = conteudosRef.current[faseAtualRef.current.chave_secao] ?? ''
+    const chaveAlvo = faseAtualRef.current.chave_secao
+    const conteudo = conteudosRef.current[chaveAlvo] ?? ''
     if (!conteudo.trim()) return
+
+    // Guarda a versão ANTERIOR para permitir Desfazer (a aplicação às vezes piora)
+    const conteudoAntes = conteudo
+    const desfazer = async () => {
+      setConteudos(prev => ({ ...prev, [chaveAlvo]: conteudoAntes }))
+      await fetch('/api/ia/salvar-secao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trabalhoId: trabalho.id, chaveSecao: chaveAlvo, conteudo: conteudoAntes, status: 'editado' }),
+      }).catch(() => {})
+      toast.success('Correção desfeita — versão anterior restaurada.')
+    }
 
     setStatusIA('gerando')
     setConteudoAtual('')
@@ -437,7 +450,10 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           }),
         }).catch(() => {})
       }
-      toast.success('Sugestão aplicada com sucesso!')
+      toast.success('Sugestão aplicada. Não gostou?', {
+        action: { label: 'Desfazer', onClick: () => { void desfazer() } },
+        duration: 12000,
+      })
     } catch (err) {
       console.error('Erro ao aplicar sugestão:', err)
       // Restaura o conteúdo original em caso de falha

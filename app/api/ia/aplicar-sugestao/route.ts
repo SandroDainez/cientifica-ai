@@ -52,7 +52,9 @@ Princípios inegociáveis:
 - Faça SOMENTE o que a instrução pede. NÃO reescreva frases ou parágrafos que a instrução não menciona.
 - NÃO adicione conteúdo, ideias ou citações novas. NÃO remova dados, números ou citações existentes (a menos que a instrução peça explicitamente).
 - Preserve o estilo, o tom, a formatação markdown e as TABELAS (linhas que começam com "|") exatamente como estão.
-- O texto resultante deve ser claramente MELHOR após a correção — nunca pior nem mais confuso.
+- NUNCA INVENTE: se a instrução pedir para completar/adicionar uma referência, dado, número, autor, ano, título ou periódico que você NÃO tem com certeza, NÃO fabrique nada — mantenha a citação/marcador como está. É melhor deixar como está do que inventar.
+- NÃO "encha linguiça": se a instrução for expandir/aprofundar, agregue apenas conteúdo com substância real e ancorado em citações já presentes; jamais adicione frases vazias só para aumentar o tamanho.
+- O texto resultante deve ser claramente MELHOR após a correção — nunca pior, mais confuso ou mais raso. Se a única forma de cumprir a instrução for piorar o texto ou inventar, prefira fazer uma melhora mínima e segura.
 - Responda SOMENTE com o texto completo já corrigido, sem comentários, sem aspas, sem títulos extras.`
 
   const userPrompt = `INSTRUÇÃO DE MELHORIA (aplique exatamente isto, e nada além):
