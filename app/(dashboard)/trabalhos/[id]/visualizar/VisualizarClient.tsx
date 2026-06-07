@@ -104,10 +104,10 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
   const secoesComConteudo = secoes.filter(s => s.conteudo?.trim())
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Barra de controle */}
-      <div className="no-print sticky top-16 z-20 bg-white border-b shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-3">
+      <div className="no-print sticky top-16 z-20 bg-white border-b shadow-sm overflow-x-auto">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-3 min-w-0">
           <Link href={`/trabalhos/${trabalho.id}/editar`}
             className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}>
             <ArrowLeft className="h-4 w-4" /> Editor

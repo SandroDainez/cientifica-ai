@@ -146,6 +146,38 @@ const NORMAS: Record<string, NormasSecao> = {
     ],
   },
 
+  // Metodologia da BUSCA — específica para revisões (narrativa/integrativa).
+  // Diferente da metodologia empírica: aqui o foco é a busca reprodutível.
+  metodos_busca: {
+    estrutura: [
+      'Declare o tipo de revisão na primeira frase ("Trata-se de uma revisão narrativa da literatura...").',
+      'Sequência: tipo de revisão → bases consultadas → descritores e estratégia de busca → período → critérios de inclusão/exclusão → processo de seleção.',
+    ],
+    deveConter: [
+      'BASES DE DADOS consultadas, nomeadas (ex.: PubMed/MEDLINE, SciELO, LILACS, Scopus, Web of Science, Google Scholar)',
+      'DESCRITORES/palavras-chave usados (DeCS/MeSH) e a combinação com operadores booleanos (AND/OR)',
+      'PERÍODO de busca (intervalo de anos pesquisado)',
+      'IDIOMAS considerados (ex.: português, inglês, espanhol)',
+      'CRITÉRIOS DE INCLUSÃO e de EXCLUSÃO claros e objetivos',
+      'PROCESSO DE SELEÇÃO dos estudos (como os artigos foram triados e escolhidos)',
+      'Detalhe suficiente para que outro pesquisador REPRODUZA a busca',
+    ],
+    proibido: [
+      'Omitir as bases de dados consultadas',
+      'Omitir os descritores/estratégia de busca',
+      'Omitir os critérios de inclusão/exclusão',
+      'Texto genérico que impeça a reprodutibilidade da busca',
+      'Inventar números de artigos triados/incluídos que não foram fornecidos (numa revisão narrativa, descreva o processo sem fabricar contagens de PRISMA)',
+    ],
+    revisarApos: [
+      'As bases de dados estão nomeadas?',
+      'Os descritores e a estratégia de busca (booleanos) estão descritos?',
+      'O período e os idiomas estão declarados?',
+      'Os critérios de inclusão e exclusão estão explícitos?',
+      'Outro pesquisador conseguiria reproduzir esta busca com o texto?',
+    ],
+  },
+
   resultados: {
     estrutura: [
       'Apresente na ordem dos objetivos: caracterização da amostra → desfecho primário → secundários.',
@@ -240,7 +272,13 @@ const NORMAS: Record<string, NormasSecao> = {
  * qualidade (verificar antes e auto-revisar depois de escrever).
  */
 export function getNormasSecao(chaveSecao: string, nomeSecao: string): string {
-  const n = NORMAS[categoriaSecao(chaveSecao)] ?? NORMAS.geral
+  // "Metodologia da Busca" (revisões) usa a norma de busca reprodutível, não a
+  // metodologia empírica (delineamento/população/instrumentos).
+  const ehMetodoBusca = /busca/i.test(nomeSecao) ||
+    /estrategia_busca/.test(chaveSecao.toLowerCase())
+  const n = ehMetodoBusca
+    ? NORMAS.metodos_busca
+    : (NORMAS[categoriaSecao(chaveSecao)] ?? NORMAS.geral)
   const lista = (arr: string[]) => arr.map(s => `   • ${s}`).join('\n')
   return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

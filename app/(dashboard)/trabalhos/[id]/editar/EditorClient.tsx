@@ -18,6 +18,7 @@ import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResu
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
+import { tituloEfetivo, capitalizarTitulo } from '@/lib/trabalho/titulo'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Estratégia primária: bloco delimitado ===OPÇÕES DE TÍTULO=== … ===FIM===
@@ -442,7 +443,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         {/* Header */}
         <div className="px-6 pt-4 pb-3 border-b bg-background">
           <PageHeader
-            title={trabalho.titulo || 'Trabalho sem título'}
+            title={capitalizarTitulo(tituloEfetivo(trabalho.titulo, secoesIniciais)) || 'Trabalho sem título'}
             description={getTipoLabel(trabalho.tipo_trabalho)}
             breadcrumbs={[
               { label: 'Dashboard', href: '/dashboard' },
