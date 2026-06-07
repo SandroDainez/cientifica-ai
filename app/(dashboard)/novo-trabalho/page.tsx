@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { TipoTrabalhoCard } from '@/components/trabalho/TipoTrabalhoCard'
 import { FLUXOS } from '@/lib/tipos/fluxos-trabalho'
+import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
+import { AlertTriangle } from 'lucide-react'
 import type { TipoTrabalho, FormatoCitacao, NivelExperiencia } from '@/types'
 
 const TIPOS_LISTA = Object.keys(FLUXOS) as TipoTrabalho[]
@@ -120,6 +122,11 @@ export default function NovoTrabalhoPage() {
   }
 
   const fluxoSelecionado = form.tipo_trabalho ? FLUXOS[form.tipo_trabalho] : null
+
+  // Guarda de coerência: o título combina com o tipo escolhido?
+  const coerencia = form.tipo_trabalho && form.titulo.trim()
+    ? analisarCoerenciaTituloTipo(form.titulo, form.tipo_trabalho)
+    : { ok: true as const }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -279,6 +286,23 @@ export default function NovoTrabalhoPage() {
                 placeholder="Ex: Efeito da suplementação de vitamina D em pacientes com diabetes tipo 2"
                 className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
               />
+              {!coerencia.ok && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0 text-xs text-amber-800 dark:text-amber-200 space-y-1.5">
+                    <p>{coerencia.aviso}</p>
+                    {coerencia.sugestaoTipo && (
+                      <button
+                        type="button"
+                        onClick={() => set('tipo_trabalho', coerencia.sugestaoTipo as TipoTrabalho)}
+                        className="font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100"
+                      >
+                        Mudar para “{coerencia.sugestaoLabel}”
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Área */}
@@ -443,6 +467,25 @@ export default function NovoTrabalhoPage() {
                   <span className="font-bold shrink-0">3º</span>
                   <span>Exportar, gerar slides e se preparar para a defesa. Tempo estimado total: <span className="font-semibold">{fluxoSelecionado.duracao_estimada_horas}h</span>.</span>
                 </p>
+              </div>
+            </div>
+          )}
+
+          {!coerencia.ok && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-4 py-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0 text-sm text-amber-800 dark:text-amber-200 space-y-1.5">
+                <p className="font-medium">Título e tipo podem não combinar</p>
+                <p className="text-xs">{coerencia.aviso}</p>
+                {coerencia.sugestaoTipo && (
+                  <button
+                    type="button"
+                    onClick={() => { set('tipo_trabalho', coerencia.sugestaoTipo as TipoTrabalho); setStep(0) }}
+                    className="text-xs font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100"
+                  >
+                    Mudar para “{coerencia.sugestaoLabel}”
+                  </button>
+                )}
               </div>
             </div>
           )}
