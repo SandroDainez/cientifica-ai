@@ -4,7 +4,28 @@ import { callAI, streamText } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
-import type { Trabalho, DadosProjeto, TipoDocumento } from '@/types'
+import { garantirReferenciasReais } from '@/lib/referencias/auto-import'
+import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
+import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
+
+/** Tipos de documento que devem ser embasados em referências reais e citados no texto. */
+const DOCS_COM_REFERENCIAS = new Set<TipoDocumento>([
+  'revisao_literatura', 'protocolo_cep', 'calculo_amostral', 'guia_analise',
+])
+
+/** Transmite uma string já pronta com efeito de digitação. */
+function streamStringComEfeito(texto: string): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      const enc = new TextEncoder()
+      for (let i = 0; i < texto.length; i += 24) controller.enqueue(enc.encode(texto.slice(i, i + 24)))
+      controller.close()
+    },
+  })
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' },
+  })
+}
 
 // Documentos acadêmicos são longos — aumentar timeout da função Vercel
 export const maxDuration = 300
@@ -64,7 +85,7 @@ export async function POST(request: Request) {
   // Validate ownership and load dados_projeto
   const { data: trabalhoRow } = await supabase
     .from('trabalhos')
-    .select('id, titulo, dados_trabalho')
+    .select('id, titulo, dados_trabalho, area_conhecimento, tipo_trabalho, formato_citacao')
     .eq('id', trabalhoId)
     .eq('usuario_id', user.id)
     .single()
@@ -73,7 +94,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Trabalho não encontrado.' }, { status: 404 })
   }
 
-  const trabalho = trabalhoRow as Pick<Trabalho, 'id' | 'titulo' | 'dados_trabalho'>
+  const trabalho = trabalhoRow as Pick<Trabalho, 'id' | 'titulo' | 'dados_trabalho' | 'area_conhecimento' | 'tipo_trabalho' | 'formato_citacao'>
   const dadosTrabalho = (trabalho.dados_trabalho as Record<string, unknown>) ?? {}
   const dadosProjeto = dadosTrabalho['dados_projeto'] as DadosProjeto | undefined
 
@@ -84,10 +105,31 @@ export async function POST(request: Request) {
     )
   }
 
+  const formato: FormatoCitacao = trabalho.formato_citacao ?? 'abnt'
+
+  // ── Garante referências REAIS para documentos que precisam de citações ─────
+  let referencias: Referencia[] = []
+  if (DOCS_COM_REFERENCIAS.has(tipoDocumento)) {
+    const { data: refsData } = await supabase
+      .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
+    referencias = await garantirReferenciasReais({
+      supabase,
+      trabalhoId,
+      titulo: trabalho.titulo ?? dadosProjeto.titulo_provisorio,
+      area: trabalho.area_conhecimento,
+      tipoTrabalho: trabalho.tipo_trabalho,
+      chaveSecao: 'revisao_literatura',
+      pergunta: dadosProjeto.pergunta_pesquisa,
+      refsExistentes: (refsData ?? []) as Referencia[],
+    })
+  }
+
   const { system, user: userPrompt } = buildDocumentoPrompt(
     tipoDocumento,
     dadosProjeto,
-    trabalho.titulo ?? undefined
+    trabalho.titulo ?? undefined,
+    referencias,
+    formato,
   )
 
   const maxTokens = MAX_TOKENS_POR_TIPO[tipoDocumento] ?? 4000
@@ -96,27 +138,39 @@ export async function POST(request: Request) {
   // Documentos narrativos passam por uma segunda chamada de IA que aplica
   // transformações estruturais (burstiness, variação lexical, remoção de
   // conectivos de IA) que reduzem o score nos detectores para < 30%.
+  const validar = (texto: string) =>
+    DOCS_COM_REFERENCIAS.has(tipoDocumento) ? validarCitacoesReais(texto, referencias, formato) : texto
+
   if (HUMANIZAR_TIPOS.has(tipoDocumento)) {
     try {
       // Passagem 1 — gera rascunho completo (sem stream, coleta tudo)
       const rascunho = await callAI(system, userPrompt, false, maxTokens)
 
       if (!rascunho || rascunho.trim().length < 100) {
-        // Fallback: se o rascunho vier vazio, entrega sem humanização
         return streamText(system, userPrompt, false, maxTokens)
       }
 
-      // Passagem 2 — humaniza e faz stream do resultado final
-      return streamText(
-        HUMANIZADOR_SYSTEM,
-        buildHumanizadorPrompt(rascunho),
-        false,
-        maxTokens
-      )
+      // Passagem 2 — humaniza (preservando citações verbatim)
+      let humanizado = rascunho
+      try {
+        const out = await callAI(HUMANIZADOR_SYSTEM, buildHumanizadorPrompt(rascunho), false, maxTokens)
+        if (out && out.trim().length >= 100) humanizado = out
+      } catch { /* usa rascunho */ }
+
+      // Camada final: valida citações contra as referências reais e transmite
+      return streamStringComEfeito(validar(humanizado))
     } catch {
-      // Fallback silencioso: se a humanização falhar, entrega o documento normal
       return streamText(system, userPrompt, false, maxTokens)
     }
+  }
+
+  // Documentos com referências mas sem humanização (protocolo_cep, calculo_amostral):
+  // gera, valida citações e transmite. Demais estruturados: streaming direto.
+  if (DOCS_COM_REFERENCIAS.has(tipoDocumento)) {
+    try {
+      const texto = await callAI(system, userPrompt, false, maxTokens)
+      if (texto && texto.trim().length > 50) return streamStringComEfeito(validar(texto))
+    } catch { /* fallback abaixo */ }
   }
 
   // Documentos puramente estruturados (TCLE, instrumentos, checklists): passagem única

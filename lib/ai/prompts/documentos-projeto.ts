@@ -1,4 +1,5 @@
-import type { TipoDocumento, DadosProjeto } from '@/types'
+import type { TipoDocumento, DadosProjeto, Referencia, FormatoCitacao } from '@/types'
+import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
 
 const SYSTEM_PROMPT = `Você é um especialista em pesquisa científica brasileira com profundo domínio em normas ABNT, regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos e prontos para uso.
 
@@ -73,13 +74,12 @@ A revisão deve conter:
    Parágrafo síntese de por que este estudo é relevante, original e necessário,
    conectando a lacuna identificada com o objetivo desta pesquisa.
 
-7. REFERÊNCIAS SUGERIDAS
-   Liste de 10 a 15 referências reais e relevantes que o pesquisador deve buscar,
-   em formato ABNT, incluindo: artigos de periódicos indexados (PubMed, SciELO),
-   diretrizes de sociedades médicas, dados de ministérios. Para cada referência,
-   adicione uma linha: "Relevância: [por que esta referência é importante para o estudo]"
+7. REFERÊNCIAS
+   Liste, ao final, as referências REAIS que você efetivamente citou ao longo do texto,
+   no formato de citação escolhido. Use APENAS as referências reais fornecidas na lista
+   de "REFERÊNCIAS REAIS DISPONÍVEIS" (se houver) — nunca invente.
 
-IMPORTANTE: Escreva em português brasileiro com linguagem acadêmica, mas com ritmo variado — alterne parágrafos densos com parágrafos curtos de 1-2 frases. Inclua pelo menos uma ressalva ou dado contraintuitivo por seção. Ao usar dados ou afirmações específicas, sinalize com "(verificar referência)" para que o pesquisador saiba o que confirmar nas fontes originais. Evite estrutura roboticamente uniforme: parágrafos de tamanhos diferentes, sem usar as mesmas expressões de transição mais de uma vez.`
+IMPORTANTE: Escreva em português brasileiro com linguagem acadêmica, mas com ritmo variado — alterne parágrafos densos com parágrafos curtos de 1-2 frases. Inclua pelo menos uma ressalva ou dado contraintuitivo por seção. CADA afirmação factual (epidemiologia, estatística, achado de estudo, diretriz) DEVE ter uma citação real imediatamente após. JAMAIS escreva "(verificar referência)", "(referência)", "(citar fonte)" ou marcadores similares — use uma referência real da lista fornecida. Evite estrutura roboticamente uniforme: parágrafos de tamanhos diferentes, sem usar as mesmas expressões de transição mais de uma vez.`
 }
 
 function dadosResumo(dados: DadosProjeto): string {
@@ -637,7 +637,9 @@ ESTILO NAS DICAS ESPECÍFICAS E NAS EXPLICAÇÕES: Escreva em prosa com ritmo va
 export function buildDocumentoPrompt(
   tipo: TipoDocumento,
   dados: DadosProjeto,
-  trabalhoTitulo?: string
+  trabalhoTitulo?: string,
+  referencias?: Referencia[],
+  formato: FormatoCitacao = 'abnt',
 ): { system: string; user: string } {
   let user: string
 
@@ -682,5 +684,42 @@ export function buildDocumentoPrompt(
     }
   }
 
-  return { system: SYSTEM_PROMPT, user }
+  // Injeta as referências reais + instrução de ancoragem no system prompt
+  let system = SYSTEM_PROMPT
+  if (referencias && referencias.length > 0) {
+    const fmt = formato.toUpperCase()
+    const exemplo = formato === 'vancouver'
+      ? 'números entre colchetes na ordem de aparição: [1], [2] (reuse o mesmo número para a mesma referência)'
+      : formato === 'apa'
+      ? '(Sobrenome, Ano) — ex: (Silva, 2020)'
+      : '(SOBRENOME, ANO) — ex: (SILVA, 2020); dois autores (SILVA; COSTA, 2020); três ou mais (SILVA et al., 2020)'
+
+    system += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO DOCUMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cada linha mostra: a citação no texto → o título do estudo. Use o título para saber sobre o que cada referência fala e citá-la no ponto certo.
+
+${formatarRefsParaPrompt(referencias, formato)}
+
+REGRA DE OURO DAS CITAÇÕES (siga rigorosamente):
+1. ANCORE o texto nestas referências reais — você está sintetizando estes estudos, não escrevendo do zero.
+2. Para CADA afirmação factual (epidemiologia, estatística, achado de estudo, diretriz, prevalência), insira IMEDIATAMENTE após a citação real mais pertinente da lista. Use o título de cada referência para escolher a mais adequada.
+3. FORMATO ${fmt}: ${exemplo}. Copie a citação EXATAMENTE como aparece na lista.
+4. Distribua as citações por TODO o texto. A maioria das referências deve ser citada ao menos uma vez.
+5. PROIBIDO ABSOLUTAMENTE: escrever "(verificar referência)", "(referência)", "(citar fonte)", "(fonte)" ou qualquer marcador vago. PROIBIDO inventar autores/anos fora da lista. PROIBIDO citar pelo título do documento.
+6. Se nenhuma referência da lista embasar uma afirmação muito específica, use o marcador (SOBRENOME, ANO) — mas isso deve ser raro, pois você tem ${referencias.length} referências reais.`
+  } else {
+    system += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CITAÇÕES — SEM REFERÊNCIAS CADASTRADAS AINDA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Para cada afirmação factual da literatura, marque com (SOBRENOME, ANO).
+PROIBIDO: escrever "(verificar referência)", "(referência)", "(citar fonte)" ou marcadores vagos.
+PROIBIDO: inventar sobrenomes ou anos reais. Use SEMPRE (SOBRENOME, ANO) como marcador genérico.`
+  }
+
+  return { system, user }
 }
