@@ -3,8 +3,10 @@
 import { useState, useRef } from 'react'
 import {
   Table2, Upload, FileSpreadsheet, FileText, ImageIcon, X,
-  Loader2, CheckCircle2, AlertTriangle, Sparkles, Brain,
+  Loader2, CheckCircle2, AlertTriangle, Sparkles, Brain, Plus, Copy, Check,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { MarkdownText } from '@/components/ui/MarkdownText'
 import type { DadosProjeto } from '@/types'
@@ -14,6 +16,8 @@ interface PainelPlanilhaResultadosProps {
   dadosProjeto: DadosProjeto | null
   /** chave_secao atual — permite análise contextualizada para a fase */
   chaveSecao: string
+  /** Insere texto (ex: tabela gerada) no conteúdo da seção atual */
+  onInserirNoTexto?: (texto: string) => void
 }
 
 type ArquivoStatus = 'lendo' | 'extraindo' | 'concluido' | 'erro'
@@ -32,7 +36,7 @@ interface ArquivoProcessado {
  * Salva em dados_projeto.dados_coletados — a geração da seção Resultados/Discussão/Conclusão
  * lê esse campo com prioridade máxima e usa os números reais (nunca inventa).
  */
-export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao }: PainelPlanilhaResultadosProps) {
+export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao, onInserirNoTexto }: PainelPlanilhaResultadosProps) {
   const [texto, setTexto] = useState(dadosProjeto?.dados_coletados ?? '')
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
@@ -41,24 +45,27 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao 
   const [aberto, setAberto] = useState(true)
   const [analise, setAnalise] = useState('')
   const [analisando, setAnalisando] = useState(false)
+  const [tabela, setTabela] = useState('')
+  const [gerandoTabela, setGerandoTabela] = useState(false)
+  const [copiado, setCopiado] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textoRef = useRef(texto)
   const inputRef = useRef<HTMLInputElement>(null)
   textoRef.current = texto
 
-  async function analisarComIA() {
-    if (analisando || textoRef.current.trim().length < 10) return
-    setAnalisando(true)
-    setAnalise('')
+  async function streamPara(url: string, setter: (s: string) => void, setLoading: (b: boolean) => void) {
+    if (textoRef.current.trim().length < 10) return
+    setLoading(true)
+    setter('')
     try {
-      const res = await fetch('/api/ia/analisar-planilha', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trabalhoId, chaveSecao, dadosPlanilha: textoRef.current }),
       })
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => null)
-        throw new Error(err?.error ?? 'Falha ao analisar')
+        throw new Error(err?.error ?? 'Falha na requisição')
       }
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -67,13 +74,27 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao 
         const { done, value } = await reader.read()
         if (done) break
         acc += decoder.decode(value, { stream: true })
-        setAnalise(acc)
+        setter(acc)
       }
     } catch (err) {
-      setAnalise(`⚠️ ${err instanceof Error ? err.message : 'Erro ao analisar os dados. Tente novamente.'}`)
+      setter(`⚠️ ${err instanceof Error ? err.message : 'Erro. Tente novamente.'}`)
     } finally {
-      setAnalisando(false)
+      setLoading(false)
     }
+  }
+
+  function analisarComIA() {
+    if (!analisando) streamPara('/api/ia/analisar-planilha', setAnalise, setAnalisando)
+  }
+  function gerarTabela() {
+    if (!gerandoTabela) streamPara('/api/ia/gerar-tabela', setTabela, setGerandoTabela)
+  }
+  async function copiarTabela() {
+    try {
+      await navigator.clipboard.writeText(tabela)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch { /* ignore */ }
   }
 
   function salvar(valor: string) {
@@ -280,26 +301,38 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao 
             </div>
           )}
 
-          {/* Botão analisar + nota */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          {/* Botões de ação da IA */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={analisarComIA}
-              disabled={analisando || texto.trim().length < 10}
+              disabled={analisando || gerandoTabela || texto.trim().length < 10}
               className={cn(
                 'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                 'bg-primary text-primary-foreground hover:opacity-90',
-                (analisando || texto.trim().length < 10) && 'opacity-50 cursor-not-allowed'
+                (analisando || gerandoTabela || texto.trim().length < 10) && 'opacity-50 cursor-not-allowed'
               )}
             >
               {analisando
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Analisando dados…</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Analisando…</>
                 : <><Brain className="h-4 w-4" /> Analisar dados com IA</>
               }
             </button>
-            <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
-              A IA interpreta sua planilha, calcula estatísticas e orienta você nesta seção.
-            </p>
+            <button
+              type="button"
+              onClick={gerarTabela}
+              disabled={analisando || gerandoTabela || texto.trim().length < 10}
+              className={cn(
+                'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                'border border-primary/40 bg-background text-primary hover:bg-primary/5',
+                (analisando || gerandoTabela || texto.trim().length < 10) && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              {gerandoTabela
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Montando tabela…</>
+                : <><Table2 className="h-4 w-4" /> Gerar tabela científica</>
+              }
+            </button>
           </div>
 
           {/* Resultado da análise */}
@@ -307,15 +340,46 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao 
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
-                <span className="text-xs font-semibold text-primary uppercase tracking-wide">
-                  Análise da IA
-                </span>
+                <span className="text-xs font-semibold text-primary uppercase tracking-wide">Análise da IA</span>
                 {analisando && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
               </div>
-              <MarkdownText
-                content={analise}
-                className="text-sm text-foreground leading-relaxed space-y-1 [&_p]:my-0.5"
-              />
+              <MarkdownText content={analise} className="text-sm text-foreground leading-relaxed space-y-1 [&_p]:my-0.5" />
+            </div>
+          )}
+
+          {/* Tabela científica gerada */}
+          {tabela && (
+            <div className="rounded-lg border border-primary/20 bg-background p-4">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Table2 className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wide">Tabela científica</span>
+                  {gerandoTabela && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                </div>
+                {!gerandoTabela && tabela.length > 20 && (
+                  <div className="flex items-center gap-1.5">
+                    {onInserirNoTexto && (
+                      <button
+                        type="button"
+                        onClick={() => onInserirNoTexto(`\n\n${tabela}\n`)}
+                        className="inline-flex items-center gap-1 text-xs rounded px-2 py-1 bg-primary text-primary-foreground hover:opacity-90 font-medium"
+                      >
+                        <Plus className="h-3 w-3" /> Inserir no texto
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={copiarTabela}
+                      className="inline-flex items-center gap-1 text-xs rounded px-2 py-1 border border-border text-foreground hover:bg-muted"
+                    >
+                      {copiado ? <><Check className="h-3 w-3" /> Copiado</> : <><Copy className="h-3 w-3" /> Copiar</>}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="overflow-x-auto text-sm text-foreground leading-relaxed [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_th]:text-left [&_th]:font-semibold [&_th]:px-2 [&_th]:py-1.5 [&_th]:border-y [&_th]:border-foreground/30 [&_td]:px-2 [&_td]:py-1 [&_td]:border-b [&_td]:border-border/30 [&_p]:my-1 [&_strong]:font-semibold [&_em]:text-muted-foreground [&_em]:text-xs">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{tabela}</ReactMarkdown>
+              </div>
             </div>
           )}
 

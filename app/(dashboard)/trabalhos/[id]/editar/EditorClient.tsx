@@ -573,6 +573,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
                       trabalhoId={trabalho.id}
                       dadosProjeto={((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null}
                       chaveSecao={faseAtualConfig.chave_secao}
+                      onInserirNoTexto={(t) => setConteudoAtual((conteudosRef.current[faseAtualConfig.chave_secao] ?? '') + t)}
                     />
                   ) : null
                 }

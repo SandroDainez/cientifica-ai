@@ -204,6 +204,80 @@ const ROTULOS_RESPOSTAS: Record<string, string> = {
   contexto:             'Contexto e informações adicionais',
 }
 
+// ============================================================
+// Formato técnico rigoroso por seção
+// ============================================================
+
+/** Seções que têm estrutura fixa (lista/itens) e NÃO devem virar prosa humanizada. */
+export function ehSecaoEstruturada(chaveSecao: string): boolean {
+  const c = chaveSecao.toLowerCase()
+  return c.includes('objetivo') || c === 'pico' || c.includes('pergunta_pico')
+}
+
+/**
+ * Regras de formato específicas de cada seção — garante que a estrutura siga
+ * o padrão técnico de trabalhos científicos de alta qualidade.
+ */
+export function getRegrasFormatoSecao(chaveSecao: string): string | null {
+  const c = chaveSecao.toLowerCase()
+
+  // ── OBJETIVOS — estrutura rigorosa, concisa, sem prosa ────────────────────
+  if (c.includes('objetivo')) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMATO OBRIGATÓRIO DA SEÇÃO OBJETIVOS — NORMA TÉCNICA RIGOROSA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esta seção é OBJETIVA e ESTRUTURADA. NÃO escreva parágrafos longos, contextualização ou justificativa (isso pertence a outras seções).
+
+ESTRUTURA EXATA (siga este formato literalmente):
+
+**Objetivo Geral**
+[UMA única frase, começando com verbo no infinitivo (Analisar, Avaliar, Comparar, Investigar, Determinar, Identificar, Verificar, Descrever, Estimar, Correlacionar). Máximo 40 palavras. Deve responder diretamente à pergunta de pesquisa. Sem subordinadas excessivas.]
+
+**Objetivos Específicos**
+1. [Verbo no infinitivo + UMA ação concreta e mensurável. Máximo 25 palavras.]
+2. [Verbo no infinitivo + UMA ação concreta e mensurável.]
+3. [Verbo no infinitivo + UMA ação concreta e mensurável.]
+4. [Opcional — máximo 5 itens no total.]
+
+EXEMPLO DE FORMATO CORRETO (siga este padrão):
+**Objetivo Geral**
+Avaliar a associação entre o tempo de uso de redes sociais e os níveis de ansiedade em adolescentes de escolas públicas de Belo Horizonte.
+
+**Objetivos Específicos**
+1. Mensurar o tempo médio diário de uso de redes sociais na amostra.
+2. Aferir os níveis de ansiedade por meio do Inventário de Ansiedade de Beck.
+3. Correlacionar o tempo de uso com os escores de ansiedade obtidos.
+4. Comparar os níveis de ansiedade entre grupos de uso intenso e moderado.
+
+PROIBIDO NESTA SEÇÃO:
+✗ Parágrafos narrativos ou contextuais ("Neste estudo, optamos por...", "O paradoxo é...")
+✗ Justificativa, revisão de literatura ou citações
+✗ Frases com mais de uma ideia ou objetivo
+✗ Mais de 5 objetivos específicos
+✗ Verbos vagos não-mensuráveis ("entender", "conhecer", "refletir sobre")
+✗ Conectivos de humanização — esta seção é direta e técnica.`
+  }
+
+  // ── PERGUNTA PICO — estrutura P/I/C/O ─────────────────────────────────────
+  if (c === 'pico' || c.includes('pergunta_pico')) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMATO OBRIGATÓRIO — PERGUNTA PICO/PICOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Apresente a estrutura PICO de forma clara e objetiva:
+**P** (População/Problema): [definição específica]
+**I** (Intervenção/Exposição): [definição]
+**C** (Comparação): [definição ou "não se aplica"]
+**O** (Outcome/Desfecho): [desfecho primário mensurável]
+${c.includes('picos') ? '**S** (Tipo de estudo): [delineamentos elegíveis]\n' : ''}
+Depois, redija a PERGUNTA DE PESQUISA em uma frase única e bem construída, integrando os elementos PICO.
+NÃO escreva contextualização longa — seja direto e técnico.`
+  }
+
+  return null
+}
+
 export function buildGerarSecaoPrompt(
   fase: FaseConfig,
   dadosTrabalho: {
@@ -349,13 +423,25 @@ Meta: em uma Introdução de 300 palavras, espera-se 10-20 marcadores (SOBRENOME
     partes.push(`\n**Extensão:** entre ${fase.min_palavras ?? '—'} e ${fase.max_palavras ?? '—'} palavras.`)
   }
 
+  // ── Formato técnico específico da seção (estrutura rigorosa) ────────────────
+  const formatoSecao = getRegrasFormatoSecao(fase.chave_secao ?? fase.id ?? '')
+  if (formatoSecao) {
+    partes.push(formatoSecao)
+  }
+
   partes.push(`\nAgora redija a seção "${fase.nome}" de forma completa e acadêmica em português brasileiro formal.
 REGRAS FINAIS INEGOCIÁVEIS:
 - Escreva APENAS o texto da seção — sem títulos introdutórios, sem "Seção X:", sem metacomentários
 - Use SEMPRE os dados reais do pesquisador fornecidos acima — nunca escreva textos genéricos ou com placeholders como [autor], [ano], [inserir dados]
 - O texto deve soar como se o pesquisador realmente fez aquilo que descreveu
-- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto
+- Qualidade mínima: um professor doutor experiente deve ficar impressionado com o texto`)
 
+  // Seções estruturadas (objetivos, palavras-chave) NÃO recebem regras de prosa/burstiness
+  if (ehSecaoEstruturada(fase.chave_secao ?? fase.id ?? '')) {
+    return partes.join('\n')
+  }
+
+  partes.push(`
 HUMANIZAÇÃO CRÍTICA — APLIQUE ANTES DE CADA PARÁGRAFO:
 Antes de escrever cada parágrafo, pergunte-se: "Um pesquisador humano real escreveria exatamente assim?"
 Se a resposta for não, reescreva. O objetivo é BURSTINESS e PERPLEXIDADE altas.

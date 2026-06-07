@@ -5,6 +5,7 @@ import { buildSystemPrompt, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { getSystemPromptEspecializado } from '@/lib/ai/prompts-secoes'
 import { streamText, callAI } from '@/lib/ai/stream'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
+import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 
 export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
@@ -12,6 +13,28 @@ import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, Referencia } from '@/types'
+
+/** Transmite uma string já pronta com efeito de digitação (chunks pequenos). */
+function streamStringComEfeito(texto: string): Response {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder()
+      // Emite em blocos de ~24 caracteres para dar sensação de digitação fluida
+      const tamanho = 24
+      for (let i = 0; i < texto.length; i += tamanho) {
+        controller.enqueue(encoder.encode(texto.slice(i, i + tamanho)))
+      }
+      controller.close()
+    },
+  })
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-cache',
+    },
+  })
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -548,47 +571,62 @@ export async function POST(request: Request) {
   // ── Seções que passam pela 2ª passagem de humanização ─────────────────────
   // Seções textuais substanciais → gera rascunho → humaniza → streama.
   // Seções estruturais (checklist, cronograma, orçamento) → streaming direto.
+  // NOTA: 'objetivos' e seções estruturadas NÃO entram aqui — precisam manter
+  // a estrutura rígida de lista, que a humanização (prosa/burstiness) quebraria.
   const SECOES_HUMANIZAR = new Set([
     'introducao', 'revisao_literatura', 'referencial_teorico',
     'metodologia', 'metodos_delineamento', 'metodos_coleta',
     'resultados', 'discussao', 'conclusao', 'resumo',
     'desenvolvimento', 'consideracoes_finais',
-    'justificativa', 'objetivos', 'problema', 'tema',
+    'justificativa', 'problema', 'tema',
     'sintese', 'metanalise', 'discussao_grade',
     'apresentacao_caso', 'investigacao_diagnostica',
     'conduta_tratamento', 'evolucao_desfecho',
     'aspectos_eticos', 'consentimento_paciente',
-    // Relatorio IC
-    'introducao', 'resultados', 'perspectivas', 'formacao',
-    // Projeto pesquisa
-    'revisao_literatura', 'resultados_esperados',
-    // Dissertação/Tese
+    'perspectivas', 'formacao', 'resultados_esperados',
     'limitacoes', 'tema_originalidade', 'revisao_estado_arte',
   ])
 
   const deveHumanizar = SECOES_HUMANIZAR.has(chaveSecao)
   const minPalavrasHumanizar = fase.min_palavras ?? 0
+  const formato = trabalho.formato_citacao
 
   if (deveHumanizar && minPalavrasHumanizar >= 80) {
-    // Passagem 1: gera o rascunho completo (não-streaming)
     const maxTokensDraft = Math.max(8000, (fase.max_palavras ?? 2000) * 2)
     try {
+      // Passagem 1: rascunho técnico com as referências reais
       const rascunho = await callAI(systemPrompt, userPrompt, false, maxTokensDraft)
       if (rascunho && rascunho.trim().split(/\s+/).length >= 50) {
-        // Passagem 2: humaniza e streama
+        // Passagem 2: humaniza (preservando citações verbatim)
         const maxTokensHuman = Math.max(8000, rascunho.split(/\s+/).length * 2)
-        return streamText(
-          HUMANIZADOR_SYSTEM,
-          buildHumanizadorPrompt(rascunho),
-          false,
-          maxTokensHuman
-        )
+        let humanizado = rascunho
+        try {
+          const out = await callAI(HUMANIZADOR_SYSTEM, buildHumanizadorPrompt(rascunho), false, maxTokensHuman)
+          if (out && out.trim().split(/\s+/).length >= 40) humanizado = out
+        } catch (e) {
+          console.error('[gerar-secao] Humanização falhou — usa rascunho:', e)
+        }
+        // Camada final: valida TODAS as citações contra as referências reais.
+        // Qualquer citação inventada (sobrenome não cadastrado) vira (SOBRENOME, ANO).
+        const validado = validarCitacoesReais(humanizado, referencias, formato)
+        return streamStringComEfeito(validado)
       }
     } catch (err) {
-      console.error('[gerar-secao] Falha na humanização — fallback single-pass:', err)
+      console.error('[gerar-secao] Falha na geração de duas passagens — fallback:', err)
     }
   }
 
-  // Fallback / seções estruturais: streaming direto sem humanização
+  // Seções estruturadas / fallback: gera direto, valida citações, transmite
+  try {
+    const textoUnico = await callAI(systemPrompt, userPrompt, false, Math.max(6000, (fase.max_palavras ?? 1500) * 2))
+    if (textoUnico && textoUnico.trim().length > 20) {
+      const validado = validarCitacoesReais(textoUnico, referencias, formato)
+      return streamStringComEfeito(validado)
+    }
+  } catch (err) {
+    console.error('[gerar-secao] Falha no single-pass — streaming direto:', err)
+  }
+
+  // Último recurso: streaming direto da IA (sem validação pós)
   return streamText(systemPrompt, userPrompt, false)
 }

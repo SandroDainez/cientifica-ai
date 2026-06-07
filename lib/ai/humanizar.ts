@@ -179,10 +179,23 @@ Substitua conectivos genéricos por versões mais específicas e menos comuns:
 ✓ Use: "O que chama atenção é", "Não por acaso", "Ao mesmo tempo", "Em termos concretos", "O paradoxo é que", "Dito de outro modo", "Isso porque", "Por essa razão específica"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔒 CITAÇÕES — REGRA ABSOLUTA E INVIOLÁVEL (violá-la INVALIDA todo o trabalho)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+As citações bibliográficas são TOKENS IMUTÁVEIS. Trate cada citação como um bloco selado:
+✓ COPIE cada citação EXATAMENTE como está, caractere por caractere
+✓ NUNCA transforme (SOBRENOME, ANO) em um nome real — ele DEVE permanecer (SOBRENOME, ANO)
+✓ NUNCA invente um sobrenome de autor para "soar mais humano" (ex: criar "Lombardi, 1978" ou "Silva, 2020")
+✓ NUNCA altere o ano, o sobrenome ou o formato de uma citação existente
+✓ NUNCA adicione citações novas que não estavam no rascunho
+✓ NUNCA remova citações que estavam no rascunho
+Se o rascunho tem (SOBRENOME, ANO), o seu texto reescrito DEVE ter (SOBRENOME, ANO) no mesmo ponto.
+Inventar ou alterar uma única citação é o ERRO MAIS GRAVE possível — destrói a integridade acadêmica.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRESERVAR ABSOLUTAMENTE — não modifique nada disso
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✓ Todos os dados numéricos, fórmulas, cálculos e percentuais
-✓ Todas as citações bibliográficas: (SOBRENOME, ANO), [1], (Author, Year)
+✓ TODAS as citações: (SOBRENOME, ANO), (Silva, 2020), [1], (Author, Year) — verbatim
 ✓ Campos entre [COLCHETES] — são placeholders do pesquisador
 ✓ Blocos de código (entre \`\`\`)
 ✓ Títulos numerados de seções (1., 2., 3. etc.)
