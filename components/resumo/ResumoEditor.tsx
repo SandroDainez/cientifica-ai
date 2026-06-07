@@ -141,14 +141,14 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
 
   return (
     <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4">
-        <p className="text-sm font-semibold text-blue-900">{fase.nome}</p>
-        <p className="text-xs text-blue-700 mt-1">{fase.instrucoes}</p>
+      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-4">
+        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">{fase.nome}</p>
+        <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">{fase.instrucoes}</p>
       </div>
 
       {/* ── RESUMO PT ─────────────────────────────────────── */}
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-muted/50">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">Resumo em Português</p>
           <span className="ml-auto text-xs text-muted-foreground">ABNT NBR 6028 — {minResumo}–{maxResumo} palavras</span>
@@ -159,7 +159,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
               value={dados.resumo}
               onChange={e => set('resumo', e.target.value)}
               placeholder="O resumo deve apresentar: contextualização, objetivo, metodologia, resultados e conclusão…"
-              className="w-full min-h-[200px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 resize-y"
+              className="w-full min-h-[200px] rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 resize-y"
             />
             {gerandoResumo && (
               <div className="absolute inset-0 flex items-start justify-end p-2 pointer-events-none">
@@ -184,7 +184,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
 
       {/* ── PALAVRAS-CHAVE ────────────────────────────────── */}
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-muted/50">
           <Tag className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">Palavras-chave</p>
           <span className="ml-auto text-xs text-muted-foreground">3–6 termos (preferencialmente DeCS/MeSH)</span>
@@ -199,7 +199,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
             placeholder="Ex: diabetes mellitus tipo 2"
           />
           {dados.palavras_chave.length > 0 && (
-            <p className="mt-3 text-xs text-muted-foreground font-mono bg-gray-50 rounded p-2">
+            <p className="mt-3 text-xs text-muted-foreground font-mono bg-muted rounded p-2">
               <span className="font-semibold">Palavras-chave:</span> {dados.palavras_chave.join('; ')}.
             </p>
           )}
@@ -208,7 +208,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
 
       {/* ── ABSTRACT EN ──────────────────────────────────── */}
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-muted/50">
           <Globe className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">Abstract (English)</p>
           <span className="ml-auto text-xs text-muted-foreground">Academic English — not a literal translation</span>
@@ -219,7 +219,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
               value={dados.abstract}
               onChange={e => set('abstract', e.target.value)}
               placeholder="Abstract should include: background, objective, methods, results, and conclusion…"
-              className="w-full min-h-[200px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 resize-y"
+              className="w-full min-h-[200px] rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 resize-y"
             />
             {gerandoAbstract && (
               <div className="absolute inset-0 flex items-start justify-end p-2 pointer-events-none">
@@ -247,7 +247,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
 
       {/* ── KEYWORDS ─────────────────────────────────────── */}
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-gray-50">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b bg-muted/50">
           <Tag className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">Keywords (English)</p>
           <span className="ml-auto text-xs text-muted-foreground">3–6 terms (MeSH preferred)</span>
@@ -263,7 +263,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
             idioma="en"
           />
           {dados.keywords.length > 0 && (
-            <p className="mt-3 text-xs text-muted-foreground font-mono bg-gray-50 rounded p-2">
+            <p className="mt-3 text-xs text-muted-foreground font-mono bg-muted rounded p-2">
               <span className="font-semibold">Keywords:</span> {dados.keywords.join('; ')}.
             </p>
           )}
