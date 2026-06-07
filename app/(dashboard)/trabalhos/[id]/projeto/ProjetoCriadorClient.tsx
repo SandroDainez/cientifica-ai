@@ -135,6 +135,47 @@ function nextEtapaStatus(status: EtapaStatus): EtapaStatus {
 // A IA às vezes tipifica etapas de ética como "preparacao".
 // Baseado no título, corrigimos o tipo antes de qualquer outra lógica.
 
+/**
+ * Guardião determinístico do fluxo: se o trabalho NÃO envolve seres humanos e
+ * NÃO precisa de CEP, remove do roadmap/checklist toda etapa de ética
+ * (CEP, Plataforma Brasil, TCLE, carta de anuência) que a IA tenha incluído por
+ * engano. Garante o fluxo correto para cada tipo de trabalho.
+ */
+function limparFluxoConformeTipo(dados: DadosProjeto): DadosProjeto {
+  const precisaEtica = Boolean(dados.envolve_seres_humanos) || Boolean(dados.precisa_cep)
+  if (precisaEtica) return dados
+
+  // Sem ética: força flags e remove etapas/itens de CEP
+  const reEtica = /cep\b|plataforma brasil|tcle|consentimento|anu[êe]ncia|comit[êe] de [ée]tica|parecer [ée]tico|conep|caae/i
+
+  const roadmap = (dados.roadmap ?? []).filter(e => {
+    if (e.tipo === 'etica') return false
+    if (e.tipo === 'aguardar' && reEtica.test(`${e.titulo} ${e.descricao ?? ''}`)) return false
+    if (reEtica.test(e.titulo)) return false
+    return true
+  })
+
+  const checklist = (dados.checklist ?? []).filter(item => {
+    if (item.categoria === 'etica') return false
+    if (item.etapa_tipo === 'etica') return false
+    if (reEtica.test(`${item.item} ${item.descricao ?? ''}`)) return false
+    return true
+  })
+
+  const alertas = (dados.alertas ?? []).filter(a => !reEtica.test(a))
+
+  return {
+    ...dados,
+    envolve_seres_humanos: false,
+    precisa_cep: false,
+    precisa_carta_anuencia: false,
+    precisa_tcle: false,
+    roadmap,
+    checklist,
+    alertas,
+  }
+}
+
 function normalizeEtapa(etapa: EtapaRoadmap): EtapaRoadmap {
   if (etapa.tipo !== 'preparacao') return etapa   // só corrige preparacao indevido
   const t = etapa.titulo.toLowerCase()
@@ -895,14 +936,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
       if (!jsonStr) throw new Error('O plano ficou incompleto. Tente novamente — pode ser necessário simplificar a descrição.')
 
       const parsed = JSON.parse(jsonStr) as Omit<DadosProjeto, 'descricao_original' | 'criado_em' | 'confirmado'>
-      const dadosProjeto: DadosProjeto = {
+      const dadosProjeto: DadosProjeto = limparFluxoConformeTipo({
         ...parsed,
         descricao_original: desc,
         analise_orientador: analiseOrientador,
         dados_coletados: temDados && dadosColetados.trim() ? dadosColetados.trim() : undefined,
         criado_em: new Date().toISOString(),
         confirmado: false,
-      }
+      })
 
       // Init local status state from new plan
       const statuses: Record<string, EtapaStatus> = {}

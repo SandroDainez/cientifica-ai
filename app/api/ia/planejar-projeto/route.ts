@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { buildPlanejadorPrompt } from '@/lib/ai/prompts/planejar-projeto'
 import { streamText } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
+import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 
 export const maxDuration = 300
 
@@ -24,10 +25,10 @@ export async function POST(request: Request) {
     trabalhoId: string
   }
 
-  // Validate that trabalhoId belongs to the user
+  // Validate that trabalhoId belongs to the user + carrega o tipo escolhido
   const { data: trabalho } = await supabase
     .from('trabalhos')
-    .select('id')
+    .select('id, tipo_trabalho')
     .eq('id', trabalhoId)
     .eq('usuario_id', user.id)
     .single()
@@ -38,7 +39,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Descreva sua ideia com mais detalhes.' }, { status: 400 })
   }
 
-  const { system, user: userPrompt } = buildPlanejadorPrompt(descricao.trim())
+  // O fluxo correto depende do tipo de trabalho ESCOLHIDO pelo usuário.
+  const tipoTrabalho = (trabalho as { tipo_trabalho?: string }).tipo_trabalho ?? undefined
+  const fluxo = tipoTrabalho ? getFluxo(tipoTrabalho) : null
+
+  const { system, user: userPrompt } = buildPlanejadorPrompt(descricao.trim(), {
+    tipoTrabalho,
+    nomeTipo: fluxo?.nome_completo,
+    requerCep: fluxo?.requer_cep ?? false,
+    requerPrisma: fluxo?.requer_prisma ?? false,
+  })
   // Tokens generosos: a resposta tem a ANÁLISE (texto livre) + o PLANO JSON completo
   // (roadmap + checklist). Com pouco token, a análise ou o JSON poderiam ser cortados.
   return streamText(system, userPrompt, false, 16000)
