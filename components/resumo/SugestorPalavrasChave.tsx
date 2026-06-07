@@ -11,9 +11,11 @@ interface Props {
   onAdicionar: (termo: string) => void
   onRemover: (termo: string) => void
   placeholder?: string
+  /** Idioma dos descritores: 'pt' (DeCS) ou 'en' (MeSH). Padrão: 'pt'. */
+  idioma?: 'pt' | 'en'
 }
 
-export function SugestorPalavrasChave({ texto, area, selecionados, onAdicionar, onRemover, placeholder }: Props) {
+export function SugestorPalavrasChave({ texto, area, selecionados, onAdicionar, onRemover, placeholder, idioma = 'pt' }: Props) {
   const [sugestoes, setSugestoes] = useState<string[]>([])
   const [carregando, setCarregando] = useState(false)
   const [inputCustom, setInputCustom] = useState('')
@@ -25,7 +27,7 @@ export function SugestorPalavrasChave({ texto, area, selecionados, onAdicionar, 
       const res = await fetch('/api/ia/sugerir-palavras-chave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto, area }),
+        body: JSON.stringify({ texto, area, idioma }),
       })
       if (res.ok) {
         const data = await res.json() as { palavras: string[] }

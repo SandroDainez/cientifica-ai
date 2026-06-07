@@ -735,9 +735,11 @@ Write ONLY the abstract text in English, no labels, no title, no keywords.`
 
 export function buildSugerirPalavrasChavePrompt(
   texto: string,
-  area: string
+  area: string,
+  idioma: 'pt' | 'en' = 'pt'
 ): string {
-  return `Analise o texto acadêmico abaixo e sugira palavras-chave/descritores adequados.
+  const en = idioma === 'en'
+  return `Analise o texto acadêmico abaixo e sugira ${en ? 'KEYWORDS in ENGLISH' : 'palavras-chave/descritores'} adequados.
 
 **Área do conhecimento:** ${area}
 
@@ -746,11 +748,16 @@ ${texto.substring(0, 2000)}
 
 Regras:
 - Sugira entre 5 e 10 termos
-- Para Ciências da Saúde: priorize descritores DeCS (Descritores em Ciências da Saúde) / MeSH
+${en
+  ? `- TODOS os termos OBRIGATORIAMENTE em INGLÊS — esta é a lista de Keywords em inglês (não traduza para português)
+- Para Ciências da Saúde: use descritores MeSH (Medical Subject Headings) oficiais em inglês (ex: "Sepsis", "Hospital Mortality", "Risk Factors", "Health Policy")
+- Para outras áreas: termos técnicos consolidados na literatura internacional em inglês
+- NUNCA inclua termos em português`
+  : `- Para Ciências da Saúde: priorize descritores DeCS (Descritores em Ciências da Saúde) em português
 - Para outras áreas: use termos técnicos consolidados na literatura
-- Os termos devem ser específicos (não genéricos como "saúde" ou "pesquisa")
-- Inclua termos em português
+- Inclua termos em português`}
+- Os termos devem ser específicos (não genéricos como "${en ? 'health' : 'saúde'}" ou "${en ? 'research' : 'pesquisa'}")
 
 Responda APENAS com JSON válido:
-{"palavras": ["termo1", "termo2", "termo3", "termo4", "termo5"]}`
+{"palavras": ["${en ? 'Sepsis' : 'termo1'}", "${en ? 'Hospital Mortality' : 'termo2'}", "termo3", "termo4", "termo5"]}`
 }

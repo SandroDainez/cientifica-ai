@@ -254,12 +254,13 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         </div>
         <div className="p-5">
           <SugestorPalavrasChave
-            texto={dados.abstract}
+            texto={dados.abstract || dados.resumo}
             area={trabalho.area_conhecimento ?? ''}
             selecionados={dados.keywords}
             onAdicionar={termo => set('keywords', [...dados.keywords, termo])}
             onRemover={termo => set('keywords', dados.keywords.filter(k => k !== termo))}
             placeholder="e.g., type 2 diabetes mellitus"
+            idioma="en"
           />
           {dados.keywords.length > 0 && (
             <p className="mt-3 text-xs text-muted-foreground font-mono bg-gray-50 rounded p-2">
