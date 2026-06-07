@@ -196,6 +196,15 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
 
   const conteudoAtual = conteudos[faseAtualConfig.chave_secao] ?? conteudos[faseAtiva] ?? ''
 
+  // Título do cabeçalho — derivado do conteúdo ATUAL da seção de título (reflete
+  // edições ao vivo); cai para trabalho.titulo se a seção ainda estiver vazia.
+  const chaveTitulo = fases.find(f => /^titulo/.test(f.chave_secao))?.chave_secao
+  const conteudoTitulo = chaveTitulo ? conteudos[chaveTitulo] : undefined
+  const tituloHeader =
+    capitalizarTitulo(
+      tituloEfetivo(null, [{ chave_secao: 'titulo', conteudo: conteudoTitulo ?? '' } as SecaoTrabalho]) || trabalho.titulo,
+    ) || 'Trabalho sem título'
+
   // Mantém refs sincronizadas para uso no useEffect
   faseAtualRef.current = faseAtualConfig
   conteudosRef.current = conteudos
@@ -443,7 +452,7 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         {/* Header */}
         <div className="px-6 pt-4 pb-3 border-b bg-background">
           <PageHeader
-            title={capitalizarTitulo(tituloEfetivo(trabalho.titulo, secoesIniciais)) || 'Trabalho sem título'}
+            title={tituloHeader}
             description={getTipoLabel(trabalho.tipo_trabalho)}
             breadcrumbs={[
               { label: 'Dashboard', href: '/dashboard' },
