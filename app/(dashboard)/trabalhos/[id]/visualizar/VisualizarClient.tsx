@@ -109,17 +109,17 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
       <div className="no-print sticky top-16 z-20 bg-white border-b shadow-sm overflow-x-auto">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-3 min-w-0">
           <Link href={`/trabalhos/${trabalho.id}/editar`}
-            className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}>
+            className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm shrink-0')}>
             <ArrowLeft className="h-4 w-4" /> Editor
           </Link>
 
-          <div className="flex-1 text-center">
+          <div className="flex-1 min-w-0 text-center">
             <p className="text-xs text-muted-foreground truncate">
               {titulo || 'Sem título'} · {getTipoLabel(trabalho.tipo_trabalho)}
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => { setTocAberto(v => !v); setChecklistAberto(false) }}
               className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}
