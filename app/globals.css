@@ -261,6 +261,14 @@
 }
 
 /* ── Impressão ────────────────────────────────────────────── */
+/* Margem 0 na página: o navegador só injeta cabeçalho/rodapé (data, título,
+   URL) quando existe margem de página. As margens visuais do documento vêm do
+   padding do .doc-page, então a folha sai limpa no PDF e no "salvar como Word". */
+@page {
+  size: A4;
+  margin: 0;
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: white !important; }

@@ -9,6 +9,8 @@ import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { renderMarkdownInline } from '@/components/ui/MarkdownText'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
@@ -20,6 +22,51 @@ interface Props {
   referencias: Referencia[]
   autorNome?: string
   autorInstituicao?: string
+}
+
+/**
+ * Renderiza o conteúdo de uma seção preservando tabelas markdown como tabelas
+ * reais (formato ABNT — só fios horizontais). A prosa continua em parágrafos
+ * justificados com recuo de primeira linha. Antes, tudo era quebrado por linha
+ * em <p>, o que destruía a formatação da tabela ao "inserir no texto".
+ */
+function ConteudoSecao({ texto }: { texto: string }) {
+  const ehLinhaTabela = (l: string) => l.trim().startsWith('|')
+  const blocos: { tipo: 'tabela' | 'prosa'; linhas: string[] }[] = []
+  for (const linha of texto.split('\n')) {
+    const tipo = ehLinhaTabela(linha) ? 'tabela' : 'prosa'
+    const ultimo = blocos[blocos.length - 1]
+    if (ultimo && ultimo.tipo === tipo) ultimo.linhas.push(linha)
+    else blocos.push({ tipo, linhas: [linha] })
+  }
+
+  return (
+    <>
+      {blocos.map((bloco, bi) => {
+        if (bloco.tipo === 'tabela') {
+          return (
+            <div
+              key={bi}
+              className="overflow-x-auto my-4
+                [&_table]:w-full [&_table]:border-collapse
+                [&_table]:border-t-2 [&_table]:border-b-2 [&_table]:border-black
+                [&_thead_th]:border-b [&_thead_th]:border-black
+                [&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2
+                [&_td]:px-3 [&_td]:py-1.5 [&_td]:border-0 [&_tr]:border-0
+                [&_p]:!indent-0 [&_p]:!m-0"
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {bloco.linhas.join('\n')}
+              </ReactMarkdown>
+            </div>
+          )
+        }
+        return bloco.linhas
+          .filter(Boolean)
+          .map((paragrafo, pi) => <p key={`${bi}-${pi}`}>{renderMarkdownInline(paragrafo)}</p>)
+      })}
+    </>
+  )
 }
 
 export function VisualizarClient({ trabalho, secoes, referencias, autorNome, autorInstituicao }: Props) {
@@ -218,9 +265,7 @@ export function VisualizarClient({ trabalho, secoes, referencias, autorNome, aut
               {i + 1} {secao.nome_secao.toUpperCase()}
             </h2>
             <div className="doc-content">
-              {extrairTextoSecao(secao.conteudo ?? '').split('\n').filter(Boolean).map((paragrafo, pi) => (
-                <p key={pi}>{renderMarkdownInline(paragrafo)}</p>
-              ))}
+              <ConteudoSecao texto={extrairTextoSecao(secao.conteudo ?? '')} />
             </div>
           </section>
         ))}
