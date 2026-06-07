@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
-import { streamText, callAI } from '@/lib/ai/stream'
+import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho } from '@/types'
 
@@ -72,6 +72,36 @@ ${conteudo}
 
 Texto corrigido (completo, com a sugestão aplicada):`
 
-  // Streaming direto — o cliente recebe o texto corrigido em tempo real
-  return streamText(systemPrompt, userPrompt, false, Math.max(6000, conteudo.split(/\s+/).length * 3))
+  // Correção CIRÚRGICA: callAI com temperatura baixa (0.3) — preciso, não
+  // criativo. streamText (temp 0.9) reescrevia o texto e às vezes piorava.
+  // Retry com fallback de modelo; valida o resultado antes de aplicar.
+  const nPalavras = conteudo.split(/\s+/).filter(Boolean).length
+  const maxTokens = Math.max(6000, nPalavras * 3)
+  let corrigido = ''
+  let ultimoErro = ''
+  for (const fast of [false, false, true]) {
+    if (corrigido) break
+    try {
+      const out = await callAI(systemPrompt, userPrompt, fast, maxTokens)
+      // Aceita só se vier conteúdo plausível (não vazio e sem truncar demais).
+      // Permite encurtar (ex.: "reduzir extensão"), mas rejeita perda > 55%.
+      if (out?.trim() && out.split(/\s+/).filter(Boolean).length >= nPalavras * 0.45) {
+        corrigido = out.trim()
+      }
+    } catch (err) {
+      ultimoErro = err instanceof Error ? err.message : String(err)
+      console.error('[aplicar-sugestao] tentativa falhou:', ultimoErro)
+    }
+  }
+
+  if (!corrigido) {
+    // NÃO devolve texto ruim/erro como conteúdo — retorna erro para o cliente
+    // manter o texto original intacto.
+    return NextResponse.json(
+      { error: `Não foi possível aplicar a sugestão agora${ultimoErro ? ` (${ultimoErro})` : ''}. Tente novamente.` },
+      { status: 502 }
+    )
+  }
+
+  return streamStringComEfeito(corrigido)
 }

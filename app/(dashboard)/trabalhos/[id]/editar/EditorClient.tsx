@@ -424,6 +424,19 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
         acumulado += decoder.decode(value, { stream: true })
         setConteudoAtual(acumulado)
       }
+      // Persiste a correção aplicada (o auto-save não dispara em mudança programática)
+      if (acumulado.trim()) {
+        await fetch('/api/ia/salvar-secao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            trabalhoId: trabalho.id,
+            chaveSecao: faseAtualRef.current.chave_secao,
+            conteudo: acumulado,
+            status: 'editado',
+          }),
+        }).catch(() => {})
+      }
       toast.success('Sugestão aplicada com sucesso!')
     } catch (err) {
       console.error('Erro ao aplicar sugestão:', err)
