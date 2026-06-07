@@ -295,7 +295,15 @@ export async function GET(request: Request) {
       .map(l => l.trim())
       .filter(l => l.startsWith('|'))
     if (linhas.length < 2) return null
-    const parseRow = (l: string) => l.split('|').slice(1, -1).map(c => c.trim())
+    // Divide a linha em células removendo SÓ as vazias das bordas (artefatos do
+    // pipe inicial/final). NUNCA usar slice(1,-1): se a linha não tiver pipe
+    // final, isso descartaria a ÚLTIMA coluna (ex.: a coluna "Valor-p").
+    const parseRow = (l: string) => {
+      const cells = l.split('|').map(c => c.trim())
+      if (cells.length && cells[0] === '') cells.shift()
+      if (cells.length && cells[cells.length - 1] === '') cells.pop()
+      return cells
+    }
     const ehSeparador = (l: string) => parseRow(l).every(c => /^:?-{2,}:?$/.test(c))
     const header = parseRow(linhas[0])
     const corpo = linhas.slice(1).filter(l => !ehSeparador(l)).map(parseRow)

@@ -116,10 +116,16 @@ export function PainelPlanilhaResultados({ trabalhoId, dadosProjeto, chaveSecao,
     let bufTabela: string[] = []
 
     const emitirTabela = () => {
+      const parseRow = (l: string) => {
+        const cels = l.split('|').map(c => c.trim())
+        if (cels.length && cels[0] === '') cels.shift()
+        if (cels.length && cels[cels.length - 1] === '') cels.pop()
+        return cels
+      }
       const rows = bufTabela
         .map(l => l.trim())
         .filter(l => l.startsWith('|'))
-        .map(l => l.split('|').slice(1, -1).map(c => c.trim()))
+        .map(parseRow)                                              // não corta a última coluna
         .filter(cels => !cels.every(c => /^:?-{2,}:?$/.test(c)))   // remove separador |---|
       bufTabela = []
       if (rows.length < 2) return
