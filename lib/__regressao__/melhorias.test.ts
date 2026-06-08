@@ -16,6 +16,7 @@ import { markdownAcademicoParaHtml } from '@/lib/formatacao/documento-html'
 import { ehSobrenomePlaceholder, ehTituloDescartavel, ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
+import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 
 // ── 1. Travessões e vírgula decimal ──────────────────────────────────────────
 test('removerTravessoes: troca travessão "—" por vírgula', () => {
@@ -133,7 +134,26 @@ test('markdownAcademicoParaHtml: tabela mantém TODAS as colunas (Valor-p)', () 
   assert.ok(html.includes('0,03'), 'valor da última coluna')
 })
 
-// ── 10. Integração: pós-processamento completo ───────────────────────────────
+// ── 10. Dedup de documentos por etapa (nunca duas etapas o mesmo doc) ────────
+test('dedupDocumentosPorEtapa: tipo de documento aparece em UMA só etapa', () => {
+  const mapa = dedupDocumentosPorEtapa([
+    { id: 'e1', docs: [{ tipo: 'instrumento_coleta' }, { tipo: 'calculo_amostral' }] },
+    { id: 'e2', docs: [{ tipo: 'instrumento_coleta' }, { tipo: 'calculo_amostral' }, { tipo: 'guia_coleta' }] },
+  ])
+  assert.deepEqual((mapa.get('e1') ?? []).map(d => d.tipo), ['instrumento_coleta', 'calculo_amostral'])
+  // e2 NÃO repete os que e1 já reivindicou — só sobra o novo (guia_coleta)
+  assert.deepEqual((mapa.get('e2') ?? []).map(d => d.tipo), ['guia_coleta'])
+})
+test('dedupDocumentosPorEtapa: primeira etapa na ordem fica com o tipo', () => {
+  const mapa = dedupDocumentosPorEtapa([
+    { id: 'a', docs: [{ tipo: 'revisao_literatura' }] },
+    { id: 'b', docs: [{ tipo: 'revisao_literatura' }] },
+  ])
+  assert.equal((mapa.get('a') ?? []).length, 1)
+  assert.equal((mapa.get('b') ?? []).length, 0)
+})
+
+// ── 11. Integração: pós-processamento completo ───────────────────────────────
 test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   const refs = [] as never[]
   const entrada = 'Resultado — média 204,5. summarise(groups = "drop"). a = TTestIndPower. \\(d^2\\). Falta (SOBRENOME, ANO).'

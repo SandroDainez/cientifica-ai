@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils'
 import { limparMarkdownCompleto } from '@/lib/ai/utils'
 import { markdownAcademicoParaHtml } from '@/lib/formatacao/documento-html'
 import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
+import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -626,11 +627,21 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     return statuses
   })
 
+  // Mapa deduplicado de documentos por etapa: um MESMO tipo de documento nunca é
+  // reivindicado por duas etapas (rede de segurança contra "dois cards gerando a
+  // mesma coisa"). A primeira etapa na ordem do roadmap fica com o tipo.
+  const documentosPorEtapa = dedupDocumentosPorEtapa(
+    (planData?.roadmap ?? []).map(raw => {
+      const e = normalizeEtapa(raw)
+      return { id: e.id, docs: getDocumentosEtapa(e, computeAppExecuta(e), planData) }
+    })
+  )
+
   // Uma etapa "App faz" está concluída quando TODOS os seus documentos já foram
   // gerados (docsMap). Assim, ao gerar a Revisão de Literatura, a etapa deixa de
   // aparecer como "Pendente" — sem o usuário precisar marcar manualmente.
   const etapaConcluidaPorDocs = (etapa: EtapaRoadmap): boolean => {
-    const docs = getDocumentosEtapa(etapa, computeAppExecuta(etapa), planData)
+    const docs = documentosPorEtapa.get(etapa.id) ?? []
     if (docs.length === 0) return false
     return docs.every(d => docsMap[`${etapa.id}_${d.tipo}`]?.status === 'gerado')
   }
@@ -883,14 +894,12 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   <meta charset="UTF-8" />
   <title>${nomeDoc}</title>
   <style>
-    /* Margens ABNT no @page (superior/esquerda 3cm, inferior/direita 2cm).
-       IMPORTANTE: a margem precisa estar no @page (não no padding do body),
-       senão ela só vale na 1ª/última página e o conteúdo encosta na borda nas
-       quebras internas. Trade-off: com margem > 0 o navegador PODE injetar
-       data/URL no topo — basta desmarcar "Cabeçalhos e rodapés" na impressão. */
-    @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
+    /* margin:0 no @page para o navegador NÃO injetar data/URL/"about:blank" no
+       PDF (esse texto não faz parte do documento). As margens ABNT vêm do padding
+       do body (superior/esquerda 3cm, inferior/direita 2cm). */
+    @page { size: A4; margin: 0; }
     /* ABNT: Times 12pt, entrelinha 1,5, justificado. */
-    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 3cm 2cm 2cm 3cm; }
     h1 { font-size: 14pt; text-align: center; margin: 20pt 0 10pt; text-transform: uppercase; }
     h2 { font-size: 13pt; margin: 16pt 0 6pt; }
     h3 { font-size: 12pt; margin: 12pt 0 4pt; }
@@ -1614,7 +1623,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                     tiposJaRenderizados.add(etapa.tipo)
 
                     const instrucoes = isPrimeiraDoTipo ? getInstrucoesEtapa(etapa, appExecuta) : []
-                    const documentosEtapa = getDocumentosEtapa(etapa, appExecuta, planData)
+                    const documentosEtapa = documentosPorEtapa.get(etapa.id) ?? []
                     const linkExterno = etapa.tipo === 'etica' && !appExecuta ? 'https://plataformabrasil.saude.gov.br' : null
                     const etapaChecklistItems = isPrimeiraDoTipo
                       ? (planData.checklist ?? []).filter(item => {
