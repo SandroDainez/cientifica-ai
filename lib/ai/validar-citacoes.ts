@@ -38,6 +38,21 @@ function palavrasChave(texto: string): Set<string> {
 }
 
 /**
+ * Rede de segurança final: remove qualquer placeholder de citação que tenha
+ * sobrado no texto (ex.: "(SOBRENOME, ANO)" sem referência adequada). Um
+ * placeholder NUNCA deve aparecer no documento final — melhor a frase sem a
+ * citação do que com o marcador visível.
+ */
+export function removerPlaceholdersCitacaoResiduais(texto: string): string {
+  if (!texto) return texto
+  return texto
+    .replace(/\(\s*SOBRENOME\s*,?\s*ANO\s*\)/gi, '')
+    .replace(/ +([.,;:)])/g, '$1')   // espaço antes de pontuação
+    .replace(/\(\s*\)/g, '')          // parênteses vazios
+    .replace(/[ \t]{2,}/g, ' ')       // espaços duplos
+}
+
+/**
  * Substitui cada placeholder "(SOBRENOME, ANO)" por uma citação REAL da lista de
  * referências, escolhendo a mais próxima do tema da frase e variando as fontes
  * (evita repetir sempre a mesma). É o que um pesquisador faz: "preciso de uma
@@ -193,8 +208,10 @@ export function normalizarPlaceholders(texto: string): string {
   t = t.replace(/\[\s*(?:SOBRENOME|AUTOR)\s*,\s*[^\]]*\]/gi, '(SOBRENOME, ANO)')
   // Narrativo: SOBRENOME (2024) / AUTOR (ANO) / SOBRENOME et al. (2024)
   t = t.replace(/\b(?:SOBRENOME|AUTOR)(?:\s+et\s+al\.?)?\s*\([^)]*\)/gi, '(SOBRENOME, ANO)')
-  // Nome próprio solto imediatamente antes de um placeholder (resíduo de citação quebrada)
-  t = t.replace(/\b(?:[A-ZÀ-Ý][a-zà-ÿ]+\s+){1,3}\(SOBRENOME,\s*ANO\)/g, '(SOBRENOME, ANO)')
+  // (Removido) Não apagar palavras capitalizadas antes do placeholder: a regra
+  // antiga engolia conteúdo real ("Norte e Nordeste (SOBRENOME, ANO)" perdia
+  // "Nordeste"). O placeholder é resolvido pelo preenchedor ou removido pela
+  // rede de segurança, sem destruir o texto.
   // Colapsa placeholders duplicados consecutivos
   t = t.replace(/\(SOBRENOME,\s*ANO\)(\s*\(SOBRENOME,\s*ANO\))+/g, '(SOBRENOME, ANO)')
   return t

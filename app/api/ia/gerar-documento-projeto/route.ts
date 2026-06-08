@@ -5,7 +5,7 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
-import { validarCitacoesReais, removerTravessoes } from '@/lib/ai/validar-citacoes'
+import { validarCitacoesReais, removerTravessoes, removerPlaceholdersCitacaoResiduais } from '@/lib/ai/validar-citacoes'
 import { corrigirCodigoR } from '@/lib/ai/utils'
 import { substituirListaReferencias } from '@/lib/referencias/lista-referencias'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
@@ -109,12 +109,16 @@ export async function POST(request: Request) {
 
   const formato: FormatoCitacao = trabalho.formato_citacao ?? 'abnt'
 
-  // ── Garante referências REAIS para documentos que precisam de citações ─────
-  let referencias: Referencia[] = []
+  // ── Referências do trabalho ────────────────────────────────────────────────
+  // Carrega as referências existentes para TODOS os tipos de documento, de modo
+  // que a resolução de citações (resolver/limpar "(SOBRENOME, ANO)") rode também
+  // em instrumento, TCLE, guia etc. — não só nos documentos "de referência".
+  const { data: refsData } = await supabase
+    .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
+  let referencias: Referencia[] = filtrarRefsCitaveis((refsData ?? []) as Referencia[])
   let guardrail = ''
   if (DOCS_COM_REFERENCIAS.has(tipoDocumento)) {
-    const { data: refsData } = await supabase
-      .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
+    // Só estes documentos disparam a importação automática (quando faltam refs).
     const refsResult = await garantirReferenciasReais({
       supabase,
       trabalhoId,
@@ -153,9 +157,13 @@ export async function POST(request: Request) {
     let t = removerTravessoes(texto)
     // Corrige erros determinísticos de código R (ex.: groups → .groups)
     t = corrigirCodigoR(t)
-    if (!DOCS_COM_REFERENCIAS.has(tipoDocumento)) return t
+    // Resolve citações em TODOS os documentos (instrumento, TCLE, guia…): tenta
+    // substituir "(SOBRENOME, ANO)" por uma referência real do projeto.
     t = validarCitacoesReais(t, referencias, formato)
     if (temListaRefs && referencias.length > 0) t = substituirListaReferencias(t, referencias, formato)
+    // Rede de segurança: nenhum placeholder de citação pode ficar visível —
+    // se sobrou (sem referência adequada), é removido em vez de exibido.
+    t = removerPlaceholdersCitacaoResiduais(t)
     return t
   }
 
@@ -182,14 +190,13 @@ export async function POST(request: Request) {
     }
   }
 
-  // Documentos com referências mas sem humanização (protocolo_cep, calculo_amostral):
-  // gera, valida citações e transmite. Demais estruturados: streaming direto.
-  if (DOCS_COM_REFERENCIAS.has(tipoDocumento)) {
-    try {
-      const texto = await callAI(system, userPrompt, false, maxTokens)
-      if (texto && texto.trim().length > 50) return streamStringComEfeito(validar(texto))
-    } catch { /* fallback abaixo */ }
-  }
+  // Demais documentos (com ou sem referências, sem humanização — ex.: protocolo_cep,
+  // calculo_amostral, instrumento_coleta, tcle): gera, passa SEMPRE pelo validar()
+  // (limpa travessões, resolve/remove citações placeholder) e transmite.
+  try {
+    const texto = await callAI(system, userPrompt, false, maxTokens)
+    if (texto && texto.trim().length > 50) return streamStringComEfeito(validar(texto))
+  } catch { /* fallback abaixo */ }
 
   // Documentos puramente estruturados (TCLE, instrumentos, checklists): passagem única
   return streamText(system, userPrompt, false, maxTokens)
