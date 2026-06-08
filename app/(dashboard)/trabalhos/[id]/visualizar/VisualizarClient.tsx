@@ -10,6 +10,7 @@ import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/format
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
+import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -37,7 +38,7 @@ interface Props {
  * em <p>, o que destruía a formatação da tabela ao "inserir no texto".
  */
 function ConteudoSecao({ texto }: { texto: string }) {
-  texto = removerTravessoes(texto)   // remove travessões "—" também na visualização
+  texto = converterMathLatexParaTexto(removerTravessoes(texto))   // remove travessões "—" e converte LaTeX matemático
   const ehLinhaTabela = (l: string) => l.trim().startsWith('|')
   const blocos: { tipo: 'tabela' | 'prosa'; linhas: string[] }[] = []
   for (const linha of texto.split('\n')) {

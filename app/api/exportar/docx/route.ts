@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
+import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
 import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
@@ -439,12 +440,12 @@ export async function GET(request: Request) {
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    // Reprocessa citações contra as referências reais antes de exportar
-    const conteudoResolvido = validarCitacoesReais(
+    // Reprocessa citações contra as referências reais e converte LaTeX matemático
+    const conteudoResolvido = converterMathLatexParaTexto(validarCitacoesReais(
       secao.conteudo ?? '',
       referencias,
       trabalho.formato_citacao,
-    )
+    ))
 
     // Separa o conteúdo em blocos: tabelas markdown (linhas com "|") viram
     // tabelas reais; o restante vira parágrafos justificados.

@@ -14,6 +14,7 @@
 import type { Referencia, FormatoCitacao } from '@/types'
 import { validarCitacoesReais, removerPlaceholdersCitacaoResiduais } from './validar-citacoes'
 import { corrigirCodigoR } from './utils'
+import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
 
 export function posProcessarTextoGerado(
   texto: string,
@@ -22,6 +23,8 @@ export function posProcessarTextoGerado(
 ): string {
   if (!texto) return texto
   let t = corrigirCodigoR(texto)
+  // Converte LaTeX matemático (\frac, \times, Z_{\alpha/2}, ^2…) em texto legível
+  t = converterMathLatexParaTexto(t)
   t = validarCitacoesReais(t, referencias, formato)
   t = removerPlaceholdersCitacaoResiduais(t)
   return t

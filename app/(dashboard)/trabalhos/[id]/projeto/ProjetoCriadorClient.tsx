@@ -35,6 +35,7 @@ import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { limparMarkdownCompleto } from '@/lib/ai/utils'
 import { markdownAcademicoParaHtml } from '@/lib/formatacao/documento-html'
+import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -2001,7 +2002,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                                   [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded
                                                   [&_pre]:bg-muted [&_pre]:border [&_pre]:border-border [&_pre]:rounded [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
                                                   [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:text-xs">
-                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{removerTravessoes(docState.conteudo).replace(/^\s*([-*_])\1{2,}\s*$/gm, '')}</ReactMarkdown>
+                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{converterMathLatexParaTexto(removerTravessoes(docState.conteudo)).replace(/^\s*([-*_])\1{2,}\s*$/gm, '')}</ReactMarkdown>
                                                 </div>
                                               )}
 

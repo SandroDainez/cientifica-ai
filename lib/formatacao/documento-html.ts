@@ -26,6 +26,8 @@
  * antes de chamar esta função. Aqui cuidamos apenas da estrutura markdown.
  */
 
+import { converterMathLatexParaTexto } from './latex'
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -61,7 +63,9 @@ const ehSeparadorTabela = (l: string) => /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(l) &&
  * Retorna apenas o corpo (sem <html>/<head>); o chamador injeta no template.
  */
 export function markdownAcademicoParaHtml(texto: string): string {
-  const linhas = texto.split('\n')
+  // Converte LaTeX matemático cru (\frac, \times, Z_{\alpha/2}…) em texto legível
+  // antes de montar o HTML — vale para documentos já existentes na impressão.
+  const linhas = converterMathLatexParaTexto(texto).split('\n')
   const out: string[] = []
 
   let i = 0
