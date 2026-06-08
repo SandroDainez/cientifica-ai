@@ -596,6 +596,25 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     return statuses
   })
 
+  // Uma etapa "App faz" está concluída quando TODOS os seus documentos já foram
+  // gerados (docsMap). Assim, ao gerar a Revisão de Literatura, a etapa deixa de
+  // aparecer como "Pendente" — sem o usuário precisar marcar manualmente.
+  const etapaConcluidaPorDocs = (etapa: EtapaRoadmap): boolean => {
+    const docs = getDocumentosEtapa(etapa, computeAppExecuta(etapa), planData)
+    if (docs.length === 0) return false
+    return docs.every(d => docsMap[`${etapa.id}_${d.tipo}`]?.status === 'gerado')
+  }
+
+  // Status exibido da etapa: respeita o que o usuário marcou; se ainda 'pendente',
+  // deriva 'concluido' de documentos gerados ou do documento 100% (auto-conclusão).
+  const statusEfetivoEtapa = (etapaRaw: EtapaRoadmap): EtapaStatus => {
+    const etapa = normalizeEtapa(etapaRaw)
+    const base = etapaStatuses[etapa.id] ?? 'pendente'
+    if (base !== 'pendente') return base
+    if (etapaConcluidaPorDocs(etapa) || etapaAutoConcluida(etapa.tipo)) return 'concluido'
+    return base
+  }
+
   const streamRef = useRef<string>('')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -1510,8 +1529,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                   <div className="flex items-center gap-2 flex-wrap">
                     {(() => {
                       const total = planData.roadmap.length
-                      const done = Object.values(etapaStatuses).filter(s => s === 'concluido').length
-                      const inProg = Object.values(etapaStatuses).filter(s => s === 'em_andamento').length
+                      const efetivos = planData.roadmap.map(statusEfetivoEtapa)
+                      const done = efetivos.filter(s => s === 'concluido').length
+                      const inProg = efetivos.filter(s => s === 'em_andamento').length
                       const pend = total - done - inProg
                       return (
                         <>
@@ -1544,7 +1564,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                     const etapa = normalizeEtapa(etapaRaw)
                     const appExecuta = computeAppExecuta(etapa)
                     const isExpanded = expandedEtapas.has(etapa.id)
-                    const etapaStatus = etapaStatuses[etapa.id] ?? 'pendente'
+                    const etapaStatus = statusEfetivoEtapa(etapaRaw)
 
                     const isPrimeiraDoTipo = !tiposJaRenderizados.has(etapa.tipo)
                     tiposJaRenderizados.add(etapa.tipo)
