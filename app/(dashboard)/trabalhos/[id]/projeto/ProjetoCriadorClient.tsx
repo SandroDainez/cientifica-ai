@@ -34,6 +34,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { limparMarkdownCompleto } from '@/lib/ai/utils'
+import { markdownAcademicoParaHtml } from '@/lib/formatacao/documento-html'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -846,42 +847,10 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // ── Imprimir documento ────────────────────────────────────────────────────
 
   const handleImprimir = useCallback((texto: string, nomeDoc: string, tituloTrabalho: string) => {
-    const escapeHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-    const out: string[] = []
-    let emCodigo = false
-    let bufferCodigo: string[] = []
-    const fecharCodigo = () => {
-      if (bufferCodigo.length) {
-        out.push(`<pre class="code">${bufferCodigo.map(escapeHtml).join('\n')}</pre>`)
-      }
-      bufferCodigo = []
-    }
-
-    for (const l of removerTravessoes(texto).split('\n')) {
-      // Cerca de bloco de código (``` ou ```r) — alterna estado, não imprime a crase
-      if (/^\s*`{3,}/.test(l)) {
-        if (emCodigo) { fecharCodigo(); emCodigo = false }
-        else { emCodigo = true; bufferCodigo = [] }
-        continue
-      }
-      if (emCodigo) { bufferCodigo.push(l); continue }
-      // Régua horizontal markdown (---, ***, ___) → <hr/> (não "---" literal)
-      if (/^\s*[-*_]{3,}\s*$/.test(l)) { out.push('<hr/>'); continue }
-      // Títulos markdown → <h2>/<h3>
-      if (/^### /.test(l)) { out.push(`<h3>${l.replace(/^### /, '')}</h3>`); continue }
-      if (/^## /.test(l))  { out.push(`<h2>${l.replace(/^## /, '')}</h2>`); continue }
-      if (/^# /.test(l))   { out.push(`<h1>${l.replace(/^# /, '')}</h1>`); continue }
-      // Código inline `texto` → <code>texto</code>
-      let formatted = l.replace(/`([^`]+)`/g, '<code>$1</code>')
-      // Negrito **texto**
-      formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      if (formatted.trim() === '') { out.push('<br/>'); continue }
-      out.push(`<p>${formatted}</p>`)
-    }
-    if (emCodigo) fecharCodigo()
-    const linhas = out.join('\n')
+    // Conversão markdown → HTML pela FONTE ÚNICA DE VERDADE (lib/formatacao).
+    // Regras (itálico, negrito, código, listas, tabelas, sem régua horizontal)
+    // ficam centralizadas lá para nunca divergirem entre os caminhos de saída.
+    const linhas = markdownAcademicoParaHtml(removerTravessoes(texto))
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -892,12 +861,20 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     /* margin 0: o navegador só injeta data/título/URL ("about:blank") quando há
        margem de página. O recuo visual vem do padding do body. */
     @page { size: A4; margin: 0; }
-    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.8; color: #000; padding: 2.5cm; }
-    h1 { font-size: 14pt; text-align: center; margin: 24pt 0 12pt; text-transform: uppercase; }
-    h2 { font-size: 13pt; margin: 18pt 0 8pt; }
-    h3 { font-size: 12pt; margin: 14pt 0 6pt; }
-    p  { margin: 0 0 8pt; text-align: justify; }
-    pre.code { font-family: 'Courier New', Courier, monospace; font-size: 10.5pt; line-height: 1.45;
+    /* ABNT: Times 12pt, entrelinha 1,5, justificado. */
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 2.5cm; }
+    h1 { font-size: 14pt; text-align: center; margin: 20pt 0 10pt; text-transform: uppercase; }
+    h2 { font-size: 13pt; margin: 16pt 0 6pt; }
+    h3 { font-size: 12pt; margin: 12pt 0 4pt; }
+    p  { margin: 0 0 6pt; text-align: justify; }
+    ul, ol { margin: 0 0 6pt; padding-left: 1.2cm; }
+    li { margin: 0 0 2pt; text-align: justify; }
+    blockquote { margin: 6pt 0 6pt 4cm; font-size: 11pt; text-align: justify; }
+    table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 11pt;
+            border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; }
+    thead th { border-bottom: 1px solid #000; text-align: left; padding: 4pt 6pt; }
+    td { padding: 3pt 6pt; text-align: left; }
+    pre.code { font-family: 'Courier New', Courier, monospace; font-size: 10.5pt; line-height: 1.4;
                background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px;
                padding: 8pt 10pt; margin: 8pt 0; text-align: left;
                white-space: pre-wrap; word-break: break-word; }
@@ -1995,7 +1972,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                                   [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded
                                                   [&_pre]:bg-muted [&_pre]:border [&_pre]:border-border [&_pre]:rounded [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
                                                   [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:text-xs">
-                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{removerTravessoes(docState.conteudo)}</ReactMarkdown>
+                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{removerTravessoes(docState.conteudo).replace(/^\s*([-*_])\1{2,}\s*$/gm, '')}</ReactMarkdown>
                                                 </div>
                                               )}
 

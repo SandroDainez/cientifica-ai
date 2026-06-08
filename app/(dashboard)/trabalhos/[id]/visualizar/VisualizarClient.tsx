@@ -68,8 +68,19 @@ function ConteudoSecao({ texto }: { texto: string }) {
           )
         }
         return bloco.linhas
-          .filter(Boolean)
-          .map((paragrafo, pi) => <p key={`${bi}-${pi}`}>{renderMarkdownInline(paragrafo)}</p>)
+          // Remove linhas vazias e réguas horizontais (--- *** ___): ABNT não usa régua no corpo
+          .filter(l => l.trim() && !/^\s*([-*_])\1{2,}\s*$/.test(l))
+          .map((linha, pi) => {
+            const key = `${bi}-${pi}`
+            // Títulos markdown viram subtítulos (não devem aparecer como "### " literal)
+            const h = linha.match(/^\s*(#{1,3}) (.*)$/)
+            if (h) {
+              const nivel = h[1].length
+              const cls = nivel === 1 ? 'font-bold text-lg mt-4 mb-2' : nivel === 2 ? 'font-bold mt-3 mb-1.5' : 'font-semibold mt-2 mb-1'
+              return <p key={key} className={cls}>{renderMarkdownInline(h[2])}</p>
+            }
+            return <p key={key}>{renderMarkdownInline(linha)}</p>
+          })
       })}
     </>
   )
