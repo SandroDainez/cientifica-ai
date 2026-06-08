@@ -54,6 +54,22 @@ export function limparMarkdownEstrutura(texto: string): string {
 }
 
 /**
+ * Corrige erros comuns e determinísticos em código R gerado pela IA.
+ * Atua apenas sobre padrões inequívocos da sintaxe (valores literais de
+ * argumentos específicos do tidyverse), então é seguro aplicar em qualquer texto.
+ *
+ * - `groups = "drop"`  →  `.groups = "drop"`  (argumento de dplyr::summarise;
+ *   sem o ponto inicial o código quebra ao ser executado)
+ */
+export function corrigirCodigoR(texto: string): string {
+  if (!texto) return texto
+  return texto.replace(
+    /(^|[^.\w])groups(\s*=\s*"(?:drop|keep|drop_last|rowwise)")/g,
+    '$1.groups$2',
+  )
+}
+
+/**
  * Remove TODO o markdown, incluindo **negrito** e *itálico*.
  * Usado no PPTX onde o texto deve ser completamente limpo.
  */

@@ -13,6 +13,12 @@
 import type { Referencia, FormatoCitacao } from '@/types'
 import { citacaoInTexto } from '@/lib/referencias/formatar'
 
+// Contexto de software/ferramenta estatística: nessas frases um placeholder de
+// citação NÃO deve ser preenchido com uma referência da biblioteca (seria
+// inventar a associação). Programas citam-se com sua referência canônica própria
+// (ex.: R → "R Core Team"), tratada à parte.
+const CONTEXTO_SOFTWARE = /\b(software|programa estat[íi]stico|pacote estat[íi]stico|vers[ãa]o do|core team|rstudio|\bspss\b|\bstata\b|\bsas\b|jamovi|jasp|graphpad|prism|minitab|matlab|epi\s?info|redcap|\bpython\b|linguagem r\b|ambiente r\b|software r\b|programa r\b|\bno r\b)/i
+
 // Palavras irrelevantes para casar tema da frase × título da referência
 const STOPWORDS = new Set([
   'de','da','do','das','dos','para','com','por','uma','que','os','as','na','no',
@@ -56,11 +62,25 @@ export function substituirPlaceholdersPorReais(
   let resultado = ''
   let lastIndex = 0
   let m: RegExpExecArray | null
+  let houveRemocao = false
   while ((m = PLACEHOLDER.exec(texto)) !== null) {
     // Contexto = SOMENTE a frase atual (do último ponto final até o placeholder),
     // para não vazar palavras da frase anterior e repetir a mesma referência.
     const janela = texto.slice(Math.max(0, m.index - 240), m.index)
     const ctx = janela.split(/[.!?]\s+/).pop() ?? janela
+
+    // ANTI-FABRICAÇÃO (contexto de software/ferramenta): menções a programas
+    // estatísticos NÃO se citam com referência bibliográfica da biblioteca (o R,
+    // por ex., cita-se como "R Core Team"). Inserir uma referência qualquer aqui
+    // inventaria a associação (ex.: "R" → YAMADA, 1984). Nesses casos REMOVEMOS o
+    // placeholder em vez de preencher.
+    if (CONTEXTO_SOFTWARE.test(ctx)) {
+      resultado += texto.slice(lastIndex, m.index)
+      houveRemocao = true
+      lastIndex = m.index + m[0].length
+      continue
+    }
+
     const ctxKws = palavrasChave(ctx)
     let melhor = 0
     let melhorScore = -Infinity
@@ -76,6 +96,14 @@ export function substituirPlaceholdersPorReais(
     lastIndex = m.index + m[0].length
   }
   resultado += texto.slice(lastIndex)
+  // Limpa a pontuação/espaços deixados pela remoção de placeholders de software
+  // (ex.: "no software R ." → "no software R.").
+  if (houveRemocao) {
+    resultado = resultado
+      .replace(/ +([.,;:)])/g, '$1')   // espaço antes de pontuação
+      .replace(/\(\s*\)/g, '')          // parênteses vazios remanescentes
+      .replace(/[ \t]{2,}/g, ' ')       // espaços duplos
+  }
   return resultado
 }
 
@@ -211,7 +239,10 @@ export function removerTravessoes(texto: string): string {
     .replace(/\s+–\s+/g, ', ')   // en-dash (U+2013) com espaços = separador → vírgula
     .replace(/ +,/g, ',')        // " ," → ","
     .replace(/,\s*,/g, ',')      // ",," → ","
-    .replace(/,(?=\S)/g, ', ')   // garante espaço após a vírgula
+    // Garante espaço após a vírgula, MAS preserva vírgula decimal (ex.: 204,5):
+    // não insere espaço quando a vírgula está entre dígitos.
+    .replace(/,(?=\S)/g, (_m: string, offset: number, str: string) =>
+      /\d/.test(str[offset - 1] ?? '') && /\d/.test(str[offset + 1] ?? '') ? ',' : ', ')
     .replace(/,\s+\./g, '.')     // ", ." → "."
 }
 

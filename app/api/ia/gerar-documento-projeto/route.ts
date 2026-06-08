@@ -6,6 +6,7 @@ import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
 import { validarCitacoesReais, removerTravessoes } from '@/lib/ai/validar-citacoes'
+import { corrigirCodigoR } from '@/lib/ai/utils'
 import { substituirListaReferencias } from '@/lib/referencias/lista-referencias'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
 
@@ -150,6 +151,8 @@ export async function POST(request: Request) {
   const validar = (texto: string) => {
     // Remove travessões "—" em TODO documento (mesmo os sem referências, ex.: Guia de Análise)
     let t = removerTravessoes(texto)
+    // Corrige erros determinísticos de código R (ex.: groups → .groups)
+    t = corrigirCodigoR(t)
     if (!DOCS_COM_REFERENCIAS.has(tipoDocumento)) return t
     t = validarCitacoesReais(t, referencias, formato)
     if (temListaRefs && referencias.length > 0) t = substituirListaReferencias(t, referencias, formato)

@@ -870,10 +870,15 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     ul, ol { margin: 0 0 6pt; padding-left: 1.2cm; }
     li { margin: 0 0 2pt; text-align: justify; }
     blockquote { margin: 6pt 0 6pt 4cm; font-size: 11pt; text-align: justify; }
-    table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 11pt;
+    /* table-layout fixed + word-break: impede que colunas largas estourem a
+       largura da página e a linha apareça "cortada" no PDF impresso. */
+    table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt;
+            table-layout: fixed;
             border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; }
-    thead th { border-bottom: 1px solid #000; text-align: left; padding: 4pt 6pt; }
-    td { padding: 3pt 6pt; text-align: left; }
+    thead th { border-bottom: 1px solid #000; text-align: left; padding: 4pt 6pt;
+               word-break: break-word; overflow-wrap: break-word; }
+    td { padding: 3pt 6pt; text-align: left; word-break: break-word; overflow-wrap: break-word; }
+    tr { break-inside: avoid; }
     pre.code { font-family: 'Courier New', Courier, monospace; font-size: 10.5pt; line-height: 1.4;
                background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px;
                padding: 8pt 10pt; margin: 8pt 0; text-align: left;
