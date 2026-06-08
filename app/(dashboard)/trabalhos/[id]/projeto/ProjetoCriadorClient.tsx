@@ -846,21 +846,42 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // ── Imprimir documento ────────────────────────────────────────────────────
 
   const handleImprimir = useCallback((texto: string, nomeDoc: string, tituloTrabalho: string) => {
-    const linhas = removerTravessoes(texto)
-      .split('\n')
-      .map(l => {
-        // Régua horizontal markdown (---, ***, ___) → <hr/> (não "---" literal)
-        if (/^\s*[-*_]{3,}\s*$/.test(l)) return '<hr/>'
-        // Títulos markdown → <h2>/<h3>
-        if (/^### /.test(l)) return `<h3>${l.replace(/^### /, '')}</h3>`
-        if (/^## /.test(l))  return `<h2>${l.replace(/^## /, '')}</h2>`
-        if (/^# /.test(l))   return `<h1>${l.replace(/^# /, '')}</h1>`
-        // Negrito **texto**
-        const formatted = l.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        if (formatted.trim() === '') return '<br/>'
-        return `<p>${formatted}</p>`
-      })
-      .join('\n')
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    const out: string[] = []
+    let emCodigo = false
+    let bufferCodigo: string[] = []
+    const fecharCodigo = () => {
+      if (bufferCodigo.length) {
+        out.push(`<pre class="code">${bufferCodigo.map(escapeHtml).join('\n')}</pre>`)
+      }
+      bufferCodigo = []
+    }
+
+    for (const l of removerTravessoes(texto).split('\n')) {
+      // Cerca de bloco de código (``` ou ```r) — alterna estado, não imprime a crase
+      if (/^\s*`{3,}/.test(l)) {
+        if (emCodigo) { fecharCodigo(); emCodigo = false }
+        else { emCodigo = true; bufferCodigo = [] }
+        continue
+      }
+      if (emCodigo) { bufferCodigo.push(l); continue }
+      // Régua horizontal markdown (---, ***, ___) → <hr/> (não "---" literal)
+      if (/^\s*[-*_]{3,}\s*$/.test(l)) { out.push('<hr/>'); continue }
+      // Títulos markdown → <h2>/<h3>
+      if (/^### /.test(l)) { out.push(`<h3>${l.replace(/^### /, '')}</h3>`); continue }
+      if (/^## /.test(l))  { out.push(`<h2>${l.replace(/^## /, '')}</h2>`); continue }
+      if (/^# /.test(l))   { out.push(`<h1>${l.replace(/^# /, '')}</h1>`); continue }
+      // Código inline `texto` → <code>texto</code>
+      let formatted = l.replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Negrito **texto**
+      formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      if (formatted.trim() === '') { out.push('<br/>'); continue }
+      out.push(`<p>${formatted}</p>`)
+    }
+    if (emCodigo) fecharCodigo()
+    const linhas = out.join('\n')
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -876,6 +897,11 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     h2 { font-size: 13pt; margin: 18pt 0 8pt; }
     h3 { font-size: 12pt; margin: 14pt 0 6pt; }
     p  { margin: 0 0 8pt; text-align: justify; }
+    pre.code { font-family: 'Courier New', Courier, monospace; font-size: 10.5pt; line-height: 1.45;
+               background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px;
+               padding: 8pt 10pt; margin: 8pt 0; text-align: left;
+               white-space: pre-wrap; word-break: break-word; }
+    code { font-family: 'Courier New', Courier, monospace; font-size: 10.5pt; }
     .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 12pt; margin-bottom: 18pt; }
     .header small { font-size: 10pt; color: #333; }
     @media print { .no-print { display: none; } }
@@ -1966,7 +1992,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                                   [&_table]:w-full [&_table]:border-collapse [&_table]:my-2
                                                   [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left
                                                   [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1
-                                                  [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded">
+                                                  [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded
+                                                  [&_pre]:bg-muted [&_pre]:border [&_pre]:border-border [&_pre]:rounded [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
+                                                  [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:text-xs">
                                                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{removerTravessoes(docState.conteudo)}</ReactMarkdown>
                                                 </div>
                                               )}

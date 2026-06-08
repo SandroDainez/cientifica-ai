@@ -30,8 +30,8 @@ export function extrairTextoSecao(conteudo: string): string {
  */
 export function limparMarkdownEstrutura(texto: string): string {
   return texto
-    // blocos de código cercados por ```
-    .replace(/```[\s\S]*?```/gm, '')
+    // cercas de blocos de código (``` ou ```r) → remove só a marcação, preserva o código
+    .replace(/^[ \t]*`{3,}[^\n]*$/gm, '')
     // headings: # ## ### etc.
     .replace(/^#{1,6}\s+/gm, '')
     // regras horizontais --- *** ___
