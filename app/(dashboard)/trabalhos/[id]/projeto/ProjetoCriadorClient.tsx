@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -1613,9 +1613,18 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(() => {
                     const tiposJaRenderizados = new Set<string>()
+                    let divPlanejamento = false
+                    let divFinalizacao = false
                     return planData.roadmap.map((etapaRaw, etapaIdx) => {
                     const etapa = normalizeEtapa(etapaRaw)
                     const appExecuta = computeAppExecuta(etapa)
+                    // Separa o roadmap em duas fases: Planejamento do projeto (protocolo)
+                    // e Redação e finalização (no Editor, quando o protocolo está pronto).
+                    const ehFinalizacao = etapa.tipo === 'escrita' || etapa.tipo === 'submissao'
+                    let mostrarDivPlan = false
+                    let mostrarDivFinal = false
+                    if (!ehFinalizacao && !divPlanejamento) { divPlanejamento = true; mostrarDivPlan = true }
+                    if (ehFinalizacao && !divFinalizacao) { divFinalizacao = true; mostrarDivFinal = true }
                     const isExpanded = expandedEtapas.has(etapa.id)
                     const etapaStatus = statusEfetivoEtapa(etapaRaw)
 
@@ -1634,8 +1643,24 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                     const hasDetails = instrucoes.length > 0 || documentosEtapa.length > 0 || !!linkExterno || etapaChecklistItems.length > 0
 
                     return (
+                      <Fragment key={etapa.id}>
+                        {mostrarDivPlan && (
+                          <div className="col-span-full mt-1">
+                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                              📋 Planejamento do projeto
+                            </h3>
+                            <p className="text-xs text-muted-foreground">O protocolo da pesquisa — o que você precisa para planejar e aprovar o estudo. O app gera estes documentos.</p>
+                          </div>
+                        )}
+                        {mostrarDivFinal && (
+                          <div className="col-span-full mt-4 pt-3 border-t border-border">
+                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                              ✍️ Redação e finalização
+                            </h3>
+                            <p className="text-xs text-muted-foreground">A fase final — feita no <strong>Editor</strong>, depois que o protocolo está pronto.</p>
+                          </div>
+                        )}
                       <div
-                        key={etapa.id}
                         className={cn(
                           'rounded-xl border bg-card overflow-hidden flex flex-col transition-shadow',
                           etapaStatus === 'concluido' && 'border-green-200 dark:border-green-800',
@@ -1663,8 +1688,12 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                               </span>
                               <span className="text-xl">{etapaIcone(etapa.tipo)}</span>
                             </div>
-                            {/* App / User badge */}
-                            {appExecuta ? (
+                            {/* App / Editor / User badge */}
+                            {etapa.tipo === 'escrita' ? (
+                              <span className="flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-300">
+                                <ArrowRight className="h-3 w-3" /> No Editor
+                              </span>
+                            ) : appExecuta ? (
                               <span className="flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/60 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
                                 <Cpu className="h-3 w-3" /> App faz
                               </span>
@@ -2114,6 +2143,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                           </div>
                         )}
                       </div>
+                      </Fragment>
                     )
                   })
                   })()}
