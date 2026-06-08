@@ -70,6 +70,23 @@ export function corrigirCodigoR(texto: string): string {
 }
 
 /**
+ * Corrige erros comuns e determinísticos em código Python gerado pela IA.
+ * Atua só sobre padrões inequívocos, então é seguro aplicar em qualquer texto.
+ *
+ * - `analysis = TTestIndPower`  →  `analysis = TTestIndPower()`
+ *   As classes de poder do statsmodels precisam ser INSTANCIADAS; sem os
+ *   parênteses, chamar `.solve_power(...)` quebra (TypeError: missing 'self').
+ *   Cobre as principais classes de power analysis do statsmodels.
+ */
+export function corrigirCodigoPython(texto: string): string {
+  if (!texto) return texto
+  return texto.replace(
+    /(=\s*)(TTestIndPower|TTestPower|FTestAnovaPower|FTestPower|NormalIndPower|GofChisquarePower)\b(?!\s*\()/g,
+    '$1$2()',
+  )
+}
+
+/**
  * Remove TODO o markdown, incluindo **negrito** e *itálico*.
  * Usado no PPTX onde o texto deve ser completamente limpo.
  */
