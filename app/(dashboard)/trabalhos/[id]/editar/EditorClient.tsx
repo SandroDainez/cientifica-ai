@@ -16,6 +16,7 @@ import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/componen
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
 import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
 import { HistoricoVersoes } from '@/components/editor/HistoricoVersoes'
+import { BlocoFinalizacao } from '@/components/editor/BlocoFinalizacao'
 import { BuscaSecoes } from '@/components/editor/BuscaSecoes'
 import { useVancouverNumbering } from '@/hooks/useVancouverNumbering'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
@@ -783,6 +784,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                 />
               </div>
             )}
+
+            {/* Encerramento — fase final (revisar → formatar → submeter), na última seção */}
+            {isUltimaFase && <BlocoFinalizacao trabalhoId={trabalho.id} />}
           </div>
 
           {/* Painel IA — sempre visível (ao lado no desktop, abaixo no mobile);
