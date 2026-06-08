@@ -103,6 +103,15 @@ test('validarCitacoesReais: NÃO atribui referência a menção de software (R)'
   assert.ok(!out.includes('YAMADA'), 'não fabrica YAMADA para o R')
   assert.ok(!out.includes('SOBRENOME'), 'remove o placeholder do R')
 })
+test('validarCitacoesReais: sobrenome hifenizado não é fundido (Rangel-Frausto)', () => {
+  const refs = [
+    { id: '1', titulo: 'Natural history of the systemic inflammatory response syndrome', ano: 1995, autores: [{ nome: 'M', sobrenome: 'Rangel-Frausto' }] },
+    { id: '2', titulo: 'Sepsis modeling', ano: 2019, autores: [{ nome: 'S', sobrenome: 'Lobo' }] },
+  ] as never[]
+  const out = validarCitacoesReais('Rangel-Frausto et al. (1995) descreveram a SIRS.', refs, 'abnt')
+  assert.ok(!out.includes('Rangel-('), 'não funde "Rangel-(...)"')
+  assert.ok(out.includes('Rangel-Frausto'), 'mantém o sobrenome hifenizado inteiro')
+})
 test('validarCitacoesReais: NÃO apaga palavra real antes do placeholder (Nordeste)', () => {
   const refs = [{ id: '1', titulo: 'Subnotificação no Norte e Nordeste', ano: 2020, autores: [{ nome: 'M', sobrenome: 'Linares' }] }] as never[]
   const out = validarCitacoesReais('Maior no Norte e Nordeste (SOBRENOME, ANO).', refs, 'abnt')

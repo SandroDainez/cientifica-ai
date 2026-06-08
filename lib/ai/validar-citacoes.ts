@@ -184,7 +184,7 @@ function normalizar(s: string): string {
 export function normalizarFormatoCitacoesAbnt(texto: string): string {
   return texto.replace(
     // Sobrenome(s) em MAIÚSCULAS, opcionalmente com "; SOBRENOME" e "et al.", seguido de (ANO)
-    /(?<![(\wÀ-ÿ])([A-ZÀ-Ý][A-ZÀ-Ý]+(?:\s*;\s*[A-ZÀ-Ý][A-ZÀ-Ý]+)*(?:\s+et\s+al\.?)?)\s+\(((?:19|20)\d{2}[a-z]?)\)/g,
+    /(?<![(\wÀ-ÿ-])([A-ZÀ-Ý][A-ZÀ-Ý-]+(?:\s*;\s*[A-ZÀ-Ý][A-ZÀ-Ý-]+)*(?:\s+et\s+al\.?)?)\s+\(((?:19|20)\d{2}[a-z]?)\)/g,
     (_match, autor, ano) => `(${autor.trim()}, ${ano})`
   )
 }
@@ -307,7 +307,7 @@ export function validarCitacoesReais(
 
   // ── 1. Citações parentéticas: (SOBRENOME, ANO) / (S; S, ANO) / (S et al., ANO) ──
   resultado = resultado.replace(
-    /\(([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s;.]{1,60}?)(?:\s+et\s+al\.?)?,\s*((?:19|20)\d{2}[a-z]?|s\.?\s*d\.?)\)/g,
+    /\(([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s;.-]{1,60}?)(?:\s+et\s+al\.?)?,\s*((?:19|20)\d{2}[a-z]?|s\.?\s*d\.?)\)/g,
     (match, autoresParte) => {
       // Pega o primeiro sobrenome do grupo de autores
       const primeiroAutor = autoresParte.split(/[;,]/)[0].replace(/\s+et\s+al\.?/i, '').trim()
@@ -318,7 +318,7 @@ export function validarCitacoesReais(
 
   // ── 2. Citações narrativas: Sobrenome (ANO) / Sobrenome et al. (ANO) ──────────
   resultado = resultado.replace(
-    /\b([A-ZÀ-Ý][a-zà-ÿ]+(?:\s+(?:e|&|;)\s+[A-ZÀ-Ý][a-zà-ÿ]+)?(?:\s+et\s+al\.?)?)\s*\(((?:19|20)\d{2}[a-z]?|s\.?\s*d\.?)\)/g,
+    /(?<![-\wÀ-ÿ])([A-ZÀ-Ý][a-zà-ÿ]+(?:-[A-ZÀ-Ý][a-zà-ÿ]+)*(?:\s+(?:e|&|;)\s+[A-ZÀ-Ý][a-zà-ÿ]+(?:-[A-ZÀ-Ý][a-zà-ÿ]+)*)?(?:\s+et\s+al\.?)?)\s*\(((?:19|20)\d{2}[a-z]?|s\.?\s*d\.?)\)/g,
     (match, autorParte) => {
       const primeiroAutor = autorParte.replace(/\s+et\s+al\.?/i, '').split(/\s+(?:e|&|;)\s+/)[0].trim()
       if (ehValido(primeiroAutor)) return match
