@@ -7,6 +7,7 @@
  */
 
 import type { AutorReferencia, TipoReferencia } from '@/types'
+import { limparAutoresPlaceholder, ehTituloDescartavel } from './qualidade'
 
 export interface RefExterna {
   tipo: TipoReferencia
@@ -54,11 +55,18 @@ export async function buscarCrossRef(query: string, limite: number): Promise<Ref
       const it = item as Record<string, unknown>
       const title = (it.title as string[])?.[0] ?? ''
       if (!title) return null
+      // Descarta registros que não são o artigo original (recomendação Faculty
+      // Opinions, errata, retratação, comentário, resposta de autor…).
+      if (ehTituloDescartavel(title)) return null
 
       const rawAuthors = (it.author as Array<Record<string, string>> | undefined) ?? []
-      const autores: AutorReferencia[] = rawAuthors
-        .filter(a => a.family)
-        .map(a => ({ nome: a.given ?? '', sobrenome: a.family, iniciais: calcIniciais(a.given ?? '') }))
+      const autores: AutorReferencia[] = limparAutoresPlaceholder(
+        rawAuthors
+          .filter(a => a.family)
+          .map(a => ({ nome: a.given ?? '', sobrenome: a.family, iniciais: calcIniciais(a.given ?? '') })),
+      )
+      // Sem nenhum autor real (ex.: "Reactions Weekly" com autor "&NA;") → descarta.
+      if (autores.length === 0) return null
 
       const dateparts = (it.published as Record<string, unknown> | undefined)?.['date-parts'] as number[][] | undefined
       const ano = dateparts?.[0]?.[0]
@@ -126,15 +134,17 @@ export async function buscarPubMed(query: string, limite: number): Promise<RefEx
       if (!art) continue
 
       const rawAuthors = (art.authors as Array<Record<string, string>> | undefined) ?? []
-      const autores: AutorReferencia[] = rawAuthors
-        // Inclui qualquer autor com nome que NÃO seja nome coletivo (mais permissivo
-        // que exigir authtype === 'Author', que descartava refs válidas).
-        .filter(a => a.name && a.authtype !== 'CollectiveName')
-        .map(a => {
-          const parts = (a.name as string).trim().split(/\s+/)
-          // Formato PubMed: "Sobrenome Iniciais" (ex: "Smith JD") → sobrenome = parts[0]
-          return { nome: parts.slice(1).join(' '), sobrenome: parts[0] ?? '', iniciais: parts.slice(1).join('').toUpperCase() }
-        })
+      const autores: AutorReferencia[] = limparAutoresPlaceholder(
+        rawAuthors
+          // Inclui qualquer autor com nome que NÃO seja nome coletivo (mais permissivo
+          // que exigir authtype === 'Author', que descartava refs válidas).
+          .filter(a => a.name && a.authtype !== 'CollectiveName')
+          .map(a => {
+            const parts = (a.name as string).trim().split(/\s+/)
+            // Formato PubMed: "Sobrenome Iniciais" (ex: "Smith JD") → sobrenome = parts[0]
+            return { nome: parts.slice(1).join(' '), sobrenome: parts[0] ?? '', iniciais: parts.slice(1).join('').toUpperCase() }
+          }),
+      )
 
       const articleIds = (art.articleids as Array<Record<string, string>> | undefined) ?? []
       const doi = articleIds.find(a => a.idtype === 'doi')?.value
@@ -149,6 +159,9 @@ export async function buscarPubMed(query: string, limite: number): Promise<RefEx
 
       const titulo = ((art.title as string) ?? '').replace(/\.$/, '')
       if (!titulo) continue
+      // Descarta não-originais (errata, recomendação…) e registros sem autor real.
+      if (ehTituloDescartavel(titulo)) continue
+      if (autores.length === 0) continue
 
       results.push({
         tipo:        'artigo',

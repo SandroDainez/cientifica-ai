@@ -11,6 +11,7 @@
 // totalmente ausente do corpo). Assim nunca removemos uma referência válida.
 
 import type { Referencia, FormatoCitacao } from '@/types'
+import { ehReferenciaUtilizavel } from './qualidade'
 
 const normalizar = (s: string) =>
   (s ?? '')
@@ -82,6 +83,9 @@ export function separarReferenciasCitadas(
 
   const corpoNorm = normalizar(corpo)
   for (const ref of refs) {
+    // Mesmo quando "citada", uma referência sem autor real (ex.: "&NA;") ou de
+    // registro não-original (recomendação/errata) NUNCA deve constar na lista.
+    if (!ehReferenciaUtilizavel(ref)) { naoCitadas.push(ref); continue }
     if (referenciaCitadaAutorData(ref, corpoNorm)) citadas.push(ref)
     else naoCitadas.push(ref)
   }

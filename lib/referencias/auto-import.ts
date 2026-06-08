@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Referencia } from '@/types'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
+import { ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
 import { callAI } from '@/lib/ai/stream'
 import { buildReferenceGuardrail, type ReferenceValidationResult, type ValidationStatus } from './referenceValidator'
 
@@ -181,6 +182,9 @@ export async function garantirReferenciasReais({
     const refsUnicas = resultados.flat().filter(ref => {
       if (!ref.titulo || ref.titulo.length < 8) return false
       if (!ref.autores || ref.autores.length === 0 || !ref.autores[0]?.sobrenome) return false
+      // Rejeita não-originais (recomendação Faculty Opinions, errata…) e
+      // referências sem autor REAL (placeholder "NA"/"&NA;"/"Anonymous").
+      if (!ehReferenciaUtilizavel(ref)) return false
       if (!ref.ano || ref.ano < 1950 || ref.ano > anoAtual) return false
       const tk = ref.titulo.toLowerCase().slice(0, 80)
       if (vistosTitulos.has(tk)) return false

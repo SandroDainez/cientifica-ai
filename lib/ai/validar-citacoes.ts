@@ -12,6 +12,7 @@
 
 import type { Referencia, FormatoCitacao } from '@/types'
 import { citacaoInTexto } from '@/lib/referencias/formatar'
+import { ehSobrenomePlaceholder, ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
 
 // Contexto de software/ferramenta estatística: nessas frases um placeholder de
 // citação NÃO deve ser preenchido com uma referência da biblioteca (seria
@@ -52,7 +53,10 @@ export function substituirPlaceholdersPorReais(
   formato: FormatoCitacao = 'abnt',
 ): string {
   if (formato === 'vancouver') return texto
-  const citaveis = referencias.filter(r => (r.autores?.[0]?.sobrenome?.trim().length ?? 0) > 1 && !!r.ano)
+  // Só preenche placeholders com referências UTILIZÁVEIS (autor real, registro
+  // original) — nunca com "&NA;"/recomendação/errata.
+  const citaveis = referencias.filter(r =>
+    (r.autores?.[0]?.sobrenome?.trim().length ?? 0) > 1 && !!r.ano && ehReferenciaUtilizavel(r))
   if (citaveis.length === 0) return texto
 
   const refsInfo = citaveis.map(r => ({ r, kws: palavrasChave(r.titulo ?? '') }))
@@ -272,6 +276,9 @@ export function validarCitacoesReais(
     const n = normalizar(sobrenome)
     if (!n || n.length < 2) return false
     if (n === 'SOBRENOME') return true            // placeholder genérico — sempre ok
+    // Autor-placeholder (ex.: "NA", "&NA;", "Anonymous") NUNCA é citação válida,
+    // mesmo que conste na biblioteca — vira (SOBRENOME, ANO) e é tratado depois.
+    if (ehSobrenomePlaceholder(sobrenome)) return false
     if (AUTORES_INSTITUCIONAIS.has(n)) return true
     if (validos.has(n)) return true
     // Sobrenome composto: testa cada parte (ex: "DA SILVA PIRES" → "PIRES")
