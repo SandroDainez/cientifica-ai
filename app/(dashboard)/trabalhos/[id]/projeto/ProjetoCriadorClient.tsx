@@ -883,11 +883,14 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   <meta charset="UTF-8" />
   <title>${nomeDoc}</title>
   <style>
-    /* margin 0: o navegador só injeta data/título/URL ("about:blank") quando há
-       margem de página. O recuo visual vem do padding do body. */
-    @page { size: A4; margin: 0; }
+    /* Margens ABNT no @page (superior/esquerda 3cm, inferior/direita 2cm).
+       IMPORTANTE: a margem precisa estar no @page (não no padding do body),
+       senão ela só vale na 1ª/última página e o conteúdo encosta na borda nas
+       quebras internas. Trade-off: com margem > 0 o navegador PODE injetar
+       data/URL no topo — basta desmarcar "Cabeçalhos e rodapés" na impressão. */
+    @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
     /* ABNT: Times 12pt, entrelinha 1,5, justificado. */
-    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 2.5cm; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 0; }
     h1 { font-size: 14pt; text-align: center; margin: 20pt 0 10pt; text-transform: uppercase; }
     h2 { font-size: 13pt; margin: 16pt 0 6pt; }
     h3 { font-size: 12pt; margin: 12pt 0 4pt; }

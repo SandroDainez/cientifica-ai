@@ -264,9 +264,12 @@
 /* Margem 0 na página: o navegador só injeta cabeçalho/rodapé (data, título,
    URL) quando existe margem de página. As margens visuais do documento vêm do
    padding do .doc-page, então a folha sai limpa no PDF e no "salvar como Word". */
+/* Margens ABNT no @page (sup/esq 3cm, inf/dir 2cm). Precisam estar no @page —
+   não no padding do .doc-page — senão valem só na 1ª/última página e o conteúdo
+   encosta na borda nas quebras internas de seções longas. */
 @page {
   size: A4;
-  margin: 0;
+  margin: 3cm 2cm 2cm 3cm;
 }
 
 @media print {
@@ -277,7 +280,7 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
-    padding: 3cm 3cm 2cm 4cm !important;
+    padding: 0 !important;
     page-break-after: always;
   }
   .doc-page:last-child { page-break-after: avoid; }
