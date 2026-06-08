@@ -344,8 +344,17 @@ export async function GET(request: Request) {
     // Corpo: última linha recebe borda inferior (base da tabela)
     corpo.forEach((r, idx) => {
       const ultima = idx === corpo.length - 1
-      // garante o nº de células igual ao cabeçalho
-      const cells = header.map((_, ci) => mkCell(r[ci] ?? '', { bottom: ultima }))
+      // Garante o nº de células igual ao cabeçalho SEM perder conteúdo: se a linha
+      // tiver MAIS células que o cabeçalho (ex.: um "|" embutido no texto, como a
+      // relação "PaO2|FiO2"), o excedente é reunido na ÚLTIMA coluna em vez de
+      // descartado — evita a "linha cortada" na exportação.
+      const cells = header.map((_, ci) => {
+        const ehUltimaCol = ci === header.length - 1
+        const valor = ehUltimaCol && r.length > header.length
+          ? r.slice(ci).join(' / ')
+          : (r[ci] ?? '')
+        return mkCell(valor, { bottom: ultima })
+      })
       rows.push(new TableRow({ children: cells }))
     })
     return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows })
