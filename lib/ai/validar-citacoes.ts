@@ -48,7 +48,7 @@ export function removerPlaceholdersCitacaoResiduais(texto: string): string {
   return texto
     .replace(/\(\s*SOBRENOME\s*,?\s*ANO\s*\)/gi, '')
     .replace(/ +([.,;:)])/g, '$1')   // espaço antes de pontuação
-    .replace(/\(\s*\)/g, '')          // parênteses vazios
+    .replace(/(?<![\wÀ-ÿ.])\(\s*\)/g, '')  // parênteses vazios (não chamada de função, ex.: foo())
     .replace(/[ \t]{2,}/g, ' ')       // espaços duplos
 }
 
@@ -120,7 +120,7 @@ export function substituirPlaceholdersPorReais(
   if (houveRemocao) {
     resultado = resultado
       .replace(/ +([.,;:)])/g, '$1')   // espaço antes de pontuação
-      .replace(/\(\s*\)/g, '')          // parênteses vazios remanescentes
+      .replace(/(?<![\wÀ-ÿ.])\(\s*\)/g, '')  // parênteses vazios remanescentes (não chamada de função, ex.: foo())
       .replace(/[ \t]{2,}/g, ' ')       // espaços duplos
   }
   return resultado
