@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
@@ -486,9 +487,19 @@ export async function GET(request: Request) {
   })
 
   // ── Referências ─────────────────────────────────────────────
-  if (referencias.length > 0) {
-    const refsOrdenadas = ordenarReferencias(referencias, trabalho.formato_citacao)
+  // Regra ABNT/Vancouver/APA: a lista só contém referências CITADAS no corpo.
+  // Cruza o texto de todas as seções (+ resumo) com as referências e descarta
+  // da lista final as que não foram citadas (ex.: importadas mas nunca usadas).
+  const corpoParaCitacoes =
+    secoesCorpo.map(s => s.conteudo ?? '').join('\n\n') +
+    '\n\n' + (secaoResumo?.conteudo ?? '')
+  const { citadas: referenciasCitadas, naoCitadas } =
+    separarReferenciasCitadas(referencias, corpoParaCitacoes, trabalho.formato_citacao)
+
+  if (referenciasCitadas.length > 0) {
+    const refsOrdenadas = ordenarReferencias(referenciasCitadas, trabalho.formato_citacao)
     const isVancouver = trabalho.formato_citacao === 'vancouver'
+    void naoCitadas // referências não citadas ficam fora da lista final
 
     // Título da seção de referências
     children.push(

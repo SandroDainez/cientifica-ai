@@ -66,6 +66,14 @@ export function ReferenciaCard({ referencia: r, formato, onDeletar, deletando }:
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             <span className="text-xs text-muted-foreground">{TIPO_LABELS[r.tipo]}</span>
             {r.ano && <span className="text-xs text-muted-foreground">· {r.ano}</span>}
+            {!!r.ano && r.ano >= new Date().getFullYear() && (
+              <span
+                className="text-xs px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700"
+                title="Publicação muito recente (ano corrente). Confirme manualmente que o artigo já existe e está correto antes de submeter."
+              >
+                ⚠ verificar (ano recente)
+              </span>
+            )}
             {r.journal && <span className="text-xs text-muted-foreground">· {r.journal}</span>}
             <span className={cn('text-xs px-1.5 py-0.5 rounded border ml-auto', CONF_COLORS[r.confiabilidade])}>
               {r.confiabilidade}

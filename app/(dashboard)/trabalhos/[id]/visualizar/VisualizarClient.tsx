@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 
@@ -349,8 +350,14 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
 
         {/* ── Referências ───────────────────────────────────── */}
         {referencias.length > 0 && (() => {
-          const refsOrdenadas = ordenarReferencias(referencias, trabalho.formato_citacao)
+          // Regra ABNT/Vancouver/APA: a lista só mostra referências CITADAS no corpo.
+          const corpoParaCitacoes =
+            secoesComConteudo.map(s => extrairTextoSecao(s.conteudo ?? '')).join('\n\n') +
+            '\n\n' + (secaoResumo?.conteudo ?? '')
+          const { citadas } = separarReferenciasCitadas(referencias, corpoParaCitacoes, trabalho.formato_citacao)
+          const refsOrdenadas = ordenarReferencias(citadas, trabalho.formato_citacao)
           const isVancouver = trabalho.formato_citacao === 'vancouver'
+          if (refsOrdenadas.length === 0) return null
           return (
             <section
               id="referencias"

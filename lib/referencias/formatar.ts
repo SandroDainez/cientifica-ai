@@ -9,7 +9,14 @@ import type { Referencia, AutorReferencia, FormatoCitacao } from '@/types'
 function autoresAbnt(autores: AutorReferencia[] = []): string {
   if (!autores.length) return ''
   return autores
-    .map(a => `${a.sobrenome.toUpperCase()}, ${a.nome}`)
+    .map(a => {
+      const nome = (a.nome ?? '').trim()
+      // Entidade coletiva (sem prenome): ABNT NBR 6023 → nome por extenso em
+      // CAIXA ALTA, SEM inversão e SEM vírgula. Ex.: "NATIONAL ACTION PLAN
+      // WORKING GROUP" (e não "NATIONAL ACTION PLAN WORKING GROUP, ").
+      if (!nome) return (a.sobrenome ?? '').toUpperCase().trim()
+      return `${a.sobrenome.toUpperCase()}, ${nome}`
+    })
     .join('; ')
 }
 

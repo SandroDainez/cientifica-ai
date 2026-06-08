@@ -6,6 +6,7 @@ import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
+import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { getPeriodicoPorId } from '@/lib/exportacao/periodicos'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
@@ -499,8 +500,15 @@ export async function GET(request: Request) {
   })
 
   // ── Referências ─────────────────────────────────────────────
-  if (referencias.length > 0) {
-    const refsOrdenadas = ordenarReferencias(referencias, formatoCitacaoEfetivo)
+  // A lista só contém referências CITADAS no corpo (regra ABNT/Vancouver/APA).
+  const corpoParaCitacoes =
+    secoesCorpo.map(s => s.conteudo ?? '').join('\n\n') +
+    '\n\n' + (secaoResumo?.conteudo ?? '')
+  const { citadas: referenciasCitadas } =
+    separarReferenciasCitadas(referencias, corpoParaCitacoes, formatoCitacaoEfetivo)
+
+  if (referenciasCitadas.length > 0) {
+    const refsOrdenadas = ordenarReferencias(referenciasCitadas, formatoCitacaoEfetivo)
     const isVancouver = formatoCitacaoEfetivo === 'vancouver'
 
     // Título da seção de referências
