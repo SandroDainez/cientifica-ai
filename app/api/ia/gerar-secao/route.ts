@@ -265,13 +265,13 @@ export async function POST(request: Request) {
   const formato = trabalho.formato_citacao
 
   if (deveHumanizar && minPalavrasHumanizar >= 80) {
-    const maxTokensDraft = Math.max(8000, (fase.max_palavras ?? 2000) * 2)
+    const maxTokensDraft = Math.max(12000, (fase.max_palavras ?? 2000) * 3)
     try {
       // Passagem 1: rascunho técnico com as referências reais
       const rascunho = await callAI(systemPrompt, userPrompt, false, maxTokensDraft)
       if (rascunho && rascunho.trim().split(/\s+/).length >= 50) {
         // Passagem 2: humaniza (preservando citações verbatim)
-        const maxTokensHuman = Math.max(8000, rascunho.split(/\s+/).length * 2)
+        const maxTokensHuman = Math.max(12000, rascunho.split(/\s+/).length * 3)
         let humanizado = rascunho
         try {
           const out = await callAI(HUMANIZADOR_SYSTEM, buildHumanizadorPrompt(rascunho), false, maxTokensHuman)

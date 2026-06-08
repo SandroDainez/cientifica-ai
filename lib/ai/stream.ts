@@ -76,7 +76,10 @@ export function streamStringComEfeito(texto: string): Response {
   })
 }
 
-// Chamada não-streaming — retorna string completa
+// Chamada não-streaming — retorna string completa.
+// IMPORTANTE: detecta truncamento por limite de tokens (finish_reason === 'length')
+// e CONTINUA a geração automaticamente, para o documento nunca ser cortado no meio
+// (ex.: uma seção sumir porque o texto bateu no teto de tokens).
 export async function callAI(
   systemPrompt: string,
   userPrompt: string,
@@ -85,15 +88,33 @@ export async function callAI(
 ): Promise<string> {
   const model = fast ? currentModel.fast : currentModel.smart
 
-  const completion = await aiClient.chat.completions.create({
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.3,
-    max_tokens: maxTokens,
-  })
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ]
 
-  return completion.choices[0]?.message?.content ?? ''
+  let completo = ''
+  // Até 3 continuações: cobre textos longos sem risco de loop infinito.
+  for (let tentativa = 0; tentativa < 4; tentativa++) {
+    const completion = await aiClient.chat.completions.create({
+      model,
+      messages,
+      temperature: 0.3,
+      max_tokens: maxTokens,
+    })
+    const choice = completion.choices[0]
+    const parte = choice?.message?.content ?? ''
+    completo += parte
+
+    // Só continua se foi cortado por tamanho (não por parada natural do modelo).
+    if (choice?.finish_reason !== 'length' || !parte.trim()) break
+
+    messages.push({ role: 'assistant', content: parte })
+    messages.push({
+      role: 'user',
+      content: 'Continue exatamente de onde você parou, sem repetir nenhuma palavra já escrita e sem reabrir seções anteriores. Apenas prossiga o texto.',
+    })
+  }
+
+  return completo
 }
