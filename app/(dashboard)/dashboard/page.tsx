@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { PlusCircle, TrendingUp, BookOpen, CheckCircle2, Clock, ArrowRight, Lightbulb } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { TrabalhoCard } from '@/components/trabalho/TrabalhoCard'
+import { TrabalhosListClient } from '@/components/trabalho/TrabalhosListClient'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { totalFasesEfetivas } from '@/lib/tipos/fases-efetivas'
@@ -136,18 +136,16 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
-              {recentes.map(trabalho => {
+            <TrabalhosListClient
+              layout="list"
+              trabalhos={recentes.map(trabalho => {
                 const fluxo = getFluxo(trabalho.tipo_trabalho)
-                return (
-                  <TrabalhoCard
-                    key={trabalho.id}
-                    trabalho={trabalho}
-                    totalFases={fluxo ? totalFasesEfetivas(fluxo.fases, trabalho) : 1}
-                  />
-                )
+                return {
+                  trabalho,
+                  totalFases: fluxo ? totalFasesEfetivas(fluxo.fases, trabalho) : 1,
+                }
               })}
-            </div>
+            />
           )}
         </div>
 

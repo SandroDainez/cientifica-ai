@@ -11,9 +11,11 @@ import type { Trabalho } from '@/types'
 
 interface TrabalhosListClientProps {
   trabalhos: Array<{ trabalho: Trabalho; totalFases: number }>
+  /** 'grid' (Meus Trabalhos) ou 'list' (coluna única, ex.: Dashboard) */
+  layout?: 'grid' | 'list'
 }
 
-export function TrabalhosListClient({ trabalhos }: TrabalhosListClientProps) {
+export function TrabalhosListClient({ trabalhos, layout = 'grid' }: TrabalhosListClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -60,8 +62,11 @@ export function TrabalhosListClient({ trabalhos }: TrabalhosListClientProps) {
 
   return (
     <>
-      {/* Grid de cards */}
-      <div className={cn('grid sm:grid-cols-2 xl:grid-cols-3 gap-4', isPending && 'opacity-60 pointer-events-none')}>
+      {/* Cards */}
+      <div className={cn(
+        layout === 'list' ? 'space-y-3' : 'grid sm:grid-cols-2 xl:grid-cols-3 gap-4',
+        isPending && 'opacity-60 pointer-events-none',
+      )}>
         {trabalhos.map(({ trabalho, totalFases }) => (
           <TrabalhoCard
             key={trabalho.id}
