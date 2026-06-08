@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
+import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 
 export const maxDuration = 120
@@ -71,7 +72,8 @@ ${conteudo}`
     if (edicoes.length > 0) {
       const { texto, aplicadas } = aplicarEdicoes(conteudo, edicoes)
       if (aplicadas > 0 && texto.trim() && texto !== conteudo) {
-        return streamStringComEfeito(texto)
+        // Normaliza travessões/decimais introduzidos na edição (mesma regra do app).
+        return streamStringComEfeito(removerTravessoes(texto))
       }
     }
   } catch (err) {
@@ -114,7 +116,7 @@ TEXTO CORRIGIDO (completo):`
     )
   }
 
-  return streamStringComEfeito(corrigido)
+  return streamStringComEfeito(removerTravessoes(corrigido))
 }
 
 interface Edicao { buscar: string; substituir: string }

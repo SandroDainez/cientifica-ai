@@ -381,12 +381,36 @@ function getDocumentosEtapa(
       }
       return docs
     }
-    case 'coleta':
+    case 'coleta': {
+      // O planejador às vezes cria DUAS etapas 'coleta' (definir o método E
+      // executar a extração/coleta). Sem diferenciar, ambas gerariam os MESMOS 3
+      // documentos. Diferencia pelo título para que cada etapa gere algo distinto.
+      const t = etapa.titulo.toLowerCase()
+      const instrumento: DocumentoEtapa = { tipo: 'instrumento_coleta', label: 'Instrumento de Coleta', descricao: 'Protocolo de variáveis, fontes e codificação para extração/coleta dos dados' }
+      const calculo: DocumentoEtapa = { tipo: 'calculo_amostral', label: 'Cálculo Amostral', descricao: 'Justificativa estatística do N necessário com poder e significância' }
+
+      // Etapa de EXECUÇÃO (extrair/organizar dados, sobretudo secundários):
+      // gera só o guia operacional — não duplica instrumento/cálculo.
+      const ehExtracaoExecucao = /extra[çc]|organiza[çc]|baix|download|datasus|tabnet|microdados|dados secund|bases? de dados|coleta dos dados|aplica[çc]/.test(t)
+      // Etapa de DEFINIÇÃO do método (delineamento, variáveis, fontes):
+      // gera o protocolo de variáveis + o cálculo amostral.
+      const ehDefinicaoMetodo = /defini[çc]|m[ée]tod|delineament|vari[áa]ve|desenho do estudo|fontes de dados|plano/.test(t)
+
+      if (ehExtracaoExecucao && !ehDefinicaoMetodo) {
+        return [
+          { tipo: 'guia_coleta', label: 'Guia de Extração e Organização de Dados', descricao: 'Roteiro passo a passo para baixar, organizar e preparar as bases (ex.: DATASUS/SIM/SIH) para análise' },
+        ]
+      }
+      if (ehDefinicaoMetodo && !ehExtracaoExecucao) {
+        return [instrumento, calculo]
+      }
+      // Etapa de coleta genérica/única (coleta primária com participantes): tudo.
       return [
-        { tipo: 'instrumento_coleta', label: 'Instrumento de Coleta', descricao: 'Questionário completo com questões, escalas e codificação para análise' },
-        { tipo: 'calculo_amostral', label: 'Cálculo Amostral', descricao: 'Justificativa estatística do N necessário com poder e significância' },
+        instrumento,
+        calculo,
         { tipo: 'guia_coleta', label: 'Guia Operacional de Coleta', descricao: 'Roteiro passo a passo para abordar participantes e aplicar o instrumento' },
       ]
+    }
     case 'analise':
       return [{ tipo: 'guia_analise', label: 'Guia de Análise Estatística', descricao: 'Testes específicos para seu delineamento com código R/SPSS e interpretação' }]
     case 'submissao':

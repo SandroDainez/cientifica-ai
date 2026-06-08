@@ -5,7 +5,7 @@ import { buildSystemPrompt, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { getSystemPromptEspecializado } from '@/lib/ai/prompts-secoes'
 import { streamText, callAI } from '@/lib/ai/stream'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
-import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
+import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
 
 export const maxDuration = 300
@@ -279,9 +279,9 @@ export async function POST(request: Request) {
         } catch (e) {
           console.error('[gerar-secao] Humanização falhou — usa rascunho:', e)
         }
-        // Camada final: valida TODAS as citações contra as referências reais.
-        // Qualquer citação inventada (sobrenome não cadastrado) vira (SOBRENOME, ANO).
-        const validado = validarCitacoesReais(humanizado, referencias, formato)
+        // Camada final padronizada (mesma do projeto): corrige código R, valida
+        // citações contra refs reais, remove travessões e placeholders residuais.
+        const validado = posProcessarTextoGerado(humanizado, referencias, formato)
         return streamStringComEfeito(validado)
       }
     } catch (err) {
@@ -293,7 +293,7 @@ export async function POST(request: Request) {
   try {
     const textoUnico = await callAI(systemPrompt, userPrompt, false, Math.max(6000, (fase.max_palavras ?? 1500) * 2))
     if (textoUnico && textoUnico.trim().length > 20) {
-      const validado = validarCitacoesReais(textoUnico, referencias, formato)
+      const validado = posProcessarTextoGerado(textoUnico, referencias, formato)
       return streamStringComEfeito(validado)
     }
   } catch (err) {

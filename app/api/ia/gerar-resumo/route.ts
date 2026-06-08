@@ -3,10 +3,21 @@ import { createClient } from '@/lib/supabase/server'
 import { buildSystemPrompt, buildGerarResumoPrompt, buildGerarAbstractPrompt } from '@/lib/ai/prompts'
 
 export const maxDuration = 300
-import { streamText } from '@/lib/ai/stream'
+import { streamText, callAI, streamStringComEfeito } from '@/lib/ai/stream'
 import { extrairTextoSecao } from '@/lib/ai/utils'
+import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho } from '@/types'
+
+/** Gera o texto e aplica a limpeza padronizada (travessões/decimais); cai no
+ *  streaming cru se a geração não-streaming falhar. */
+async function gerarLimpo(system: string, user: string): Promise<Response> {
+  try {
+    const texto = await callAI(system, user, false, 4000)
+    if (texto && texto.trim().length > 20) return streamStringComEfeito(removerTravessoes(texto))
+  } catch { /* fallback */ }
+  return streamText(system, user, false)
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -51,7 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Resumo em português necessário para gerar abstract' }, { status: 400 })
     }
     const userPrompt = buildGerarAbstractPrompt(trabalho.tipo_trabalho, resumo_pt)
-    return streamText(systemPrompt, userPrompt, false)
+    return gerarLimpo(systemPrompt, userPrompt)
   }
 
   // Modo resumo PT: usa as seções concluídas
@@ -73,5 +84,5 @@ export async function POST(request: Request) {
   )
 
   const userPrompt = buildGerarResumoPrompt(trabalho.tipo_trabalho, secoesConteudo)
-  return streamText(systemPrompt, userPrompt, false)
+  return gerarLimpo(systemPrompt, userPrompt)
 }

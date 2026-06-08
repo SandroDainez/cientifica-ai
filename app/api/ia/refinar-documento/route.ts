@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { streamText } from '@/lib/ai/stream'
+import { streamText, callAI, streamStringComEfeito } from '@/lib/ai/stream'
+import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
+import type { Referencia, FormatoCitacao } from '@/types'
 
 // Documentos acadêmicos são longos — aumentar timeout da função Vercel
 export const maxDuration = 300
@@ -58,5 +60,20 @@ ${instrucoes}
 **Documento atual:**
 ${conteudo_atual}`
 
+  // Carrega referências e formato do trabalho para o pós-processamento padronizado
+  // (resolução de citações, travessões, código R, placeholders) — igual à geração.
+  const [{ data: refsData }, { data: trab }] = await Promise.all([
+    supabase.from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at'),
+    supabase.from('trabalhos').select('formato_citacao').eq('id', trabalhoId).single(),
+  ])
+  const referencias = (refsData ?? []) as Referencia[]
+  const formato = (trab?.formato_citacao ?? 'abnt') as FormatoCitacao
+
+  try {
+    const texto = await callAI(system, userPrompt, false, 8000)
+    if (texto && texto.trim().length > 30) {
+      return streamStringComEfeito(posProcessarTextoGerado(texto, referencias, formato))
+    }
+  } catch { /* fallback streaming abaixo */ }
   return streamText(system, userPrompt, false)
 }

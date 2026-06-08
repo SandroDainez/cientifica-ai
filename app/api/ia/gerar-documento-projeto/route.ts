@@ -5,8 +5,7 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
-import { validarCitacoesReais, removerTravessoes, removerPlaceholdersCitacaoResiduais } from '@/lib/ai/validar-citacoes'
-import { corrigirCodigoR } from '@/lib/ai/utils'
+import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { substituirListaReferencias } from '@/lib/referencias/lista-referencias'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
 
@@ -153,17 +152,13 @@ export async function POST(request: Request) {
   // real formatada no estilo correto (ABNT alfabético / Vancouver numerado).
   const temListaRefs = tipoDocumento === 'revisao_literatura' || tipoDocumento === 'protocolo_cep'
   const validar = (texto: string) => {
-    // Remove travessões "—" em TODO documento (mesmo os sem referências, ex.: Guia de Análise)
-    let t = removerTravessoes(texto)
-    // Corrige erros determinísticos de código R (ex.: groups → .groups)
-    t = corrigirCodigoR(t)
-    // Resolve citações em TODOS os documentos (instrumento, TCLE, guia…): tenta
-    // substituir "(SOBRENOME, ANO)" por uma referência real do projeto.
-    t = validarCitacoesReais(t, referencias, formato)
+    // Pós-processamento PADRONIZADO (mesma camada do editor): corrige código R,
+    // remove travessões, resolve citações contra refs reais e elimina placeholders
+    // residuais — em TODOS os documentos (instrumento, TCLE, guia…).
+    let t = posProcessarTextoGerado(texto, referencias, formato)
+    // Substitui a lista final de referências pela lista real formatada (só nos
+    // documentos que têm seção de referências).
     if (temListaRefs && referencias.length > 0) t = substituirListaReferencias(t, referencias, formato)
-    // Rede de segurança: nenhum placeholder de citação pode ficar visível —
-    // se sobrou (sem referência adequada), é removido em vez de exibido.
-    t = removerPlaceholdersCitacaoResiduais(t)
     return t
   }
 
