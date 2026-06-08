@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   FileText, Presentation, Printer, Download,
-  ArrowLeft, CheckCircle2, AlertTriangle, Loader2, Eye,
+  ArrowLeft, CheckCircle2, AlertTriangle, Loader2, Eye, ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { useReferenceValidator } from '@/hooks/useReferenceValidator'
+import { PERIODICOS } from '@/lib/exportacao/periodicos'
 import type { Trabalho, Referencia } from '@/types'
 
 interface Props {
@@ -32,6 +33,9 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
   const [strictMode] = useState(false)
   const { canExport } = useReferenceValidator({ strictMode })
 
+  // Periódico-alvo (opcional) — usa a rota docx-periodico quando selecionado
+  const [periodicoSelecionado, setPeriodicoSelecionado] = useState('')
+
   const progresso = Math.round((secoesComConteudo / totalFases) * 100)
   const incompleto = secoesComConteudo < totalFases
 
@@ -43,7 +47,9 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
     const setStatus = formato === 'docx' ? setStatusDocx : setStatusPptx
     setStatus('loading')
     try {
-      const url = `/api/exportar/${formato}?id=${trabalho.id}`
+      const url = formato === 'docx' && periodicoSelecionado
+        ? `/api/exportar/docx-periodico?id=${trabalho.id}&periodico=${periodicoSelecionado}`
+        : `/api/exportar/${formato}?id=${trabalho.id}`
       const res = await fetch(url)
       if (!res.ok) throw new Error('Erro na geração')
 
@@ -119,6 +125,66 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
             </p>
           </div>
         )}
+      </div>
+
+      {/* Preview antes de exportar */}
+      <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 flex items-start gap-3">
+        <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+          <Eye className="h-4 w-4 text-indigo-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-indigo-900">
+            Revise antes de exportar
+          </p>
+          <p className="text-xs text-indigo-700 mt-0.5 leading-relaxed">
+            Verifique formatação, citações e referências na visualização completa antes de gerar o arquivo final.
+          </p>
+          <Link
+            href={`/trabalhos/${trabalho.id}/visualizar`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Abrir visualização completa
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Periódico-alvo (opcional) */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">
+          Exportar para periódico específico
+          <span className="text-gray-400 font-normal ml-1">(opcional)</span>
+        </label>
+        <select
+          value={periodicoSelecionado}
+          onChange={e => setPeriodicoSelecionado(e.target.value)}
+          className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
+        >
+          <option value="">Formatação padrão do trabalho</option>
+          {PERIODICOS.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.nome}{p.area !== 'Qualquer' ? ` — ${p.area}` : ''}
+            </option>
+          ))}
+        </select>
+
+        {periodicoSelecionado && (() => {
+          const p = PERIODICOS.find(x => x.id === periodicoSelecionado)
+          if (!p) return null
+          return (
+            <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1">
+              <p className="text-xs text-blue-800 font-medium">{p.instrucoes}</p>
+              {p.urlInstrucoes && (
+                <a href={p.urlInstrucoes} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline">
+                  Ver instruções completas →
+                </a>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Opções de exportação */}

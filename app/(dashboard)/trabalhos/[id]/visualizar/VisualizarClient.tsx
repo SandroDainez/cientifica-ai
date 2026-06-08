@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List, Shield, ClipboardCheck } from 'lucide-react'
+import { ArrowLeft, Printer, PencilLine, BookMarked, ChevronRight, List, Shield, ClipboardCheck, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
@@ -15,6 +15,7 @@ import { renderMarkdownInline } from '@/components/ui/MarkdownText'
 import { capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
+import { VerificadorCoerencia } from '@/components/visualizacao/VerificadorCoerencia'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
@@ -146,6 +147,10 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
               className={cn(buttonVariants({ variant: 'outline' }), 'gap-2 text-sm')}>
               <PencilLine className="h-4 w-4" /> Editar
             </Link>
+            <Link href={`/trabalhos/${trabalho.id}/exportar`}
+              className={cn(buttonVariants({ variant: 'default' }), 'gap-2 text-sm')}>
+              <Download className="h-4 w-4" /> Exportar
+            </Link>
             <button onClick={imprimir}
               className={cn(buttonVariants(), 'gap-2 text-sm')}>
               <Printer className="h-4 w-4" /> Imprimir
@@ -182,7 +187,8 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
       {/* Checklist dropdown */}
       {checklistAberto && (
         <div className="no-print border-t bg-gray-50 shadow-md max-w-5xl mx-auto">
-          <div className="px-4 py-4 max-w-lg">
+          <div className="px-4 py-4 max-w-lg space-y-3">
+            <VerificadorCoerencia trabalhoId={trabalho.id} />
             <ChecklistFinal
               titulo={trabalho.titulo ?? undefined}
               secoes={secoes}

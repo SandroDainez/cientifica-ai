@@ -13,7 +13,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { ValidadorSecao } from './ValidadorSecao'
-import type { FaseConfig, ResultadoValidacao } from '@/types'
+import type { FaseConfig, ResultadoValidacao, FormatoCitacao } from '@/types'
 
 export type StatusIA = 'idle' | 'gerando' | 'validando' | 'sugerindo' | 'salvando'
 
@@ -40,6 +40,11 @@ interface EditorAreaProps {
   linkReferencias?: string
   /** Slot opcional renderizado acima do editor — usado para o painel de planilha na seção Resultados */
   slotDados?: React.ReactNode
+  /** Indica que há alterações não salvas (destaca o botão "Salvar") */
+  temAlteracoes?: boolean
+  /** Vancouver: total de citações numéricas detectadas no texto atual */
+  totalCitacoesVancouver?: number
+  formatoCitacao?: FormatoCitacao
 }
 
 // ── Helpers de qualidade ──────────────────────────────────────────────────────
@@ -66,7 +71,8 @@ export function EditorArea({
   statusIA, validacao, onAplicarSugestao, onAplicarComIA,
   isUltimaFase,
   tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
-  linkReferencias, slotDados,
+  linkReferencias, slotDados, temAlteracoes,
+  totalCitacoesVancouver, formatoCitacao,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -204,6 +210,11 @@ export function EditorArea({
                   {statusPalavras === 'quase' && ' — quase lá!'}
                   {statusPalavras === 'excedido' && ' — acima do recomendado'}
                 </p>
+              )}
+              {formatoCitacao === 'vancouver' && totalCitacoesVancouver !== undefined && totalCitacoesVancouver > 0 && (
+                <span className="text-xs text-gray-400">
+                  · {totalCitacoesVancouver} citação(ões) numeradas
+                </span>
               )}
             </div>
           </div>
@@ -589,9 +600,16 @@ export function EditorArea({
           <button
             onClick={() => onSalvar(false)}
             disabled={busy || !temConteudo}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+              temAlteracoes
+                ? 'border-orange-300 text-orange-600 bg-orange-50 hover:bg-orange-100'
+                : 'text-muted-foreground hover:bg-accent'
+            )}>
             {statusIA === 'salvando'
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando…</>
+              : temAlteracoes
+              ? <><Save className="h-3.5 w-3.5" /> Salvar alterações •</>
               : <><Save className="h-3.5 w-3.5" /> Salvar rascunho</>}
           </button>
 

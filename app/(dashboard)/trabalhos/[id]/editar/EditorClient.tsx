@@ -16,8 +16,10 @@ import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/componen
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
 import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
 import { HistoricoVersoes } from '@/components/editor/HistoricoVersoes'
+import { BuscaSecoes } from '@/components/editor/BuscaSecoes'
+import { useVancouverNumbering } from '@/hooks/useVancouverNumbering'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
-import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
+import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto, Referencia } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
 import { tituloEfetivo, capitalizarTitulo } from '@/lib/trabalho/titulo'
 import { shouldShowEditorSection } from '@/lib/tipos/workTypeSchemas'
@@ -179,6 +181,13 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
     Object.fromEntries(secoesIniciais.map(s => [s.chave_secao, s.conteudo ?? '']))
   )
 
+  // Autosave + indicador de "não salvo"
+  const [temAlteracoes, setTemAlteracoes] = useState(false)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ultimoConteudoSalvo = useRef<Record<string, string>>(
+    Object.fromEntries(secoesIniciais.map(s => [s.chave_secao, s.conteudo ?? '']))
+  )
+
   const [faseAtiva, setFaseAtiva] = useState(trabalho.fase_atual ?? fases[0]?.chave_secao)
   const [fasesConcluidas, setFasesConcluidas] = useState<string[]>(trabalho.fases_concluidas)
   const [statusIA, setStatusIA] = useState<StatusIA>('idle')
@@ -203,6 +212,21 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
 
   const conteudoAtual = conteudos[faseAtualConfig.chave_secao] ?? conteudos[faseAtiva] ?? ''
 
+  // Referências do trabalho — usadas pelo contador de citações Vancouver
+  const [referencias, setReferencias] = useState<Referencia[]>([])
+  useEffect(() => {
+    fetch(`/api/referencias?trabalhoId=${trabalho.id}`)
+      .then(r => r.json())
+      .then(d => setReferencias(d.referencias ?? []))
+      .catch(() => {})
+  }, [trabalho.id])
+
+  const { totalCitacoes: totalCitacoesVancouver } = useVancouverNumbering(
+    conteudoAtual,
+    referencias,
+    trabalho.formato_citacao,
+  )
+
   // Título do cabeçalho — derivado do conteúdo ATUAL da seção de título (reflete
   // edições ao vivo); cai para trabalho.titulo se a seção ainda estiver vazia.
   const chaveTitulo = fases.find(f => /^titulo/.test(f.chave_secao))?.chave_secao
@@ -219,9 +243,41 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
   function setConteudoAtual(valor: string) {
     const chave = faseAtualConfig.chave_secao
     setConteudos(prev => ({ ...prev, [chave]: valor }))
+
+    // Marca como não salvo se o conteúdo mudou em relação ao último save
+    const salvo = ultimoConteudoSalvo.current[chave] ?? ''
+    setTemAlteracoes(valor !== salvo)
+
+    // Autosave: cancela timer anterior e agenda novo save em 30s
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    if (valor.trim() && valor !== salvo) {
+      autoSaveTimerRef.current = setTimeout(() => {
+        handleSalvarSilencioso(chave, valor)
+      }, 30000) // 30 segundos
+    }
+  }
+
+  async function handleSalvarSilencioso(chave: string, conteudo: string) {
+    try {
+      await fetch('/api/ia/salvar-secao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trabalhoId: trabalho.id,
+          chaveSecao: chave,
+          conteudo,
+          status: 'editado',
+        }),
+      })
+      ultimoConteudoSalvo.current[chave] = conteudo
+      setTemAlteracoes(false)
+    } catch {
+      // Falha silenciosa — não interrompe o usuário
+    }
   }
 
   function trocarFase(chave: string) {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     setFaseAtiva(chave)
     setValidacao(null)
     setTituloOpcoes([])
@@ -234,6 +290,25 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
       const fase = faseAtualRef.current
       const isTitulo = fase?.chave_secao?.includes('titulo')
       const textoGerado = conteudosRef.current[fase.chave_secao] ?? ''
+
+      // Notificação do browser se o usuário não estiver com foco na aba
+      if (typeof window !== 'undefined' && document.hidden) {
+        if (Notification.permission === 'granted') {
+          new Notification('Científica AI', {
+            body: `Seção "${fase.nome}" gerada com sucesso.`,
+            icon: '/favicon.ico',
+          })
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('Científica AI', {
+                body: `Seção "${fase.nome}" gerada com sucesso.`,
+                icon: '/favicon.ico',
+              })
+            }
+          })
+        }
+      }
 
       if (isTitulo) {
         // Seção de título: mostra picker
@@ -368,6 +443,10 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
         }),
       })
       if (!res.ok) throw new Error('Falha ao salvar')
+
+      ultimoConteudoSalvo.current[faseAtualConfig.chave_secao] = conteudo
+      setTemAlteracoes(false)
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
 
       if (avancar) {
         const novasConcluidas = Array.from(new Set([...fasesConcluidas, faseAtualConfig.chave_secao]))
@@ -545,6 +624,15 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
               </div>
             }
           />
+
+          {/* Busca dentro do trabalho — salta para a seção que contém o termo */}
+          <div className="mt-3 max-w-md">
+            <BuscaSecoes
+              fases={fases}
+              conteudos={conteudos}
+              onIrParaSecao={(chave) => trocarFase(chave)}
+            />
+          </div>
         </div>
 
         {/* Banner: plano do projeto não criado */}
@@ -619,6 +707,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                 onGerar={handleGerar}
                 onValidar={handleValidar}
                 onSalvar={handleSalvar}
+                temAlteracoes={temAlteracoes}
+                totalCitacoesVancouver={totalCitacoesVancouver}
+                formatoCitacao={trabalho.formato_citacao}
                 onAbrirIA={() => setIAPanelOpen(true)}
                 statusIA={statusIA}
                 validacao={validacao}

@@ -6,6 +6,7 @@ import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
+import { getPeriodicoPorId } from '@/lib/exportacao/periodicos'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   PageBreak, convertInchesToTwip, LineRuleType,
@@ -96,7 +97,13 @@ export async function GET(request: Request) {
   const secoes     = (sData ?? []) as SecaoTrabalho[]
   const referencias = (rData ?? []) as Referencia[]
   const fluxo      = getFluxo(trabalho.tipo_trabalho)
-  const fmt        = FORMATO_CONFIG[trabalho.formato_citacao] ?? FORMATO_CONFIG.abnt
+
+  // Periódico selecionado (opcional) — sobrescreve o formato de citação do trabalho
+  const periodicoId = searchParams.get('periodico')
+  const periodico = periodicoId ? getPeriodicoPorId(periodicoId) : null
+  const formatoCitacaoEfetivo = periodico?.formatoCitacao ?? trabalho.formato_citacao
+
+  const fmt        = FORMATO_CONFIG[formatoCitacaoEfetivo] ?? FORMATO_CONFIG.abnt
   // Título da capa: coluna do trabalho ou, se vazia, extraído da seção "titulo"
   const tituloCapa = tituloEfetivo(trabalho.titulo, secoes)
   // Capitalização para a capa: título em sentence case; nomes próprios capitalizados
@@ -217,7 +224,7 @@ export async function GET(request: Request) {
   // APA:  título centralizado, autor, instituição, curso, professor, data
   // Vancouver: título, autor, instituição (mais simples)
 
-  if (trabalho.formato_citacao === 'apa') {
+  if (formatoCitacaoEfetivo === 'apa') {
     // APA 7ª Ed — título page
     children.push(
       empty(), empty(), empty(),
@@ -243,7 +250,7 @@ export async function GET(request: Request) {
       empty(),
       paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
     )
-  } else if (trabalho.formato_citacao === 'vancouver') {
+  } else if (formatoCitacaoEfetivo === 'vancouver') {
     // Vancouver — capa simples
     children.push(
       empty(), empty(),
@@ -365,6 +372,14 @@ export async function GET(request: Request) {
     s => !ehTitulo(s) && s.chave_secao !== 'resumo' && s.chave_secao !== 'referencias'
   )
 
+  // Filtra seções conforme as normas do periódico (estrutura obrigatória)
+  const secoesParaExportar = periodico && periodico.estruturaObrigatoria.length
+    ? secoesCorpo.filter(s =>
+        periodico.estruturaObrigatoria.includes(s.chave_secao) ||
+        periodico.estruturaProibida.length === 0
+      )
+    : secoesCorpo
+
   // Renderiza um bloco de texto (parágrafos justificados) sem cabeçalho
   const pushParagrafos = (txt: string, indent = true) => {
     txt.split('\n').map(l => l.trim()).filter(Boolean).forEach(linha => {
@@ -385,7 +400,7 @@ export async function GET(request: Request) {
     if (r.resumo?.trim()) {
       children.push(new Paragraph({ children: [new PageBreak()] }))
       children.push(paragrafo('RESUMO', { center: true, bold: true, indent: false }))
-      const resumoResolvido = validarCitacoesReais(r.resumo, referencias, trabalho.formato_citacao)
+      const resumoResolvido = validarCitacoesReais(r.resumo, referencias, formatoCitacaoEfetivo)
       pushParagrafos(resumoResolvido, false)
       if (r.palavras_chave?.length) {
         children.push(empty())
@@ -423,7 +438,7 @@ export async function GET(request: Request) {
     children.push(new Paragraph({ children: [new PageBreak()] }))
   }
 
-  secoesCorpo.forEach((secao, i) => {
+  secoesParaExportar.forEach((secao, i) => {
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       secaoHeading(i + 1, secao.nome_secao),
@@ -433,7 +448,7 @@ export async function GET(request: Request) {
     const conteudoResolvido = validarCitacoesReais(
       secao.conteudo ?? '',
       referencias,
-      trabalho.formato_citacao,
+      formatoCitacaoEfetivo,
     )
 
     // Separa o conteúdo em blocos: tabelas markdown (linhas com "|") viram
@@ -478,8 +493,8 @@ export async function GET(request: Request) {
 
   // ── Referências ─────────────────────────────────────────────
   if (referencias.length > 0) {
-    const refsOrdenadas = ordenarReferencias(referencias, trabalho.formato_citacao)
-    const isVancouver = trabalho.formato_citacao === 'vancouver'
+    const refsOrdenadas = ordenarReferencias(referencias, formatoCitacaoEfetivo)
+    const isVancouver = formatoCitacaoEfetivo === 'vancouver'
 
     // Título da seção de referências
     children.push(
@@ -503,7 +518,7 @@ export async function GET(request: Request) {
 
     refsOrdenadas.forEach((ref, idx) => {
       const numero = isVancouver ? idx + 1 : undefined
-      const textoFormatado = formatarReferencia(ref, trabalho.formato_citacao, numero)
+      const textoFormatado = formatarReferencia(ref, formatoCitacaoEfetivo, numero)
 
       if (isVancouver) {
         // Vancouver: lista numerada, sem recuo pendente
