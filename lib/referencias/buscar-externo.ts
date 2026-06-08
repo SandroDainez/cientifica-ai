@@ -83,9 +83,11 @@ export async function buscarCrossRef(query: string, limite: number): Promise<Ref
         titulo:  title,
         autores: autores.length ? autores : undefined,
         ano,
-        journal:  tipo === 'artigo' || tipo === 'anais' ? journal : undefined,
+        // Para capítulo de livro, container-title é o TÍTULO DO LIVRO → guardamos
+        // em `journal` (o formatador ABNT usa como título do livro). Editora = só publisher.
+        journal:  tipo === 'artigo' || tipo === 'anais' || tipo === 'capitulo_livro' ? journal : undefined,
         editora:  tipo === 'livro' || tipo === 'capitulo_livro'
-          ? ((it.publisher as string | undefined) ?? journal)
+          ? (it.publisher as string | undefined)
           : undefined,
         volume:   it.volume as string | undefined,
         numero:   it.issue  as string | undefined,

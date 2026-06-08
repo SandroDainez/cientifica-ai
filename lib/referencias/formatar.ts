@@ -115,14 +115,18 @@ function formatarLivroAbnt(r: Referencia): string {
 }
 
 function formatarCapituloLivroAbnt(r: Referencia): string {
-  // AUTOR(ES). Título do capítulo. In: ORGANIZADOR(ES) (org.). **Título do livro**. Cidade: Editora, ano. p. XX-XX.
+  // AUTOR(ES). Título do capítulo. In: **Título do livro**. Cidade: Editora, ano. p. XX-XX.
+  // r.journal carrega o TÍTULO DO LIVRO (container-title); r.editora é a editora (publisher).
   const partes: string[] = []
   if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
-  partes.push(r.titulo + '.')
+  partes.push(limparTituloArtigo(r.titulo) + '.')
   partes.push('In:')
-  if (r.editora) partes.push(`**${r.editora}**.`)
-  if (r.cidade) partes.push(r.cidade + ':')
-  if (r.ano) partes.push(`${r.ano}.`)
+  if (r.journal) partes.push(`**${r.journal}**.`)
+  // Cidade: Editora, ano.
+  const local = [r.cidade ? `${r.cidade}:` : '', r.editora ?? ''].filter(Boolean).join(' ')
+  if (local && r.ano) partes.push(`${local}, ${r.ano}.`)
+  else if (local) partes.push(`${local}.`)
+  else if (r.ano) partes.push(`${r.ano}.`)
   if (r.paginas) partes.push(`p. ${r.paginas}.`)
   return partes.join(' ')
 }

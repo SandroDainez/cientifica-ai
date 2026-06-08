@@ -42,6 +42,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento, DocumentoEtapa } from '@/types'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { totalFasesEfetivas } from '@/lib/tipos/fases-efetivas'
 import { shouldShowField, hasSchemaForWorkType } from '@/lib/tipos/workTypeSchemas'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
@@ -576,7 +577,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // Documento concluído? (todas as seções do fluxo geradas). Usado para marcar
   // automaticamente como concluídas as etapas que o APP executa ao escrever o
   // trabalho — revisão de literatura ('preparacao') e redação ('escrita').
-  const totalFasesDoc = getFluxo(trabalho.tipo_trabalho)?.fases.length ?? 0
+  // Usa o total EFETIVO de fases (desconta as removidas em tipos bibliográficos),
+  // para a auto-conclusão coincidir com a barra de progresso.
+  const totalFasesDoc = totalFasesEfetivas(getFluxo(trabalho.tipo_trabalho)?.fases ?? [], trabalho)
   const documentoCompleto = totalFasesDoc > 0 && (trabalho.fases_concluidas?.length ?? 0) >= totalFasesDoc
   const etapaAutoConcluida = (tipo?: string) =>
     documentoCompleto && (tipo === 'escrita' || tipo === 'preparacao')

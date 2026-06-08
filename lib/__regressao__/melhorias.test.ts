@@ -82,6 +82,33 @@ test('qualidade: ehReferenciaUtilizavel combina autor + título', () => {
 })
 
 // ── 6. Referências citadas vs órfãs (lista final) ────────────────────────────
+test('separarReferenciasCitadas: ano em contexto de citação mantém; sobrenome solto remove', () => {
+  const refs = [
+    { id: '1', titulo: 'A', ano: 2020, autores: [{ nome: 'J', sobrenome: 'Linares' }] },   // citada "(Linares, 2020)"
+    { id: '2', titulo: 'B', ano: 2019, autores: [{ nome: 'M', sobrenome: 'Castro' }] },     // sobrenome aparece, mas sem citação
+  ] as never[]
+  const corpo = 'A taxa subiu (Linares, 2020). O bairro Castro fica longe e nada de 1999.'
+  const { citadas, naoCitadas } = separarReferenciasCitadas(refs, corpo, 'abnt')
+  assert.deepEqual(citadas.map(r => (r as { id: string }).id), ['1'])
+  assert.deepEqual(naoCitadas.map(r => (r as { id: string }).id), ['2'])
+})
+test('separarReferenciasCitadas: citação narrativa "Sobrenome et al. (ANO)" conta como citada', () => {
+  const refs = [{ id: '1', titulo: 'A', ano: 2021, autores: [{ nome: 'R', sobrenome: 'Mendes' }] }] as never[]
+  const corpo = 'Mendes et al. (2021) demonstraram o efeito.'
+  assert.equal(separarReferenciasCitadas(refs, corpo, 'abnt').citadas.length, 1)
+})
+test('formatarReferencia: capítulo de livro usa título do livro, não a editora', () => {
+  const ref = {
+    id: '1', trabalho_id: 't', tipo: 'capitulo_livro',
+    titulo: 'O capítulo sobre sepse', journal: 'Manual de Medicina Intensiva', editora: 'Editora Atheneu',
+    cidade: 'São Paulo', ano: 2019, paginas: '10-25',
+    autores: [{ nome: 'J', sobrenome: 'Silva' }], dados_extras: {}, confiabilidade: 'alta', created_at: '',
+    referencia_formatada_abnt: '', referencia_formatada_vancouver: '', referencia_formatada_apa: '',
+  } as never
+  const abnt = formatarReferencia(ref, 'abnt')
+  assert.ok(abnt.includes('Manual de Medicina Intensiva'), `tem o título do livro: ${abnt}`)
+  assert.ok(abnt.includes('In:'), 'tem "In:"')
+})
 test('separarReferenciasCitadas (ABNT): remove órfã, mantém citada', () => {
   const refs = [
     { id: '1', titulo: 'A', ano: 2020, autores: [{ nome: 'J', sobrenome: 'Linares' }] },

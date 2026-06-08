@@ -49,7 +49,18 @@ export function referenciaCitadaAutorData(ref: Referencia, corpoNorm: string): b
   // Só removemos com base em sobrenome de autor pessoal e distintivo (>= 4 letras).
   // Entidades coletivas (sem prenome) e sobrenomes curtos são sempre mantidos.
   if (!temPrenome || sobrenome.length < 4) return true
-  return corpoNorm.includes(sobrenome)
+  if (!corpoNorm.includes(sobrenome)) return false // sobrenome ausente → não citada
+  // Sobrenome presente: se a ref tem ano, exige que o ano apareça em CONTEXTO DE
+  // CITAÇÃO perto do sobrenome ("(SOBRENOME, ANO)" / "Sobrenome (ANO)" / "et al. (ANO)").
+  // Isso evita reter órfã quando um sobrenome comum aparece no texto por outro motivo.
+  // Sem ano (raro) → mantém (na dúvida, mantém).
+  if (!ref.ano) return true
+  const sobEsc = sobrenome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const citado = new RegExp(`${sobEsc}.{0,40}[(,]\\s*${ref.ano}[a-z]?\\b`)
+  if (citado.test(corpoNorm)) return true
+  // Sobrenome presente mas o ano não aparece em parte alguma do corpo → órfã.
+  // Se o ano aparece em algum lugar (pode ser citação distante), mantém por segurança.
+  return corpoNorm.includes(String(ref.ano))
 }
 
 /**
