@@ -344,10 +344,22 @@ function getDocumentosEtapa(
   if (!appExecuta) return []   // etapas manuais não têm documentos da IA
 
   switch (etapa.tipo) {
-    case 'preparacao':
+    case 'preparacao': {
+      // O planejador às vezes cria DUAS etapas 'preparacao' (revisão da literatura
+      // E definição do plano analítico/extração de bases). Sem diferenciar, ambas
+      // gerariam o mesmo doc (revisão de literatura). Diferencia pelo título: a
+      // etapa de DADOS/ANÁLISE gera um Guia de Análise, não uma revisão.
+      const t = etapa.titulo.toLowerCase()
+      const ehAnaliseDados = /plano anal|anal[íi]tic|extra[çc][ãa]o (de|das|dos)|microdados|dados secund|bases? de dados|base de dados|datasus|tabnet|\bsim\b|\bsih\b|tratamento dos dados/.test(t)
+      if (ehAnaliseDados) {
+        return [
+          { tipo: 'guia_analise', label: 'Guia de Análise e Extração de Dados', descricao: 'Fontes/bases de dados, variáveis, plano analítico e testes (com código R/SPSS) para o estudo' },
+        ]
+      }
       return [
         { tipo: 'revisao_literatura', label: 'Revisão de Literatura', descricao: 'Síntese das publicações sobre o tema, lacunas e embasamento teórico' },
       ]
+    }
     case 'etica': {
       const docs: DocumentoEtapa[] = []
       const t = etapa.titulo.toLowerCase()
