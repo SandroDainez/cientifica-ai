@@ -17,6 +17,7 @@ import { ehSobrenomePlaceholder, ehTituloDescartavel, ehReferenciaUtilizavel } f
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
+import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
 
 // ── 1. Travessões e vírgula decimal ──────────────────────────────────────────
 test('removerTravessoes: troca travessão "—" por vírgula', () => {
@@ -162,7 +163,38 @@ test('dedupDocumentosPorEtapa: primeira etapa na ordem fica com o tipo', () => {
   assert.equal((mapa.get('b') ?? []).length, 0)
 })
 
-// ── 11. Integração: pós-processamento completo ───────────────────────────────
+// ── 11. Revisor de Consistência (auditoria + remoção segura) ─────────────────
+test('auditarReferencias: detecta órfã, sem-autor, não-original e ano recente', () => {
+  const refs = [
+    { id: '1', titulo: 'Sepse no Brasil', ano: 2020, autores: [{ nome: 'J', sobrenome: 'Linares' }] },           // citada, ok
+    { id: '2', titulo: 'Hemodiálise', ano: 1994, autores: [{ nome: 'P', sobrenome: 'Lundin' }] },                 // órfã
+    { id: '3', titulo: 'X', ano: 2012, autores: [{ nome: '', sobrenome: '&NA;' }] },                              // sem autor
+    { id: '4', titulo: 'Erratum: algo', ano: 2018, autores: [{ nome: 'A', sobrenome: 'Costa' }] },               // não-original
+    { id: '5', titulo: 'Estudo novo', ano: 2026, autores: [{ nome: 'B', sobrenome: 'Torres' }] },                // ano recente (citada)
+  ] as never[]
+  const corpo = 'Segundo Linares (2020), a taxa subiu. Conforme Torres (2026), há tendência.'
+  const issues = auditarReferencias(refs, corpo, 'abnt', 2026)
+  const porId = Object.fromEntries(issues.map(i => [i.referenciaId, i.tipo]))
+  assert.equal(porId['2'], 'NAO_CITADA')
+  assert.equal(porId['3'], 'SEM_AUTOR_REAL')
+  assert.equal(porId['4'], 'REGISTRO_NAO_ORIGINAL')
+  assert.equal(porId['5'], 'ANO_NAO_VERIFICAVEL')
+  assert.equal(porId['1'], undefined, 'referência citada e válida não vira issue')
+})
+test('removerCitacoesDaRef: remove citação parentética solo sem quebrar a frase', () => {
+  const ref = { id: '1', titulo: 'X', ano: 2019, autores: [{ nome: 'P', sobrenome: 'Bulfin' }] } as never
+  const { texto, restaramManuais } = removerCitacoesDaRef('A taxa caiu no período (Bulfin, 2019). Fim.', ref, 'abnt')
+  assert.equal(texto, 'A taxa caiu no período. Fim.')
+  assert.equal(restaramManuais, false)
+})
+test('removerCitacoesDaRef: citação narrativa NÃO é removida (sinaliza manual)', () => {
+  const ref = { id: '1', titulo: 'X', ano: 2019, autores: [{ nome: 'P', sobrenome: 'Bulfin' }] } as never
+  const { texto, restaramManuais } = removerCitacoesDaRef('Bulfin (2019) demonstrou a queda.', ref, 'abnt')
+  assert.ok(texto.includes('Bulfin (2019)'), 'não remove citação narrativa automaticamente')
+  assert.equal(restaramManuais, true)
+})
+
+// ── 12. Integração: pós-processamento completo ───────────────────────────────
 test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   const refs = [] as never[]
   const entrada = 'Resultado — média 204,5. summarise(groups = "drop"). a = TTestIndPower. \\(d^2\\). Falta (SOBRENOME, ANO).'

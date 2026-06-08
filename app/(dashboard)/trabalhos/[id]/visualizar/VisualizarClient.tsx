@@ -19,6 +19,7 @@ import { capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade'
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
 import { VerificadorCoerencia } from '@/components/visualizacao/VerificadorCoerencia'
+import { PainelRevisaoConsistencia } from '@/components/revisao/PainelRevisaoConsistencia'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
@@ -204,6 +205,12 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
         <div className="no-print border-t bg-gray-50 shadow-md max-w-5xl mx-auto">
           <div className="px-4 py-4 max-w-lg space-y-3">
             <VerificadorCoerencia trabalhoId={trabalho.id} />
+            <PainelRevisaoConsistencia
+              trabalhoId={trabalho.id}
+              referencias={referencias}
+              corpo={secoesComConteudo.map(s => extrairTextoSecao(s.conteudo ?? '')).join('\n\n')}
+              formato={trabalho.formato_citacao ?? 'abnt'}
+            />
             <ChecklistFinal
               titulo={trabalho.titulo ?? undefined}
               secoes={secoes}
