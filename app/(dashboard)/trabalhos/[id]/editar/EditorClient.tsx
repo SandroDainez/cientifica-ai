@@ -15,6 +15,7 @@ import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
 import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
+import { HistoricoVersoes } from '@/components/editor/HistoricoVersoes'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
@@ -470,6 +471,11 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
     }
   }, [trabalho.id])
 
+  function handleRestaurarVersao(conteudo: string) {
+    setConteudos(prev => ({ ...prev, [faseAtualConfig.chave_secao]: conteudo }))
+    toast.success('Versão restaurada. Salve para confirmar.')
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8">
       {/* Sidebar de fases */}
@@ -635,6 +641,17 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                   ) : null
                 }
               />
+            )}
+
+            {/* Histórico de versões da seção (restaurar versões anteriores) */}
+            {faseAtualConfig.chave_secao !== 'resumo' && (
+              <div className="mt-4">
+                <HistoricoVersoes
+                  trabalhoId={trabalho.id}
+                  chaveSecao={faseAtualConfig.chave_secao}
+                  onRestaurar={handleRestaurarVersao}
+                />
+              </div>
             )}
           </div>
 

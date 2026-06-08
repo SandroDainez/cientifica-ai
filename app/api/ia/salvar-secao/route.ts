@@ -55,6 +55,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao salvar seção' }, { status: 500 })
   }
 
+  // Salva versão no histórico — fire and forget (não bloqueia o save principal)
+  void supabase.from('secao_versoes').insert({
+    trabalho_id: trabalhoId,
+    chave_secao: chaveSecao,
+    conteudo,
+    status: status ?? 'gerado',
+  })
+
   // Mantém trabalhos.titulo sincronizado com a seção de TÍTULO, para que os cards
   // (Meus Trabalhos/Dashboard) e demais telas nunca mostrem "Trabalho sem título".
   if (/^titulo/.test(chaveSecao) && conteudo?.trim()) {
