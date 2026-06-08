@@ -1863,13 +1863,13 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
 
                                       return (
                                         <div key={doc.tipo} className="rounded-md bg-background border border-border p-3">
-                                          <div className="flex items-start justify-between gap-2 mb-1">
-                                            <div className="flex items-center gap-1.5">
+                                          <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                               <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                              <span className="text-sm font-medium text-foreground">{doc.label}</span>
+                                              <span className="text-sm font-medium text-foreground break-words">{doc.label}</span>
                                             </div>
 
-                                            <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
                                               {docState?.status === 'gerado' && (
                                                 <>
                                                   <button
