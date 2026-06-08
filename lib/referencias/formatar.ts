@@ -66,11 +66,21 @@ function dataAcesso(r: Referencia): string {
 
 // ── Formatadores ABNT (NBR 6023:2018) ────────────────────────────────────────
 
+/**
+ * Remove número de resumo/abstract no início do título (ex.: "449 The Effect…"),
+ * comum em suplementos de congresso vindos do CrossRef. Conservador: só remove
+ * 1-3 dígitos seguidos de espaço e letra maiúscula — NÃO mexe em anos ("2024
+ * Guidelines…", 4 dígitos) nem em "5-year"/"10 mg" (hífen/minúscula).
+ */
+function limparTituloArtigo(titulo: string): string {
+  return (titulo ?? '').replace(/^\s*\d{1,3}\s+(?=[A-ZÀ-Ý])/, '').trim()
+}
+
 function formatarArtigoAbnt(r: Referencia): string {
   // AUTOR(ES). Título do artigo. **Periódico**, local, v. X, n. X, p. XX-XX, ano. DOI: xxx.
   const partes: string[] = []
   if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
-  partes.push(r.titulo + '.')
+  partes.push(limparTituloArtigo(r.titulo) + '.')
   if (r.journal) partes.push(`**${r.journal}**,`)
   if (r.cidade) partes.push(r.cidade + ',')
   if (r.volume) partes.push(`v. ${r.volume},`)
@@ -161,7 +171,7 @@ function formatarArtigoVancouver(r: Referencia, n?: number): string {
   const autStr = autoresVancouver(r.autores)
   const partes: string[] = []
   if (autStr) partes.push(autStr + '.')
-  partes.push(r.titulo + '.')
+  partes.push(limparTituloArtigo(r.titulo) + '.')
   if (r.journal) partes.push(r.journal + '.')
   const volInfo = [
     r.ano ? String(r.ano) : '',
@@ -216,7 +226,7 @@ function formatarArtigoApa(r: Referencia): string {
   const autStr = autoresApa(r.autores)
   const partes: string[] = []
   if (autStr) partes.push(autStr + (r.ano ? ` (${r.ano}).` : ' (s.d.).'))
-  partes.push(r.titulo + '.')
+  partes.push(limparTituloArtigo(r.titulo) + '.')
   if (r.journal) {
     const volInfo = [
       `*${r.journal}*`,
