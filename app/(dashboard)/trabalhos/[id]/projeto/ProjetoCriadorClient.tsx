@@ -34,6 +34,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { limparMarkdownCompleto } from '@/lib/ai/utils'
+import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento, DocumentoEtapa } from '@/types'
@@ -832,8 +833,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // ── Download como .txt ────────────────────────────────────────────────────
 
   const handleDownload = useCallback((texto: string, nomeDoc: string) => {
-    // Remove marcadores markdown (#, ---, **) para um .txt limpo (sem símbolos)
-    const blob = new Blob([limparMarkdownCompleto(texto)], { type: 'text/plain;charset=utf-8' })
+    // Remove marcadores markdown (#, ---, **) e travessões "—" para um .txt limpo
+    const blob = new Blob([removerTravessoes(limparMarkdownCompleto(texto))], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -845,7 +846,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // ── Imprimir documento ────────────────────────────────────────────────────
 
   const handleImprimir = useCallback((texto: string, nomeDoc: string, tituloTrabalho: string) => {
-    const linhas = texto
+    const linhas = removerTravessoes(texto)
       .split('\n')
       .map(l => {
         // Régua horizontal markdown (---, ***, ___) → <hr/> (não "---" literal)
@@ -1965,7 +1966,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                                   [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left
                                                   [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1
                                                   [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded">
-                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{docState.conteudo}</ReactMarkdown>
+                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{removerTravessoes(docState.conteudo)}</ReactMarkdown>
                                                 </div>
                                               )}
 

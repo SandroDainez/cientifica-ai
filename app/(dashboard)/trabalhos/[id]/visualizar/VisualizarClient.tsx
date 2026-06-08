@@ -8,6 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { extrairTextoSecao } from '@/lib/ai/utils'
+import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -35,6 +36,7 @@ interface Props {
  * em <p>, o que destruía a formatação da tabela ao "inserir no texto".
  */
 function ConteudoSecao({ texto }: { texto: string }) {
+  texto = removerTravessoes(texto)   // remove travessões "—" também na visualização
   const ehLinhaTabela = (l: string) => l.trim().startsWith('|')
   const blocos: { tipo: 'tabela' | 'prosa'; linhas: string[] }[] = []
   for (const linha of texto.split('\n')) {

@@ -198,11 +198,31 @@ export function resolverCitacoesVancouver(texto: string, totalRefs: number): str
   return resultado
 }
 
+/**
+ * Remove o travessão "—" (em-dash) usado como aposto/separador entre palavras —
+ * é uma das marcas mais fortes de texto de IA e não pertence ao registro formal
+ * ABNT. Converte para vírgula. Preserva intervalos numéricos com en-dash sem
+ * espaços (ex.: "2015–2020"); só troca en-dash quando cercado por espaços.
+ */
+export function removerTravessoes(texto: string): string {
+  if (!texto) return texto
+  return texto
+    .replace(/\s*—\s*/g, ', ')   // em-dash (U+2014) → vírgula
+    .replace(/\s+–\s+/g, ', ')   // en-dash (U+2013) com espaços = separador → vírgula
+    .replace(/ +,/g, ',')        // " ," → ","
+    .replace(/,\s*,/g, ',')      // ",," → ","
+    .replace(/,(?=\S)/g, ', ')   // garante espaço após a vírgula
+    .replace(/,\s+\./g, '.')     // ", ." → "."
+}
+
 export function validarCitacoesReais(
   texto: string,
   referencias: Referencia[],
   formato: FormatoCitacao = 'abnt',
 ): string {
+  // Remove travessões "—" (marca de IA / fora da norma ABNT) em qualquer formato
+  texto = removerTravessoes(texto)
+
   // Vancouver usa [1], [2] — renumera sequencialmente conforme a ordem de aparição
   if (formato === 'vancouver') {
     const textoNormalizado = normalizarPlaceholders(texto)

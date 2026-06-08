@@ -5,7 +5,7 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
-import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
+import { validarCitacoesReais, removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { substituirListaReferencias } from '@/lib/referencias/lista-referencias'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
 
@@ -148,8 +148,10 @@ export async function POST(request: Request) {
   // real formatada no estilo correto (ABNT alfabético / Vancouver numerado).
   const temListaRefs = tipoDocumento === 'revisao_literatura' || tipoDocumento === 'protocolo_cep'
   const validar = (texto: string) => {
-    if (!DOCS_COM_REFERENCIAS.has(tipoDocumento)) return texto
-    let t = validarCitacoesReais(texto, referencias, formato)
+    // Remove travessões "—" em TODO documento (mesmo os sem referências, ex.: Guia de Análise)
+    let t = removerTravessoes(texto)
+    if (!DOCS_COM_REFERENCIAS.has(tipoDocumento)) return t
+    t = validarCitacoesReais(t, referencias, formato)
     if (temListaRefs && referencias.length > 0) t = substituirListaReferencias(t, referencias, formato)
     return t
   }
