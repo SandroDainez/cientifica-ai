@@ -30,7 +30,10 @@ import {
   Printer,
   Download,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
+import { limparMarkdownCompleto } from '@/lib/ai/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento, DocumentoEtapa } from '@/types'
@@ -829,7 +832,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   // ── Download como .txt ────────────────────────────────────────────────────
 
   const handleDownload = useCallback((texto: string, nomeDoc: string) => {
-    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' })
+    // Remove marcadores markdown (#, ---, **) para um .txt limpo (sem símbolos)
+    const blob = new Blob([limparMarkdownCompleto(texto)], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -844,6 +848,8 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     const linhas = texto
       .split('\n')
       .map(l => {
+        // Régua horizontal markdown (---, ***, ___) → <hr/> (não "---" literal)
+        if (/^\s*[-*_]{3,}\s*$/.test(l)) return '<hr/>'
         // Títulos markdown → <h2>/<h3>
         if (/^### /.test(l)) return `<h3>${l.replace(/^### /, '')}</h3>`
         if (/^## /.test(l))  return `<h2>${l.replace(/^## /, '')}</h2>`
@@ -1946,11 +1952,20 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                                                   </div>
                                                 </div>
                                               ) : (
-                                                /* ── Modo leitura ── */
-                                                <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-[32rem] overflow-y-auto">
-                                                  <pre className="text-xs leading-relaxed whitespace-pre-wrap text-foreground font-sans">
-                                                    {docState.conteudo}
-                                                  </pre>
+                                                /* ── Modo leitura — markdown renderizado (sem # ## literais) ── */
+                                                <div className="mt-2 rounded border border-border bg-muted/40 p-3 max-h-[32rem] overflow-y-auto
+                                                  text-sm text-foreground leading-relaxed
+                                                  [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-center [&_h1]:uppercase [&_h1]:my-3
+                                                  [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1
+                                                  [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2
+                                                  [&_p]:my-1.5 [&_strong]:font-semibold [&_em]:italic
+                                                  [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5
+                                                  [&_hr]:my-3 [&_hr]:border-border
+                                                  [&_table]:w-full [&_table]:border-collapse [&_table]:my-2
+                                                  [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left
+                                                  [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1
+                                                  [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded">
+                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{docState.conteudo}</ReactMarkdown>
                                                 </div>
                                               )}
 
