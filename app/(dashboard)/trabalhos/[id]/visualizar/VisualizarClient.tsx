@@ -361,7 +361,7 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
           // Regra ABNT/Vancouver/APA: a lista só mostra referências CITADAS no corpo.
           const corpoParaCitacoes =
             secoesComConteudo.map(s => extrairTextoSecao(s.conteudo ?? '')).join('\n\n') +
-            '\n\n' + (secaoResumo?.conteudo ?? '')
+            '\n\n' + extrairTextoSecao(secaoResumo?.conteudo ?? '')
           const { citadas } = separarReferenciasCitadas(referencias, corpoParaCitacoes, trabalho.formato_citacao)
           const refsOrdenadas = ordenarReferencias(citadas, trabalho.formato_citacao)
           const isVancouver = trabalho.formato_citacao === 'vancouver'

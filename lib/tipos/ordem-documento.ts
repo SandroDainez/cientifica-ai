@@ -33,6 +33,7 @@ const RANK: Record<string, number> = {
   // Mantêm a ordem do fluxo (que já está correta) via ordenação estável.
 
   // Fechamento, em ordem ABNT
+  resultados_esperados: 89, // projeto de pesquisa: vem após a metodologia, ANTES de cronograma/orçamento
   consideracoes_finais: 90,
   conclusao: 90,
   limitacoes: 91,

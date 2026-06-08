@@ -27,12 +27,14 @@ function autoresAbnt(autores: AutorReferencia[] = []): string {
 function autoresVancouver(autores: AutorReferencia[] = []): string {
   if (!autores.length) return ''
   const formatados = autores.map(a => {
+    // Entidade coletiva (sem prenome/iniciais, ex.: "WHO"): nome por extenso, sem iniciais.
+    if (!(a.nome ?? '').trim() && !(a.iniciais ?? '').trim()) return (a.sobrenome ?? '').trim()
     // Remove periods and spaces from initials → "J." → "J", "J. A." → "JA"
-    const iniciais = (a.iniciais ?? a.nome.charAt(0))
+    const iniciais = (a.iniciais ?? (a.nome ?? '').charAt(0))
       .replace(/\./g, '')
       .replace(/\s+/g, '')
       .toUpperCase()
-    return `${a.sobrenome} ${iniciais}`
+    return `${a.sobrenome} ${iniciais}`.trim()
   })
   if (formatados.length > 6) {
     return formatados.slice(0, 6).join(', ') + ', et al'
@@ -48,8 +50,10 @@ function autoresVancouver(autores: AutorReferencia[] = []): string {
 function autoresApa(autores: AutorReferencia[] = []): string {
   if (!autores.length) return ''
   const formatados = autores.map(a => {
+    // Entidade coletiva (sem prenome/iniciais, ex.: "WHO"): nome por extenso, sem vírgula/iniciais.
+    if (!(a.nome ?? '').trim() && !(a.iniciais ?? '').trim()) return (a.sobrenome ?? '').trim()
     // "JA" → "J. A." | "J." → "J." | "J" → "J."
-    const raw = (a.iniciais ?? a.nome.charAt(0)).replace(/\./g, '').replace(/\s+/g, '')
+    const raw = (a.iniciais ?? (a.nome ?? '').charAt(0)).replace(/\./g, '').replace(/\s+/g, '')
     const iniciais = raw.split('').map(c => c.toUpperCase() + '.').join(' ')
     return `${a.sobrenome}, ${iniciais}`
   })

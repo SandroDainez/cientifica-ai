@@ -4,7 +4,10 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import pptxgen from 'pptxgenjs'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
-import { extrairTextoParaSlide } from '@/lib/ai/utils'
+import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
+import { extrairTextoParaSlide, extrairTextoSecao } from '@/lib/ai/utils'
+import { removerTravessoes } from '@/lib/ai/validar-citacoes'
+import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 export async function GET(request: Request) {
@@ -27,7 +30,6 @@ export async function GET(request: Request) {
 
   const trabalho = tData as Trabalho
   const secoes = (sData ?? []) as SecaoTrabalho[]
-  const referencias = ordenarReferencias((rData ?? []) as Referencia[], trabalho.formato_citacao)
   const fluxo = getFluxo(trabalho.tipo_trabalho)
 
   const secoesOrdenadas = fluxo
@@ -35,6 +37,14 @@ export async function GET(request: Request) {
         .map(f => secoes.find(s => s.chave_secao === f.chave_secao || s.chave_secao === f.id))
         .filter((s): s is SecaoTrabalho => !!s && !!s.conteudo?.trim())
     : secoes.filter(s => !!s.conteudo?.trim())
+
+  // Só lista as referências EFETIVAMENTE CITADAS no corpo (mesma regra do DOCX/visualização)
+  const corpoCitacoes = secoesOrdenadas.map(s => extrairTextoSecao(s.conteudo ?? '')).join('\n\n')
+  const referencias = separarReferenciasCitadas(
+    ordenarReferencias((rData ?? []) as Referencia[], trabalho.formato_citacao),
+    corpoCitacoes,
+    trabalho.formato_citacao ?? 'abnt',
+  ).citadas
 
   const pptx = new pptxgen()
   pptx.layout = 'LAYOUT_16x9'
@@ -116,8 +126,8 @@ export async function GET(request: Request) {
       color: BRANCO, fontSize: 18, bold: true, valign: 'middle',
     })
 
-    // Conteúdo — sem markdown, começa com maiúscula, corta na fronteira de palavra
-    const resumo = extrairTextoParaSlide(secao.conteudo ?? '', 600)
+    // Conteúdo — converte LaTeX e remove travessões antes de extrair p/ slide
+    const resumo = extrairTextoParaSlide(converterMathLatexParaTexto(removerTravessoes(secao.conteudo ?? '')), 600)
 
     slide.addText(resumo, {
       x: 0.5, y: 1.3, w: 9, h: 4,

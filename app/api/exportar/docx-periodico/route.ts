@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
-import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
-import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
+import { validarCitacoesReais, removerTravessoes } from '@/lib/ai/validar-citacoes'
+import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
+import { extrairParagrafosParaDocx, extrairTextoSecao } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
@@ -35,7 +36,7 @@ interface FormatoConfig {
 
 const FORMATO_CONFIG: Record<FormatoCitacao, FormatoConfig> = {
   abnt: {
-    margins:          { top: 1.18, right: 1.18, bottom: 0.79, left: 1.57 }, // 3×3×2×4 cm
+    margins:          { top: 1.18, right: 0.79, bottom: 0.79, left: 1.18 }, // ABNT 3/2/2/3 cm (sup/dir/inf/esq) — igual ao PDF
     lineSpacing:      360,    // 1,5 linhas
     headingAlign:     'left',
     headingBold:      true,
@@ -408,7 +409,7 @@ export async function GET(request: Request) {
     if (r.resumo?.trim()) {
       children.push(new Paragraph({ children: [new PageBreak()] }))
       children.push(paragrafo('RESUMO', { center: true, bold: true, indent: false }))
-      const resumoResolvido = validarCitacoesReais(r.resumo, referencias, formatoCitacaoEfetivo)
+      const resumoResolvido = converterMathLatexParaTexto(validarCitacoesReais(r.resumo, referencias, formatoCitacaoEfetivo))
       pushParagrafos(resumoResolvido, false)
       if (r.palavras_chave?.length) {
         children.push(empty())
@@ -418,7 +419,7 @@ export async function GET(request: Request) {
     if (r.abstract?.trim()) {
       children.push(empty())
       children.push(paragrafo('ABSTRACT', { center: true, bold: true, indent: false }))
-      pushParagrafos(r.abstract, false)
+      pushParagrafos(converterMathLatexParaTexto(removerTravessoes(r.abstract)), false)
       if (r.keywords?.length) {
         children.push(empty())
         children.push(paragrafo(`Keywords: ${r.keywords.join('; ')}.`, { indent: false }))
@@ -452,12 +453,12 @@ export async function GET(request: Request) {
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    // Reprocessa citações contra as referências reais antes de exportar
-    const conteudoResolvido = validarCitacoesReais(
+    // Reprocessa citações contra as refs reais e converte LaTeX matemático
+    const conteudoResolvido = converterMathLatexParaTexto(validarCitacoesReais(
       secao.conteudo ?? '',
       referencias,
       formatoCitacaoEfetivo,
-    )
+    ))
 
     // Separa o conteúdo em blocos: tabelas markdown (linhas com "|") viram
     // tabelas reais; o restante vira parágrafos justificados.
@@ -502,8 +503,8 @@ export async function GET(request: Request) {
   // ── Referências ─────────────────────────────────────────────
   // A lista só contém referências CITADAS no corpo (regra ABNT/Vancouver/APA).
   const corpoParaCitacoes =
-    secoesCorpo.map(s => s.conteudo ?? '').join('\n\n') +
-    '\n\n' + (secaoResumo?.conteudo ?? '')
+    secoesCorpo.map(s => extrairTextoSecao(s.conteudo ?? '')).join('\n\n') +
+    '\n\n' + extrairTextoSecao(secaoResumo?.conteudo ?? '')
   const { citadas: referenciasCitadas } =
     separarReferenciasCitadas(referencias, corpoParaCitacoes, formatoCitacaoEfetivo)
 

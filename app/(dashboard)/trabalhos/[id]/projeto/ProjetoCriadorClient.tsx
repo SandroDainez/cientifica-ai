@@ -164,6 +164,17 @@ const RE_BIBLIOGRAFICO = /bibliogr|literatura|busca|sele[çc]|triagem|prisma|s[�
  * @param tipoTrabalho tipo escolhido pelo usuário (reforça o caso bibliográfico)
  */
 function limparFluxoConformeTipo(dados: DadosProjeto, tipoTrabalho?: string): DadosProjeto {
+  // Projeto de pesquisa é uma PROPOSTA: encerra no protocolo (cronograma/orçamento/
+  // resultados esperados). Nunca tem etapa de submissão a periódico nem redação do
+  // artigo final — remove essas etapas independentemente do tipo de coleta.
+  if (tipoTrabalho === 'projeto_pesquisa') {
+    const RE_FINAL = /submeter|submiss|peri[óo]dic|revista cient|publica[çc]/i
+    dados = {
+      ...dados,
+      roadmap: (dados.roadmap ?? []).filter(e =>
+        e.tipo !== 'submissao' && !RE_FINAL.test(`${e.titulo} ${e.descricao ?? ''}`)),
+    }
+  }
   const coleta = dados.tipo_coleta
   const ehBibliografico = coleta === 'bibliografica' || (tipoTrabalho ? TIPOS_BIBLIOGRAFICOS.has(tipoTrabalho) : false)
   const ehSecundaria = coleta === 'secundaria'

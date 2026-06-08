@@ -105,7 +105,7 @@ const SCHEMAS: Record<TipoTrabalho, WorkTypeSchema> = {
     envolveSeresHumanos: false,
     projectFields: [...BASIC_FIELDS],
     editorSections: ['protocolo', 'pergunta_pico', 'objetivos', 'estrategia_busca', 'criterios', 'triagem_prisma', 'extracao_dados', 'risco_vies', 'sintese', 'metanalise', 'discussao', 'conclusao', 'resumo', 'referencias'],
-    hiddenFields: [...ETHICS_FIELDS, 'calculo_amostral', 'amostra_estimada', 'instrumentos_previstos', 'populacao_alvo'],
+    hiddenFields: [...ETHICS_FIELDS, ...COLLECTION_FIELDS],
   },
   projeto_pesquisa: {
     tipoTrabalho: 'projeto_pesquisa',

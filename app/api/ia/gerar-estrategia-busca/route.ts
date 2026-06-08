@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { streamText } from '@/lib/ai/stream'
+import { streamText, callAI, streamStringComEfeito } from '@/lib/ai/stream'
+import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 
 export const maxDuration = 300
 import { checkRateLimit } from '@/lib/auth/rate-limit'
@@ -55,5 +56,11 @@ Formato esperado:
 
 Forneça strings prontas para copiar e colar em cada base.`
 
+  // Pós-processamento mínimo padronizado (remove travessões/protege decimais);
+  // cai no streaming cru se a geração não-streaming falhar.
+  try {
+    const texto = await callAI(systemPrompt, userPrompt, false, 6000)
+    if (texto && texto.trim().length > 20) return streamStringComEfeito(removerTravessoes(texto))
+  } catch { /* fallback abaixo */ }
   return streamText(systemPrompt, userPrompt, false)
 }

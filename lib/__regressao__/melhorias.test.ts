@@ -18,6 +18,8 @@ import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
+import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
+import { formatarReferencia } from '@/lib/referencias/formatar'
 
 // ── 1. Travessões e vírgula decimal ──────────────────────────────────────────
 test('removerTravessoes: troca travessão "—" por vírgula', () => {
@@ -194,7 +196,27 @@ test('removerCitacoesDaRef: citação narrativa NÃO é removida (sinaliza manua
   assert.equal(restaramManuais, true)
 })
 
-// ── 12. Integração: pós-processamento completo ───────────────────────────────
+// ── 12. Ordem do documento + autor coletivo ──────────────────────────────────
+test('rankSecaoDocumento: resultados_esperados vem ANTES de cronograma/orçamento', () => {
+  assert.ok(rankSecaoDocumento('resultados_esperados') < rankSecaoDocumento('cronograma'))
+  assert.ok(rankSecaoDocumento('resultados_esperados') < rankSecaoDocumento('orcamento'))
+  assert.ok(rankSecaoDocumento('metodologia') < rankSecaoDocumento('resultados_esperados'), 'depois do miolo')
+})
+test('formatarReferencia: autor coletivo (WHO) não gera ", ." em APA/Vancouver', () => {
+  const ref = {
+    id: '1', trabalho_id: 't', tipo: 'artigo', titulo: 'Global report on sepsis',
+    autores: [{ nome: '', sobrenome: 'World Health Organization' }], ano: 2020,
+    dados_extras: {}, confiabilidade: 'alta', created_at: '',
+    referencia_formatada_abnt: '', referencia_formatada_vancouver: '', referencia_formatada_apa: '',
+  } as never
+  const apa = formatarReferencia(ref, 'apa')
+  const van = formatarReferencia(ref, 'vancouver', 1)
+  assert.ok(!apa.includes(', .'), `APA sem ", .": ${apa}`)
+  assert.ok(apa.includes('World Health Organization'), 'APA mantém o nome da entidade')
+  assert.ok(!/World Health Organization\s+\./.test(van), `Vancouver sem nome+ponto solto: ${van}`)
+})
+
+// ── 13. Integração: pós-processamento completo ───────────────────────────────
 test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   const refs = [] as never[]
   const entrada = 'Resultado — média 204,5. summarise(groups = "drop"). a = TTestIndPower. \\(d^2\\). Falta (SOBRENOME, ANO).'

@@ -18,7 +18,7 @@ import { ehSobrenomePlaceholder, ehReferenciaUtilizavel } from '@/lib/referencia
 // citação NÃO deve ser preenchido com uma referência da biblioteca (seria
 // inventar a associação). Programas citam-se com sua referência canônica própria
 // (ex.: R → "R Core Team"), tratada à parte.
-const CONTEXTO_SOFTWARE = /\b(software|programa estat[íi]stico|pacote estat[íi]stico|vers[ãa]o do|core team|rstudio|\bspss\b|\bstata\b|\bsas\b|jamovi|jasp|graphpad|prism|minitab|matlab|epi\s?info|redcap|\bpython\b|linguagem r\b|ambiente r\b|software r\b|programa r\b|\bno r\b)/i
+const CONTEXTO_SOFTWARE = /\b(software|programa estat[íi]stico|pacote estat[íi]stico|vers[ãa]o do|core team|rstudio|\bspss\b|\bstata\b|\bsas\b|jamovi|jasp|graphpad|prism|minitab|matlab|epi\s?info|redcap|\bpython\b|linguagem r\b|ambiente r\b|software r\b|programa r\b)/i
 
 // Palavras irrelevantes para casar tema da frase × título da referência
 const STOPWORDS = new Set([

@@ -12,6 +12,7 @@ export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
+import { ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, Referencia } from '@/types'
 
@@ -108,8 +109,13 @@ export async function POST(request: Request) {
           const resultados = await Promise.all(queries.map(q => buscarRefsExternas(q, 8)))
           const vistosDois = new Set<string>(referencias.map(r => r.doi ?? '').filter(Boolean))
           const vistosTitulos = new Set<string>(referencias.map(r => r.titulo.toLowerCase().slice(0, 80)))
+          const anoAtual = new Date().getFullYear()
           const novas = resultados.flat().filter(ref => {
             if (!ref.titulo) return false
+            // Mesmos filtros do auto-import: rejeita ref sem autor real / não-original
+            // e fora da faixa de ano (1950..ano atual) — defesa em profundidade.
+            if (!ehReferenciaUtilizavel(ref)) return false
+            if (!ref.ano || ref.ano < 1950 || ref.ano > anoAtual) return false
             const tk = ref.titulo.toLowerCase().slice(0, 80)
             if (vistosTitulos.has(tk)) return false
             vistosTitulos.add(tk)
