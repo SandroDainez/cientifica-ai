@@ -868,8 +868,10 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
   <meta charset="UTF-8" />
   <title>${nomeDoc}</title>
   <style>
-    @page { margin: 2.5cm; }
-    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.8; color: #000; }
+    /* margin 0: o navegador só injeta data/título/URL ("about:blank") quando há
+       margem de página. O recuo visual vem do padding do body. */
+    @page { size: A4; margin: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.8; color: #000; padding: 2.5cm; }
     h1 { font-size: 14pt; text-align: center; margin: 24pt 0 12pt; text-transform: uppercase; }
     h2 { font-size: 13pt; margin: 18pt 0 8pt; }
     h3 { font-size: 12pt; margin: 14pt 0 6pt; }
@@ -882,8 +884,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
 <body>
   <div class="header">
     <small>${tituloTrabalho}</small><br/>
-    <strong>${nomeDoc}</strong><br/>
-    <small>Gerado em ${new Date().toLocaleDateString('pt-BR')} pelo Científica AI</small>
+    <strong>${nomeDoc}</strong>
   </div>
   ${linhas}
   <script>window.onload = function(){ window.print(); }<\/script>

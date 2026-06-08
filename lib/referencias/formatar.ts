@@ -69,7 +69,7 @@ function dataAcesso(r: Referencia): string {
 function formatarArtigoAbnt(r: Referencia): string {
   // AUTOR(ES). Título do artigo. **Periódico**, local, v. X, n. X, p. XX-XX, ano. DOI: xxx.
   const partes: string[] = []
-  if (r.autores?.length) partes.push(autoresAbnt(r.autores) + '.')
+  if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
   partes.push(r.titulo + '.')
   if (r.journal) partes.push(`**${r.journal}**,`)
   if (r.cidade) partes.push(r.cidade + ',')
@@ -84,7 +84,7 @@ function formatarArtigoAbnt(r: Referencia): string {
 function formatarLivroAbnt(r: Referencia): string {
   // AUTOR(ES). **Título**. Edição. Cidade: Editora, ano. ISBN.
   const partes: string[] = []
-  if (r.autores?.length) partes.push(autoresAbnt(r.autores) + '.')
+  if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
   partes.push(`**${r.titulo}**.`)
   if (r.cidade) partes.push(r.cidade + ':')
   if (r.editora) partes.push(r.editora + ',')
@@ -96,7 +96,7 @@ function formatarLivroAbnt(r: Referencia): string {
 function formatarCapituloLivroAbnt(r: Referencia): string {
   // AUTOR(ES). Título do capítulo. In: ORGANIZADOR(ES) (org.). **Título do livro**. Cidade: Editora, ano. p. XX-XX.
   const partes: string[] = []
-  if (r.autores?.length) partes.push(autoresAbnt(r.autores) + '.')
+  if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
   partes.push(r.titulo + '.')
   partes.push('In:')
   if (r.editora) partes.push(`**${r.editora}**.`)
@@ -109,7 +109,7 @@ function formatarCapituloLivroAbnt(r: Referencia): string {
 function formatarSiteAbnt(r: Referencia): string {
   // AUTOR(ES). **Título**. Disponível em: URL. Acesso em: DD mês. AAAA.
   const partes: string[] = []
-  if (r.autores?.length) partes.push(autoresAbnt(r.autores) + '.')
+  if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
   partes.push(`**${r.titulo}**.`)
   if (r.ano) partes.push(`${r.ano}.`)
   if (r.url) partes.push(`Disponível em: ${r.url}.`)
@@ -120,7 +120,7 @@ function formatarSiteAbnt(r: Referencia): string {
 function formatarTeseAbnt(r: Referencia): string {
   // AUTOR. **Título**. Ano. Tese (Doutorado) / Dissertação (Mestrado) — Instituição, Cidade.
   const partes: string[] = []
-  if (r.autores?.length) partes.push(autoresAbnt(r.autores) + '.')
+  if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
   partes.push(`**${r.titulo}**.`)
   if (r.ano) partes.push(`${r.ano}.`)
   const tipoDesc = r.tipo === 'tese' ? 'Tese (Doutorado)' : 'Dissertação (Mestrado)'
@@ -132,7 +132,7 @@ function formatarTeseAbnt(r: Referencia): string {
 function formatarAnaisAbnt(r: Referencia): string {
   // AUTOR. Título. In: NOME DO EVENTO, N., ANO, Cidade. Anais [...]. Cidade: Editora, ano. p. XX-XX.
   const partes: string[] = []
-  if (r.autores?.length) partes.push(autoresAbnt(r.autores) + '.')
+  if (r.autores?.length) partes.push(autoresAbnt(r.autores).replace(/\.\s*$/, '') + '.')
   partes.push(r.titulo + '.')
   if (r.journal) partes.push(`In: ${r.journal.toUpperCase()}.`)
   if (r.cidade) partes.push(`${r.cidade}:`)
