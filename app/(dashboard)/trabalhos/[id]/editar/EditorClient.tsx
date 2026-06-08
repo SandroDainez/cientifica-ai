@@ -227,6 +227,40 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
     trabalho.formato_citacao,
   )
 
+  // Indicador de rate limit (gerar-secao) — consulta SEM consumir o limite
+  const [bloqueadoPorLimite, setBloqueadoPorLimite] = useState(false)
+  const [resetLimiteEm, setResetLimiteEm] = useState<string | undefined>()
+
+  async function verificarLimite() {
+    try {
+      const res = await fetch('/api/ia/uso-atual')
+      if (res.ok) {
+        const json = await res.json()
+        setBloqueadoPorLimite(!json.allowed)
+        setResetLimiteEm(json.resetAt)
+      }
+    } catch {
+      // silencioso
+    }
+  }
+
+  useEffect(() => {
+    verificarLimite()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Proteção: avisa se tentar fechar a aba com alterações não salvas
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (temAlteracoes) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [temAlteracoes])
+
   // Título do cabeçalho — derivado do conteúdo ATUAL da seção de título (reflete
   // edições ao vivo); cai para trabalho.titulo se a seção ainda estiver vazia.
   const chaveTitulo = fases.find(f => /^titulo/.test(f.chave_secao))?.chave_secao
@@ -290,6 +324,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
       const fase = faseAtualRef.current
       const isTitulo = fase?.chave_secao?.includes('titulo')
       const textoGerado = conteudosRef.current[fase.chave_secao] ?? ''
+
+      // Atualiza o indicador de limite após cada geração
+      verificarLimite()
 
       // Notificação do browser se o usuário não estiver com foco na aba
       if (typeof window !== 'undefined' && document.hidden) {
@@ -710,6 +747,8 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                 temAlteracoes={temAlteracoes}
                 totalCitacoesVancouver={totalCitacoesVancouver}
                 formatoCitacao={trabalho.formato_citacao}
+                bloqueadoPorLimite={bloqueadoPorLimite}
+                resetLimiteEm={resetLimiteEm}
                 onAbrirIA={() => setIAPanelOpen(true)}
                 statusIA={statusIA}
                 validacao={validacao}

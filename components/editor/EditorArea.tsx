@@ -45,6 +45,9 @@ interface EditorAreaProps {
   /** Vancouver: total de citações numéricas detectadas no texto atual */
   totalCitacoesVancouver?: number
   formatoCitacao?: FormatoCitacao
+  /** Rate limit de geração atingido (mostra aviso com horário de liberação) */
+  bloqueadoPorLimite?: boolean
+  resetLimiteEm?: string
 }
 
 // ── Helpers de qualidade ──────────────────────────────────────────────────────
@@ -73,6 +76,7 @@ export function EditorArea({
   tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
   linkReferencias, slotDados, temAlteracoes,
   totalCitacoesVancouver, formatoCitacao,
+  bloqueadoPorLimite, resetLimiteEm,
 }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -251,6 +255,16 @@ export function EditorArea({
 
           </div>
         </div>
+        {bloqueadoPorLimite && resetLimiteEm && (
+          <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Limite de geração atingido. Disponível novamente em{' '}
+            {new Date(resetLimiteEm).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </p>
+        )}
       </div>
 
       {/* ── Painel de dados/planilha (sempre visível quando fornecido) ─── */}
