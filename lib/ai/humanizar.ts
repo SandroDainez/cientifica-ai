@@ -113,7 +113,8 @@ Técnicas específicas:
 • Fracione uma frase longa em duas com ponto final entre elas
 • Expanda uma frase para 40-55 palavras com subordinação e explicação intercalada
 • Insira 1-2 frases ultra-curtas por parágrafo: "O paradoxo é esse." / "Os dados confirmam." / "Isso muda tudo."
-• Use travessão (—) para inserir aposto ou comentário dentro de frase longa
+• Insira apostos e comentários entre VÍRGULAS ou PARÊNTESES, variando a posição na frase
+• NÃO use o travessão "—" como separador de aposto (é uma das marcas mais fortes de texto de IA e foge do registro formal ABNT). CONVERTA todo travessão "—" usado como aposto/ênfase em vírgulas, parênteses ou ponto final. Reserve o travessão apenas para falas/diálogo (que não ocorrem em artigo científico)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TRANSFORMAÇÃO 4 — PERPLEXIDADE: ESCOLHAS LEXICAIS IMPREVISÍVEIS
