@@ -110,10 +110,11 @@ export async function POST(request: Request) {
 
   // ── Garante referências REAIS para documentos que precisam de citações ─────
   let referencias: Referencia[] = []
+  let guardrail = ''
   if (DOCS_COM_REFERENCIAS.has(tipoDocumento)) {
     const { data: refsData } = await supabase
       .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
-    const todas = await garantirReferenciasReais({
+    const refsResult = await garantirReferenciasReais({
       supabase,
       trabalhoId,
       titulo: trabalho.titulo ?? dadosProjeto.titulo_provisorio,
@@ -123,16 +124,19 @@ export async function POST(request: Request) {
       pergunta: dadosProjeto.pergunta_pesquisa,
       refsExistentes: (refsData ?? []) as Referencia[],
     })
-    referencias = filtrarRefsCitaveis(todas)
+    referencias = filtrarRefsCitaveis(refsResult.referencias)
+    guardrail = refsResult.guardrail
   }
 
-  const { system, user: userPrompt } = buildDocumentoPrompt(
+  const { system: systemBase, user: userPrompt } = buildDocumentoPrompt(
     tipoDocumento,
     dadosProjeto,
     trabalho.titulo ?? undefined,
     referencias,
     formato,
   )
+  // Guardrail de referências validadas (passo 9 do briefing)
+  const system = guardrail ? guardrail + '\n\n' + systemBase : systemBase
 
   const maxTokens = MAX_TOKENS_POR_TIPO[tipoDocumento] ?? 4000
 

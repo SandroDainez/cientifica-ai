@@ -168,15 +168,45 @@ export function normalizarPlaceholders(texto: string): string {
   return t
 }
 
+/**
+ * Para Vancouver: renumera as citações [N] no texto conforme a ordem real
+ * de aparecimento das referências na lista ordenada.
+ *
+ * A IA gera [1], [2], [3] arbitrariamente. Esta função:
+ * 1. Percorre o texto da esquerda para a direita
+ * 2. Cada sobrenome de referência citável recebe um número sequencial
+ *    na primeira aparição
+ * 3. Reutiliza o mesmo número em aparições subsequentes
+ *
+ * Como o texto Vancouver não tem sobrenomes — só números — esta função
+ * apenas garante que os números sejam sequenciais de 1 a N sem gaps.
+ */
+export function resolverCitacoesVancouver(texto: string, totalRefs: number): string {
+  if (totalRefs === 0) return texto
+
+  const mapa = new Map<number, number>() // número antigo → número novo
+  let proximoNumero = 1
+  // Primeira passagem: mapeia números existentes para sequência correta
+  const resultado = texto.replace(/\[(\d+)\]/g, (match, numStr) => {
+    const num = parseInt(numStr, 10)
+    if (num < 1 || num > totalRefs * 3) return match // ignora números absurdos
+    if (!mapa.has(num)) {
+      mapa.set(num, proximoNumero++)
+    }
+    return `[${mapa.get(num)}]`
+  })
+  return resultado
+}
+
 export function validarCitacoesReais(
   texto: string,
   referencias: Referencia[],
   formato: FormatoCitacao = 'abnt',
 ): string {
-  // Vancouver usa [1], [2] — validação numérica é tratada à parte; não mexe aqui
+  // Vancouver usa [1], [2] — renumera sequencialmente conforme a ordem de aparição
   if (formato === 'vancouver') {
-    // Mesmo em Vancouver, garante que placeholders fiquem canônicos
-    return normalizarPlaceholders(texto)
+    const textoNormalizado = normalizarPlaceholders(texto)
+    return resolverCitacoesVancouver(textoNormalizado, referencias.length)
   }
 
   // REGRA RÍGIDA 1: normaliza todos os placeholders para "(SOBRENOME, ANO)"

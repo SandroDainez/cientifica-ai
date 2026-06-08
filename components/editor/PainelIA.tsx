@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2, MessageSquare, Lightbulb, X } from 'lucide-react'
+import { Send, Bot, User, Loader2, MessageSquare, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MarkdownText } from '@/components/ui/MarkdownText'
 import type { MensagemIA, FaseConfig } from '@/types'
@@ -116,20 +116,44 @@ function getSugestoesChat(chaveSecao: string, nomeSecao: string, temConteudo: bo
   ]
 }
 
+// Detecta se a mensagem do usuário é uma INSTRUÇÃO DE EDIÇÃO (aplicar mudança no
+// texto) e não apenas uma pergunta de orientação.
+function ehInstrucaoDeEdicao(mensagem: string): boolean {
+  const padroes = [
+    /melhore?/i, /corrija?/i, /reescreva?/i, /adicione?/i, /remova?/i,
+    /expanda?/i, /reduza?/i, /deixe?/i, /torne?/i, /ajuste?/i,
+    /inclua?/i, /retire?/i, /substitua?/i, /reformule?/i, /revise?/i,
+    /está (fraco|ruim|longo|curto|errado|genérico)/i,
+    /falta(ndo)?/i, /precisa? de/i, /deveria ter/i,
+  ]
+  return padroes.some(p => p.test(mensagem))
+}
+
+// Perguntas de ORIENTAÇÃO (começam com interrogativo) não devem virar edição,
+// mesmo que contenham palavras como "falta" (ex.: "O que está faltando neste texto?").
+function ehPerguntaDeOrientacao(mensagem: string): boolean {
+  return /^\s*(o que|como|qual|quais|por ?qu[eê]|porqu[eê]|quando|onde|quem|devo|posso saber|existe|h[aá] como|seria)\b/i.test(mensagem.trim())
+}
+
 interface PainelIAProps {
   trabalhoId: string
   fase: FaseConfig
   isOpen: boolean
   onClose: () => void
   conteudoAtual?: string
+  /** Aplica o texto editado pela IA de volta no editor (atualiza estado + salva) */
+  onAplicarNoEditor?: (texto: string) => void
 }
 
-export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: PainelIAProps) {
+export function PainelIA({ trabalhoId, fase, isOpen, conteudoAtual, onAplicarNoEditor }: PainelIAProps) {
   const [mensagens, setMensagens] = useState<MensagemIA[]>([])
   const [input, setInput] = useState('')
   const [enviando, setEnviando] = useState(false)
-  const [aba, setAba] = useState<'chat' | 'dicas'>('dicas')
+  const [aba, setAba] = useState<'chat' | 'dicas'>('chat')
+  const [proposta, setProposta] = useState<{ texto: string; instrucao: string } | null>(null)
   const listaRef = useRef<HTMLDivElement>(null)
+
+  const adicionarMensagem = (m: MensagemIA) => setMensagens(prev => [...prev, m])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -146,6 +170,37 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
 
     const novaMensagem: MensagemIA = { role: 'user', content: texto }
     setMensagens(prev => [...prev, novaMensagem])
+
+    // Instrução de EDIÇÃO (não pergunta) → aplica ao texto via aplicar-sugestao
+    // e mostra uma PROPOSTA com confirmação, em vez do chat normal.
+    if (onAplicarNoEditor && ehInstrucaoDeEdicao(texto) && !ehPerguntaDeOrientacao(texto) && conteudoAtual && conteudoAtual.trim().length > 50) {
+      adicionarMensagem({ role: 'assistant', content: '✏️ Aplicando sua instrução ao texto...' })
+      try {
+        const res = await fetch('/api/ia/aplicar-sugestao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            trabalhoId,
+            chaveSecao: fase.chave_secao,
+            conteudo: conteudoAtual,
+            sugestaoTitulo: 'Instrução do chat',
+            sugestaoDescricao: texto,
+          }),
+        })
+        if (res.ok) {
+          const novoTexto = await res.text()
+          setProposta({ texto: novoTexto, instrucao: texto })
+          adicionarMensagem({
+            role: 'assistant',
+            content: '✅ Texto atualizado. Veja a prévia abaixo e clique em **Aplicar** para confirmar ou **Descartar** para manter o original.',
+          })
+          setEnviando(false)
+          return // não continua para o chat normal
+        }
+      } catch {
+        // Se falhar, cai no chat normal abaixo
+      }
+    }
 
     try {
       const res = await fetch('/api/ia/chat', {
@@ -199,16 +254,16 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
   if (!isOpen) return null
 
   return (
-    <aside className="w-80 shrink-0 flex flex-col border-l bg-card h-[calc(100vh-4rem)] sticky top-16 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">Assistente IA</span>
+    <aside className="w-full flex flex-col h-[60vh] lg:h-full rounded-xl border-2 border-primary/20 bg-gradient-to-b from-primary/5 to-background shadow-sm overflow-hidden">
+      {/* Header — destacado para o painel não parecer opcional */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b bg-primary/10">
+        <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center shrink-0">
+          <Bot className="h-4 w-4 text-primary-foreground" />
         </div>
-        <button onClick={onClose} className="p-1 rounded-md hover:bg-gray-100 text-muted-foreground">
-          <X className="h-4 w-4" />
-        </button>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Assistente IA</p>
+          <p className="text-xs text-muted-foreground">Pergunte ou peça correções</p>
+        </div>
       </div>
 
       {/* Abas */}
@@ -381,13 +436,46 @@ export function PainelIA({ trabalhoId, fase, isOpen, onClose, conteudoAtual }: P
             ))}
           </div>
 
+          {proposta && (
+            <div className="border border-indigo-200 rounded-lg bg-indigo-50 p-3 mx-3 mb-2">
+              <p className="text-xs text-indigo-700 font-medium mb-2">
+                Prévia da edição — &quot;{proposta.instrucao.slice(0, 60)}...&quot;
+              </p>
+              <div className="bg-white rounded border border-gray-200 p-2 text-xs text-gray-700 max-h-32 overflow-y-auto leading-relaxed mb-2">
+                {proposta.texto.slice(0, 400)}
+                {proposta.texto.length > 400 && '…'}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    onAplicarNoEditor?.(proposta.texto)
+                    setProposta(null)
+                    adicionarMensagem({ role: 'assistant', content: '✅ Texto atualizado no editor.' })
+                  }}
+                  className="flex-1 text-xs bg-indigo-600 text-white rounded px-3 py-1.5 hover:bg-indigo-700 transition-colors"
+                >
+                  Aplicar no editor
+                </button>
+                <button
+                  onClick={() => {
+                    setProposta(null)
+                    adicionarMensagem({ role: 'assistant', content: 'Edição descartada. O texto original foi mantido.' })
+                  }}
+                  className="flex-1 text-xs border border-gray-300 text-gray-600 rounded px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                >
+                  Descartar
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="border-t p-3">
             <div className="flex gap-2">
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && enviar()}
-                placeholder="Pergunte à IA…"
+                placeholder="Pergunte algo ou peça uma correção no texto…"
                 disabled={enviando}
                 className="flex-1 h-9 rounded-lg border border-input bg-background px-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:opacity-50"
               />

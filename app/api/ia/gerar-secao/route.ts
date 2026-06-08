@@ -171,7 +171,7 @@ export async function POST(request: Request) {
   // ── Auto-importação de referências reais (módulo compartilhado) ────────────
   // Garante ~40 referências REAIS (CrossRef + PubMed) antes de gerar a seção.
   // Filtra refs sem autor/ano para citações limpas. Nunca inventa.
-  referencias = await garantirReferenciasReais({
+  const refsResult = await garantirReferenciasReais({
     supabase,
     trabalhoId,
     titulo: trabalho.titulo,
@@ -181,6 +181,8 @@ export async function POST(request: Request) {
     pergunta: dados_projeto?.pergunta_pesquisa,
     refsExistentes: referencias,
   })
+  referencias = refsResult.referencias
+  const guardrail = refsResult.guardrail
 
 
   // Carrega conteúdo das seções anteriores para contexto
@@ -202,12 +204,15 @@ export async function POST(request: Request) {
     trabalho.tipo_trabalho,
     chaveSecao
   )
-  const systemPrompt = systemPromptEspecializado ?? buildSystemPrompt(
+  const systemPromptBase = systemPromptEspecializado ?? buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
     trabalho.formato_citacao,
     trabalho.area_conhecimento ?? undefined,
   )
+  // Guardrail de referências validadas (passo 8 do briefing): força a IA a usar
+  // somente as referências reais validadas e a nunca inventar fontes.
+  const systemPrompt = guardrail + '\n\n' + systemPromptBase
 
   // Só cita referências de qualidade (com autor e ano) — evita "(s.d.)" e títulos-como-autor
   const refsCitaveis = filtrarRefsCitaveis(referencias)

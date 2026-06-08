@@ -35,6 +35,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import type { Trabalho, DadosProjeto, EtapaRoadmap, ItemChecklist, TipoDocumento, DocumentoEtapa } from '@/types'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { shouldShowField, hasSchemaForWorkType } from '@/lib/tipos/workTypeSchemas'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 
@@ -1437,8 +1438,17 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             )
           })()}
 
+          {/* Aviso: campos ajustados ao tipo de trabalho (workTypeSchemas) */}
+          {hasSchemaForWorkType(trabalho.tipo_trabalho) && (
+            <p className="text-xs text-muted-foreground">
+              Os campos foram ajustados para o tipo de trabalho selecionado.
+            </p>
+          )}
+
           {/* ── CEP / Ética — full width ─────────────────────────────────────── */}
-          {planData.envolve_seres_humanos && (
+          {/* Campos éticos só renderizam quando o tipo de trabalho os comporta
+              (shouldShowField) — revisões/estudos secundários os ocultam. */}
+          {planData.envolve_seres_humanos && shouldShowField(trabalho.tipo_trabalho, 'precisa_cep') && (
             <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />

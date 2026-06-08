@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
+import { validarCitacoesReais } from '@/lib/ai/validar-citacoes'
 import { extrairParagrafosParaDocx } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
 import { ordenarSecoesParaDocumento } from '@/lib/tipos/ordem-documento'
@@ -382,7 +383,8 @@ export async function GET(request: Request) {
     if (r.resumo?.trim()) {
       children.push(new Paragraph({ children: [new PageBreak()] }))
       children.push(paragrafo('RESUMO', { center: true, bold: true, indent: false }))
-      pushParagrafos(r.resumo, false)
+      const resumoResolvido = validarCitacoesReais(r.resumo, referencias, trabalho.formato_citacao)
+      pushParagrafos(resumoResolvido, false)
       if (r.palavras_chave?.length) {
         children.push(empty())
         children.push(paragrafo(`Palavras-chave: ${r.palavras_chave.join('; ')}.`, { indent: false }))
@@ -405,9 +407,16 @@ export async function GET(request: Request) {
       secaoHeading(i + 1, secao.nome_secao),
     )
 
+    // Reprocessa citações contra as referências reais antes de exportar
+    const conteudoResolvido = validarCitacoesReais(
+      secao.conteudo ?? '',
+      referencias,
+      trabalho.formato_citacao,
+    )
+
     // Separa o conteúdo em blocos: tabelas markdown (linhas com "|") viram
     // tabelas reais; o restante vira parágrafos justificados.
-    const linhas = (secao.conteudo ?? '').split('\n')
+    const linhas = conteudoResolvido.split('\n')
     let bufProsa: string[] = []
     let bufTabela: string[] = []
 

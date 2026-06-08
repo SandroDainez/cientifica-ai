@@ -11,6 +11,8 @@ import { ReferenciaCard } from '@/components/referencias/ReferenciaCard'
 import { FormAdicionarReferencia } from '@/components/referencias/FormAdicionarReferencia'
 import { BuscarReferencias } from '@/components/referencias/BuscarReferencias'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
+import { useReferenceValidator } from '@/hooks/useReferenceValidator'
+import { PainelVerificacaoReferencias } from '@/components/referencias/PainelVerificacaoReferencias'
 import type { Trabalho, Referencia } from '@/types'
 
 interface Props {
@@ -40,6 +42,18 @@ export function ReferenciasClient({ trabalho, referenciasIniciais }: Props) {
   const [confirmandoDeleteId, setConfirmandoDeleteId] = useState<string | null>(null)
   // Abre diretamente na busca se ainda não tem referências
   const [aba, setAba] = useState<Aba>(referenciasIniciais.length === 0 ? 'buscar' : 'lista')
+
+  // ── Validação automática de referências (passo 10 do briefing) ─────────────
+  const [strictMode, setStrictMode] = useState(false)
+  const { report, isValidating, validate, canExport } = useReferenceValidator({ strictMode })
+
+  const handleRevalidate = async () => {
+    if (!referencias || referencias.length === 0) return
+    // Este painel não tem o texto completo das seções; valida as referências
+    // (DOI/Crossref/campos). A checagem de citações no corpo é feita no editor.
+    const textoCompleto = ''
+    await validate(referencias, textoCompleto, trabalho.formato_citacao)
+  }
 
   const doisExistentes = referencias.map(r => r.doi).filter(Boolean) as string[]
   const referenciasExibidas = filtro
@@ -213,6 +227,18 @@ export function ReferenciasClient({ trabalho, referenciasIniciais }: Props) {
       {/* ── Aba: Minhas referências ──────────────────────────────── */}
       {aba === 'lista' && (
         <div className="space-y-4">
+
+          {/* Painel de verificação automática de referências */}
+          {referencias.length > 0 && (
+            <PainelVerificacaoReferencias
+              report={report}
+              isValidating={isValidating}
+              strictMode={strictMode}
+              onRevalidate={handleRevalidate}
+              onToggleStrictMode={setStrictMode}
+              canExport={canExport(referencias ?? [])}
+            />
+          )}
 
           {/* Filtros */}
           {referencias.length > 0 && (

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
-  Sparkles, CheckCircle2, Lightbulb, Save,
+  Sparkles, CheckCircle2, Save,
   Loader2, ChevronRight, AlignLeft, MousePointerClick,
   PenLine, AlertTriangle, XCircle, Trophy, ArrowRight,
   BookOpen, Target, ListChecks, BookMarked, RefreshCw, Eye, EyeOff,
@@ -62,9 +62,9 @@ function scoreColor(score: number) {
 
 export function EditorArea({
   fase, conteudo, onConteudoChange,
-  onGerar, onValidar, onSalvar, onAbrirIA,
+  onGerar, onValidar, onSalvar,
   statusIA, validacao, onAplicarSugestao, onAplicarComIA,
-  iaPanelOpen, isUltimaFase,
+  isUltimaFase,
   tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
   linkReferencias, slotDados,
 }: EditorAreaProps) {
@@ -238,12 +238,6 @@ export function EditorArea({
                 : <><CheckCircle2 className="h-3.5 w-3.5" /> Validar</>}
             </button>
 
-            {!iaPanelOpen && (
-              <button onClick={onAbrirIA}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
-                <Lightbulb className="h-3.5 w-3.5" /> Dicas IA
-              </button>
-            )}
           </div>
         </div>
       </div>

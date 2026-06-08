@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { ExportarClient } from './ExportarClient'
 import { Paywall } from '@/components/pagamento/Paywall'
-import type { Trabalho, SecaoTrabalho } from '@/types'
+import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -15,9 +15,10 @@ export default async function ExportarPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: tData }, { data: sData }] = await Promise.all([
+  const [{ data: tData }, { data: sData }, { data: rData }] = await Promise.all([
     supabase.from('trabalhos').select('*').eq('id', id).eq('usuario_id', user.id).single(),
     supabase.from('secoes_trabalho').select('nome_secao, chave_secao, status, conteudo').eq('trabalho_id', id).order('ordem'),
+    supabase.from('referencias').select('*').eq('trabalho_id', id).order('created_at'),
   ])
 
   if (!tData) redirect('/trabalhos')
@@ -47,6 +48,7 @@ export default async function ExportarPage({ params }: Props) {
       trabalho={trabalho}
       totalFases={totalFases}
       secoesComConteudo={secoesComConteudo}
+      referencias={(rData ?? []) as Referencia[]}
     />
   )
 }

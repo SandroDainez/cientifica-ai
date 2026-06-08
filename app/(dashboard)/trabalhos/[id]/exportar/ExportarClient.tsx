@@ -6,28 +6,40 @@ import {
   FileText, Presentation, Printer, Download,
   ArrowLeft, CheckCircle2, AlertTriangle, Loader2, Eye,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
-import type { Trabalho } from '@/types'
+import { useReferenceValidator } from '@/hooks/useReferenceValidator'
+import type { Trabalho, Referencia } from '@/types'
 
 interface Props {
   trabalho: Trabalho
   totalFases: number
   secoesComConteudo: number
+  referencias?: Referencia[]
 }
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error'
 
-export function ExportarClient({ trabalho, totalFases, secoesComConteudo }: Props) {
+export function ExportarClient({ trabalho, totalFases, secoesComConteudo, referencias }: Props) {
   const [statusDocx, setStatusDocx] = useState<ExportStatus>('idle')
   const [statusPptx, setStatusPptx] = useState<ExportStatus>('idle')
+
+  // Guard de exportação por referências (passo 11 do briefing). strictMode local
+  // (padrão desligado): só bloqueia quando explicitamente ativado e há erro crítico.
+  const [strictMode] = useState(false)
+  const { canExport } = useReferenceValidator({ strictMode })
 
   const progresso = Math.round((secoesComConteudo / totalFases) * 100)
   const incompleto = secoesComConteudo < totalFases
 
   async function baixar(formato: 'docx' | 'pptx') {
+    if (strictMode && !canExport(referencias ?? [])) {
+      toast.error('Corrija os erros críticos de referências antes de exportar.')
+      return
+    }
     const setStatus = formato === 'docx' ? setStatusDocx : setStatusPptx
     setStatus('loading')
     try {

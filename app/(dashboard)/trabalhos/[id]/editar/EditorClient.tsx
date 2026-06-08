@@ -19,6 +19,7 @@ import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProjeto } from '@/types'
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
 import { tituloEfetivo, capitalizarTitulo } from '@/lib/trabalho/titulo'
+import { shouldShowEditorSection } from '@/lib/tipos/workTypeSchemas'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Estratégia primária: bloco delimitado ===OPÇÕES DE TÍTULO=== … ===FIM===
@@ -157,8 +158,13 @@ const TIPOS_SEM_DADOS_EMPIRICOS = new Set([
   'artigo_revisao', 'revisao_sistematica', 'projeto_pesquisa', 'relato_caso',
 ])
 
-export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientProps) {
+export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }: EditorClientProps) {
   const router = useRouter()
+
+  // Filtro centralizado por tipo de trabalho (workTypeSchemas). Mantém a lógica
+  // de fases existente — apenas oculta seções que não pertencem ao tipo. Para os
+  // tipos mapeados é não-destrutivo (editorSections = fluxo completo).
+  const fases = fasesRecebidas.filter(f => shouldShowEditorSection(trabalho.tipo_trabalho, f.chave_secao))
 
   // O painel de planilha (dados da pesquisa) só faz sentido em trabalhos com
   // dados empíricos — nunca em revisão de literatura, projeto ou relato de caso.
@@ -584,9 +590,9 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
           )
         })()}
 
-        {/* Editor + painel IA */}
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 min-w-0 overflow-y-auto px-6 py-6">
+        {/* Editor + painel IA — lado a lado no desktop, empilhado no mobile */}
+        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
+          <div className="w-full lg:flex-1 min-w-0 lg:overflow-y-auto px-6 py-6">
             {faseAtualConfig.chave_secao === 'resumo' ? (
               <ResumoEditor
                 trabalho={trabalho}
@@ -632,15 +638,23 @@ export function EditorClient({ trabalho, fases, secoesIniciais }: EditorClientPr
             )}
           </div>
 
-          {/* Painel IA lateral direito — oculto na fase de resumo (tem UI própria) */}
+          {/* Painel IA — sempre visível (ao lado no desktop, abaixo no mobile);
+              oculto apenas na fase de resumo, que tem UI própria */}
           {faseAtualConfig.chave_secao !== 'resumo' && (
-            <PainelIA
-              trabalhoId={trabalho.id}
-              fase={faseAtualConfig}
-              isOpen={iaPanelOpen}
-              onClose={() => setIAPanelOpen(false)}
-              conteudoAtual={conteudoAtual}
-            />
+            <div className="w-full lg:w-80 lg:shrink-0 px-6 pb-6 lg:py-6 lg:pl-0 lg:pr-6">
+              <PainelIA
+                trabalhoId={trabalho.id}
+                fase={faseAtualConfig}
+                isOpen={true}
+                onClose={() => setIAPanelOpen(false)}
+                conteudoAtual={conteudoAtual}
+                onAplicarNoEditor={(novoTexto) => {
+                  // Atualiza o editor e persiste reaproveitando o save existente
+                  setConteudoAtual(novoTexto)
+                  void handleSalvar(false, novoTexto)
+                }}
+              />
+            </div>
           )}
         </div>
       </div>
