@@ -31,6 +31,34 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * Verifica se uma reescrita do texto inteiro é SEGURA de aplicar — para a IA
+ * NUNCA piorar o trabalho. Rejeita quando:
+ *  - resposta vazia ou idêntica (não aplica nada de útil);
+ *  - perdeu citações (anos 19xx/20xx ou marcadores [N] sumiram);
+ *  - cresceu demais (risco de conteúdo/parágrafos inventados).
+ * NÃO exige tamanho mínimo (remoções legítimas encolhem o texto).
+ */
+export function reescritaSegura(original: string, novo: string): { ok: boolean; motivo: string } {
+  const norm = (s: string) => (s ?? '').replace(/\s+/g, ' ').trim()
+  const o = norm(original)
+  const n = norm(novo)
+  if (!n) return { ok: false, motivo: 'resposta vazia' }
+  if (n === o) return { ok: false, motivo: 'a IA não sugeriu mudança' }
+
+  const palavras = (s: string) => (s ? s.split(' ').length : 0)
+  const wO = palavras(o)
+  const wN = palavras(n)
+  if (wO > 0 && wN > wO * 1.6) return { ok: false, motivo: 'o texto cresceu demais (risco de conteúdo inventado)' }
+
+  const anos = (s: string) => (s.match(/(?:19|20)\d{2}/g) ?? []).length
+  const vanc = (s: string) => (s.match(/\[\s*\d+/g) ?? []).length
+  if (anos(n) < anos(o)) return { ok: false, motivo: 'a reescrita perdeu citações (anos)' }
+  if (vanc(n) < vanc(o)) return { ok: false, motivo: 'a reescrita perdeu citações numéricas' }
+
+  return { ok: true, motivo: '' }
+}
+
 const ehLinhaTabela = (s: string) => /^\s*\|/m.test(s)
 
 /**

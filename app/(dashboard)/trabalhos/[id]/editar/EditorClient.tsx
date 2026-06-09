@@ -553,7 +553,10 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
           sugestaoDescricao: sugestao.descricao,
         }),
       })
-      if (!res.ok || !res.body) throw new Error('Falha ao aplicar sugestão')
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error ?? 'Falha ao aplicar sugestão')
+      }
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -586,9 +589,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
       if (acumulado.trim()) await handleValidar(acumulado)
     } catch (err) {
       console.error('Erro ao aplicar sugestão:', err)
-      // Restaura o conteúdo original em caso de falha
+      // Restaura o conteúdo original em caso de falha (NUNCA deixa pior)
       setConteudoAtual(conteudosRef.current[faseAtualRef.current.chave_secao] ?? '')
-      toast.error('Erro ao aplicar. Tente novamente.')
+      toast.error(err instanceof Error ? err.message : 'Erro ao aplicar. Tente novamente.')
     } finally {
       setStatusIA('idle')
     }

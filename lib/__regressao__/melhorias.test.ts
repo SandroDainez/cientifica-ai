@@ -18,7 +18,7 @@ import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
-import { aplicarEdicoes, parseEdicoes } from '@/lib/ai/aplicar-edicoes'
+import { aplicarEdicoes, parseEdicoes, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService } from '@/lib/ai/reviewService'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -277,6 +277,25 @@ test('parseEdicoes: lê JSON com cercas ```json', () => {
   const eds = parseEdicoes('```json\n{"edicoes":[{"buscar":"a","substituir":"b"}]}\n```')
   assert.equal(eds.length, 1)
   assert.equal(eds[0].buscar, 'a')
+})
+test('reescritaSegura: rejeita reescrita que PERDE citação (anti-piora)', () => {
+  const orig = 'A taxa subiu (SILVA, 2020) e caiu (COSTA, 2019).'
+  const ruim = 'A taxa variou ao longo do tempo conforme a literatura.'   // perdeu as 2 citações
+  assert.equal(reescritaSegura(orig, ruim).ok, false)
+})
+test('reescritaSegura: rejeita texto idêntico ou vazio', () => {
+  assert.equal(reescritaSegura('texto', 'texto').ok, false)
+  assert.equal(reescritaSegura('texto', '   ').ok, false)
+})
+test('reescritaSegura: aceita correção que preserva citações', () => {
+  const orig = 'A taxa subiu muito (SILVA, 2020).'
+  const bom = 'A taxa aumentou de forma expressiva (SILVA, 2020).'
+  assert.equal(reescritaSegura(orig, bom).ok, true)
+})
+test('reescritaSegura: aceita REMOÇÃO legítima (encolher sem perder citação)', () => {
+  const orig = 'Resultado relevante. Nossa interpretação sugere algo. Fim (SILVA, 2020).'
+  const bom = 'Resultado relevante. Fim (SILVA, 2020).'
+  assert.equal(reescritaSegura(orig, bom).ok, true)
 })
 
 // ── 14. Revisor iterativo por IA (parsing + loop, sem chamar API) ────────────

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
-import { parseEdicoes, aplicarEdicoes } from '@/lib/ai/aplicar-edicoes'
+import { parseEdicoes, aplicarEdicoes, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 
 export const maxDuration = 120
@@ -114,6 +114,17 @@ TEXTO CORRIGIDO (completo):`
     return NextResponse.json(
       { error: `Não foi possível aplicar a sugestão agora${ultimoErro ? ` (${ultimoErro})` : ''}. Tente novamente.` },
       { status: 502 }
+    )
+  }
+
+  // TRAVA DE SEGURANÇA: só aplica a reescrita se ela NÃO piorar o texto
+  // (não perdeu citações, não inventou conteúdo, mudou de fato). Caso contrário,
+  // erro honesto — melhor não aplicar do que piorar.
+  const seg = reescritaSegura(conteudo, corrigido)
+  if (!seg.ok) {
+    return NextResponse.json(
+      { error: `Não apliquei para não piorar o texto (${seg.motivo}). Esta sugestão é melhor resolvida manualmente.` },
+      { status: 422 }
     )
   }
 
