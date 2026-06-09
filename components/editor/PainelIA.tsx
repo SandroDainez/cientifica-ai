@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2, MessageSquare, Lightbulb } from 'lucide-react'
+import { Send, Bot, User, Loader2, MessageSquare, Lightbulb, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MarkdownText } from '@/components/ui/MarkdownText'
 import type { MensagemIA, FaseConfig } from '@/types'
@@ -120,11 +120,16 @@ function getSugestoesChat(chaveSecao: string, nomeSecao: string, temConteudo: bo
 // texto) e não apenas uma pergunta de orientação.
 function ehInstrucaoDeEdicao(mensagem: string): boolean {
   const padroes = [
-    /melhore?/i, /corrija?/i, /reescreva?/i, /adicione?/i, /remova?/i,
-    /expanda?/i, /reduza?/i, /deixe?/i, /torne?/i, /ajuste?/i,
-    /inclua?/i, /retire?/i, /substitua?/i, /reformule?/i, /revise?/i,
-    /está (fraco|ruim|longo|curto|errado|genérico)/i,
-    /falta(ndo)?/i, /precisa? de/i, /deveria ter/i,
+    /melhor[ae]?/i, /corrij[ae]/i, /corrigir/i, /reescrev[ae]/i, /adicion[ae]/i, /remov[ae]/i, /remover/i,
+    /expand[ae]/i, /reduz[ae]/i, /deix[ae]/i, /torn[ae]/i, /ajust[ae]/i, /ajustar/i,
+    /inclu[ai]/i, /retir[ae]/i, /retirar/i, /substitu[ai]/i, /reformul[ae]/i, /revis[ae]/i,
+    /\btir[ae]\b/i, /\btirar\b/i, /\bmov[ae]\b/i, /\bmover\b/i, /separ[ae]/i, /separar/i,
+    /elimin[ae]/i, /eliminar/i, /pass[ae] (essa|esse|isso|para)/i, /\bmud[ae]\b/i, /\bmudar\b/i,
+    /troqu[ae]/i, /trocar/i, /coloqu[ae]/i, /colocar/i, /apagu?[ae]/i, /apagar/i,
+    /divid[ae]/i, /organiz[ae]/i, /simplifiqu[ae]/i, /encurt[ae]/i, /enxug[ae]/i,
+    /está (fraco|ruim|longo|curto|errado|genérico|misturad|confus)/i, /misturando/i,
+    /falta(ndo)?/i, /precisa? de/i, /deveria ter/i, /n[ãa]o pode(ria)? (ter|estar)/i,
+    /para a se[çc][ãa]o/i,
   ]
   return padroes.some(p => p.test(mensagem))
 }
@@ -164,6 +169,48 @@ export function PainelIA({ trabalhoId, fase, isOpen, conteudoAtual, onAplicarNoE
     listaRef.current?.scrollTo({ top: listaRef.current.scrollHeight, behavior: 'smooth' })
   }, [mensagens])
 
+  // Roda a edição cirúrgica (aplicar-sugestao) e abre a PRÉVIA com botão Aplicar.
+  // Retorna true se a prévia foi criada.
+  async function solicitarEdicao(instrucao: string): Promise<boolean> {
+    if (!onAplicarNoEditor || !conteudoAtual || conteudoAtual.trim().length <= 50) return false
+    adicionarMensagem({ role: 'assistant', content: '✏️ Aplicando sua instrução ao texto...' })
+    try {
+      const res = await fetch('/api/ia/aplicar-sugestao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trabalhoId,
+          chaveSecao: fase.chave_secao,
+          conteudo: conteudoAtual,
+          sugestaoTitulo: 'Instrução do chat',
+          sugestaoDescricao: instrucao,
+        }),
+      })
+      if (res.ok) {
+        const novoTexto = await res.text()
+        setProposta({ texto: novoTexto, instrucao })
+        adicionarMensagem({
+          role: 'assistant',
+          content: '✅ Texto atualizado. Veja a prévia abaixo e clique em **Aplicar** para confirmar ou **Descartar** para manter o original.',
+        })
+        return true
+      }
+    } catch {
+      // falha → false (cai no chat normal ou avisa o usuário)
+    }
+    return false
+  }
+
+  // Botão "Aplicar ao texto" em uma resposta do assistente: reusa a instrução
+  // anterior do usuário e roda a edição (garante que SEMPRE há como aplicar).
+  async function aplicarMensagemNoTexto(instrucao: string) {
+    if (enviando || !instrucao.trim()) return
+    setEnviando(true)
+    const ok = await solicitarEdicao(instrucao)
+    if (!ok) adicionarMensagem({ role: 'assistant', content: '❌ Não consegui aplicar agora. Tente reformular a instrução.' })
+    setEnviando(false)
+  }
+
   async function enviarTexto(texto: string) {
     if (!texto.trim() || enviando) return
     setEnviando(true)
@@ -174,32 +221,9 @@ export function PainelIA({ trabalhoId, fase, isOpen, conteudoAtual, onAplicarNoE
     // Instrução de EDIÇÃO (não pergunta) → aplica ao texto via aplicar-sugestao
     // e mostra uma PROPOSTA com confirmação, em vez do chat normal.
     if (onAplicarNoEditor && ehInstrucaoDeEdicao(texto) && !ehPerguntaDeOrientacao(texto) && conteudoAtual && conteudoAtual.trim().length > 50) {
-      adicionarMensagem({ role: 'assistant', content: '✏️ Aplicando sua instrução ao texto...' })
-      try {
-        const res = await fetch('/api/ia/aplicar-sugestao', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            trabalhoId,
-            chaveSecao: fase.chave_secao,
-            conteudo: conteudoAtual,
-            sugestaoTitulo: 'Instrução do chat',
-            sugestaoDescricao: texto,
-          }),
-        })
-        if (res.ok) {
-          const novoTexto = await res.text()
-          setProposta({ texto: novoTexto, instrucao: texto })
-          adicionarMensagem({
-            role: 'assistant',
-            content: '✅ Texto atualizado. Veja a prévia abaixo e clique em **Aplicar** para confirmar ou **Descartar** para manter o original.',
-          })
-          setEnviando(false)
-          return // não continua para o chat normal
-        }
-      } catch {
-        // Se falhar, cai no chat normal abaixo
-      }
+      const ok = await solicitarEdicao(texto)
+      if (ok) { setEnviando(false); return } // não continua para o chat normal
+      // Se falhar, cai no chat normal abaixo
     }
 
     try {
@@ -414,18 +438,35 @@ export function PainelIA({ trabalhoId, fase, isOpen, conteudoAtual, onAplicarNoE
                     <Bot className="h-3.5 w-3.5 text-primary" />
                   </div>
                 )}
-                <div className={cn(
-                  'max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed',
-                  m.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-gray-100 text-gray-800'
-                )}>
-                  {m.role === 'assistant'
-                    ? (m.content
-                        ? <MarkdownText content={m.content} className="space-y-1" />
-                        : <Loader2 className="h-3.5 w-3.5 animate-spin" />)
-                    : m.content
-                  }
+                <div className={cn('flex flex-col gap-1 max-w-[85%]', m.role === 'user' ? 'items-end' : 'items-start')}>
+                  <div className={cn(
+                    'rounded-xl px-3 py-2 text-xs leading-relaxed',
+                    m.role === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-gray-100 text-gray-800'
+                  )}>
+                    {m.role === 'assistant'
+                      ? (m.content
+                          ? <MarkdownText content={m.content} className="space-y-1" />
+                          : <Loader2 className="h-3.5 w-3.5 animate-spin" />)
+                      : m.content
+                    }
+                  </div>
+                  {/* Botão "Aplicar ao texto" — em respostas reais do assistente, logo
+                      após uma instrução do usuário. Garante que SEMPRE há como aplicar. */}
+                  {m.role === 'assistant' && !proposta && !!onAplicarNoEditor
+                    && (conteudoAtual?.trim().length ?? 0) > 50
+                    && !!m.content?.trim() && !/^\s*(✏️|✅|❌|Edição descartada)/.test(m.content)
+                    && mensagens[i - 1]?.role === 'user' && (
+                    <button
+                      type="button"
+                      onClick={() => aplicarMensagemNoTexto(mensagens[i - 1].content)}
+                      disabled={enviando}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50 transition-colors"
+                    >
+                      <Sparkles className="h-3 w-3" /> Aplicar ao texto no editor
+                    </button>
+                  )}
                 </div>
                 {m.role === 'user' && (
                   <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">
