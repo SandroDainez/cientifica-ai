@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  Sparkles, Loader2, CheckCircle2, XCircle, AlertTriangle, FileWarning,
-  ChevronDown, Wand2, Check, ArrowRight,
+  Sparkles, Loader2, CheckCircle2, XCircle, FileWarning, Wand2, PencilLine,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -12,20 +12,20 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 // import type → NÃO bundla o código server (openai/process.env) no cliente.
-import type { ReviewResult, ReviewProblema, IterativeReviewData } from '@/lib/ai/reviewService'
+import type { ReviewResult, ReviewProblema } from '@/lib/ai/reviewService'
 
 interface Props {
+  /** ID do trabalho — necessário para aplicar as correções nas seções. */
+  trabalhoId: string
   trabalho: string
   tipo: string
   tema: string
   area: string
   normas: string
   idioma?: string
-  /** Chamado quando o usuário aceita a versão final corrigida. */
-  onAceitarVersaoFinal?: (versao: string) => void
 }
 
-type Estado = 'inicial' | 'analisando' | 'resultado' | 'corrigindo' | 'final'
+type Estado = 'inicial' | 'analisando' | 'resultado' | 'aplicando'
 
 const CHECKLIST_ROTULOS: Record<keyof ReviewResult['checklist'], string> = {
   coerencia_objetivos: 'Coerência objetivos ↔ metodologia ↔ conclusão',
@@ -137,21 +137,23 @@ function ReferenciasSuspeitas({ refs }: { refs: ReviewResult['referencias_suspei
   )
 }
 
-export function AdvancedReview({ trabalho, tipo, tema, area, normas, idioma = 'pt-BR', onAceitarVersaoFinal }: Props) {
+export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas, idioma = 'pt-BR' }: Props) {
+  const router = useRouter()
   const [estado, setEstado] = useState<Estado>('inicial')
   const [analise, setAnalise] = useState<ReviewResult | null>(null)
-  const [iterativo, setIterativo] = useState<IterativeReviewData | null>(null)
-  const [verDiff, setVerDiff] = useState(false)
-
   const metadados = { tipo, tema, area, normas, idioma }
 
-  async function executarRevisao() {
-    if (!trabalho?.trim()) { toast.error('O trabalho está vazio.'); return }
+  // Correções auto-aplicáveis = problemas com trecho exato + correcao definida.
+  const autoAplicaveis = (analise?.problemas_encontrados ?? [])
+    .filter(p => (p.trecho?.trim().length ?? 0) >= 3 && typeof p.correcao === 'string')
+
+  async function analisar(texto: string) {
+    if (!texto?.trim()) { toast.error('O trabalho está vazio.'); return }
     setEstado('analisando')
     try {
       const res = await fetch('/api/review/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...metadados, trabalho, modoCorrecao: false }),
+        body: JSON.stringify({ ...metadados, trabalho: texto, modoCorrecao: false }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Falha na revisão.')
@@ -159,51 +161,37 @@ export function AdvancedReview({ trabalho, tipo, tema, area, normas, idioma = 'p
       setEstado('resultado')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao revisar.')
-      setEstado('inicial')
+      setEstado(analise ? 'resultado' : 'inicial')
     }
   }
 
   async function aplicarCorrecoes() {
-    setEstado('corrigindo')
+    const correcoes = autoAplicaveis.map(p => ({ trecho: p.trecho, correcao: p.correcao ?? '' }))
+    if (correcoes.length === 0) {
+      toast.warning('Não há correções automáticas — os problemas exigem ajuste manual no Editor.')
+      return
+    }
+    setEstado('aplicando')
     try {
-      const res = await fetch('/api/review/iterate', {
+      const res = await fetch('/api/review/aplicar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...metadados, trabalho, versaoAtual: trabalho }),
+        body: JSON.stringify({ trabalhoId, correcoes }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Falha ao aplicar correções.')
-      const it = data as IterativeReviewData
-      // Se nada foi corrigido (problemas estruturais), volta ao resultado com a
-      // lista de problemas visível — em vez de fingir uma "versão final".
-      if (it.iteracoes === 0) {
-        toast.warning('A correção automática não conseguiu melhorar o texto — os problemas apontados exigem revisão manual no Editor.')
+      const data = await res.json() as { ok?: boolean; totalAplicadas?: number; secoesAfetadas?: number; corpoAtualizado?: string; error?: string }
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha ao aplicar correções.')
+      if (!data.totalAplicadas) {
+        toast.warning('Nenhuma correção pôde ser aplicada com segurança — ajuste manual no Editor.')
         setEstado('resultado')
         return
       }
-      setIterativo(it)
-      setEstado('final')
+      toast.success(`${data.totalAplicadas} correção(ões) aplicada(s) em ${data.secoesAfetadas} seção(ões). Re-avaliando…`)
+      router.refresh() // o editor/seções refletem a correção salva
+      await analisar(data.corpoAtualizado ?? trabalho) // re-avalia com o texto corrigido
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao corrigir.')
+      toast.error(e instanceof Error ? e.message : 'Erro ao aplicar correções.')
       setEstado('resultado')
     }
   }
-
-  function finalizarSemCorrigir() {
-    toast.success('Revisão concluída. Nenhuma correção automática aplicada.')
-    setEstado('inicial'); setAnalise(null)
-  }
-
-  function aceitarVersaoFinal() {
-    if (iterativo?.versaoFinal) {
-      onAceitarVersaoFinal?.(iterativo.versaoFinal)
-      toast.success('Versão final aceita.')
-    }
-    setEstado('inicial'); setAnalise(null); setIterativo(null); setVerDiff(false)
-  }
-
-  // Notas por iteração (passos de análise = índices pares do histórico)
-  const progressaoNotas = (iterativo?.historico ?? []).filter((_, i) => i % 2 === 0).map(r => r.nota_estimada)
-  const resultadoFinal = iterativo?.historico?.[iterativo.historico.length - 1]
 
   return (
     <Card className="no-print">
@@ -212,24 +200,24 @@ export function AdvancedReview({ trabalho, tipo, tema, area, normas, idioma = 'p
           <Sparkles className="h-5 w-5 text-primary" /> Revisão Avançada por IA
         </CardTitle>
         <CardDescription>
-          Um revisor acadêmico (modelo dedicado) audita o trabalho, aponta problemas e, se você quiser,
-          aplica correções iterativas sem inventar dados nem reescrever do zero.
+          Um revisor acadêmico (modelo dedicado) audita o trabalho, aponta os erros e aplica as correções
+          possíveis direto nas seções — sem inventar dados nem reescrever o trabalho do zero.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* 1. INICIAL */}
         {estado === 'inicial' && (
-          <Button onClick={executarRevisao} className="gap-2">
+          <Button onClick={() => analisar(trabalho)} className="gap-2">
             <Sparkles className="h-4 w-4" /> Executar Revisão Avançada
           </Button>
         )}
 
-        {/* 2. ANALISANDO */}
-        {estado === 'analisando' && (
+        {/* 2/4. ANALISANDO / APLICANDO */}
+        {(estado === 'analisando' || estado === 'aplicando') && (
           <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span>Analisando trabalho…</span>
+            <span>{estado === 'analisando' ? 'Analisando o trabalho…' : 'Aplicando as correções nas seções…'}</span>
           </div>
         )}
 
@@ -263,81 +251,25 @@ export function AdvancedReview({ trabalho, tipo, tema, area, normas, idioma = 'p
               <ListaProblemas problemas={analise.problemas_encontrados} />
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button onClick={aplicarCorrecoes} className="gap-2">
-                <Wand2 className="h-4 w-4" /> Aplicar correções automáticas
-              </Button>
-              <Button variant="outline" onClick={finalizarSemCorrigir}>Finalizar sem corrigir</Button>
-            </div>
-          </div>
-        )}
-
-        {/* 4. CORRIGINDO */}
-        {estado === 'corrigindo' && (
-          <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span>Aplicando correções automáticas… (revisão iterativa, pode levar alguns instantes)</span>
-          </div>
-        )}
-
-        {/* 5. FINAL */}
-        {estado === 'final' && iterativo && resultadoFinal && (
-          <div className="space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <NotaGrande nota={resultadoFinal.nota_estimada} rotulo="Nota final" />
-              <div className="flex-1">
-                <p className="text-sm text-foreground">
-                  <strong>{iterativo.iteracoes}</strong> {iterativo.iteracoes === 1 ? 'iteração' : 'iterações'} de correção aplicada(s).
-                </p>
-                {progressaoNotas.length > 1 && (
-                  <p className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1">
-                    Progressão:
-                    {progressaoNotas.map((n, i) => (
-                      <span key={i} className="inline-flex items-center gap-1">
-                        <span className={cn('font-medium tabular-nums', corNota(n))}>{n}</span>
-                        {i < progressaoNotas.length - 1 && <ArrowRight className="h-3 w-3" />}
-                      </span>
-                    ))}
-                  </p>
-                )}
-                {resultadoFinal.resumo_geral && <p className="text-sm text-muted-foreground mt-1">{resultadoFinal.resumo_geral}</p>}
-              </div>
-            </div>
-
-            {/* Comparativo antes/depois */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setVerDiff(v => !v)}
-                className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors"
-              >
-                <ChevronDown className={cn('h-4 w-4 transition-transform', verDiff && 'rotate-180')} />
-                Ver diferenças (antes / depois)
-              </button>
-              {verDiff && (
-                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">ANTES</p>
-                    <pre className="text-xs whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/40 p-3 max-h-80 overflow-y-auto font-sans">{trabalho}</pre>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">DEPOIS</p>
-                    <pre className="text-xs whitespace-pre-wrap break-words rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-3 max-h-80 overflow-y-auto font-sans">{iterativo.versaoFinal}</pre>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {iterativo.versaoFinal && iterativo.versaoFinal !== trabalho && onAceitarVersaoFinal && (
-                <Button onClick={aceitarVersaoFinal} className="gap-2">
-                  <Check className="h-4 w-4" /> Aceitar versão final
+            {/* Ações */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {autoAplicaveis.length > 0 ? (
+                <Button onClick={aplicarCorrecoes} className="gap-2">
+                  <Wand2 className="h-4 w-4" /> Aplicar {autoAplicaveis.length} correç{autoAplicaveis.length === 1 ? 'ão' : 'ões'} no trabalho
                 </Button>
+              ) : (
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <PencilLine className="h-4 w-4" /> Os problemas apontados precisam de ajuste manual no Editor.
+                </p>
               )}
-              <Button variant="outline" onClick={() => { setEstado('inicial'); setAnalise(null); setIterativo(null); setVerDiff(false) }}>
-                Fechar
-              </Button>
+              <Button variant="outline" onClick={() => { setEstado('inicial'); setAnalise(null) }}>Fechar</Button>
             </div>
+            {autoAplicaveis.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                As correções aplicáveis são salvas direto nas seções e o trabalho é re-avaliado. As demais (estruturais)
+                ficam na lista acima para você ajustar no Editor.
+              </p>
+            )}
           </div>
         )}
       </CardContent>

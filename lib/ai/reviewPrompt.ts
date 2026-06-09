@@ -74,9 +74,10 @@ Retorne APENAS este JSON:
     {
       "categoria": "linguagem" | "estrutura" | "citacao" | "referencia" | "coerencia" | "formatacao",
       "gravidade": "baixa" | "media" | "alta" | "critica",
-      "trecho": "trecho exato com problema",
+      "trecho": "trecho EXATO copiado do texto (letra por letra) com o problema. Deixe \"\" se a correção NÃO puder ser feita trocando um trecho (ex.: mover para outra seção, reorganizar, completar conteúdo).",
       "problema": "descrição do problema",
       "sugestao": "como corrigir",
+      "correcao": "o texto EXATO que SUBSTITUI o 'trecho' (já corrigido). Use \"\" para REMOVER o trecho. NUNCA invente dados/autores/anos/citações — preserve os reais. Só preencha quando der para corrigir trocando o próprio trecho.",
       "impacto_estimado": número de -20 a 0
     }
   ],

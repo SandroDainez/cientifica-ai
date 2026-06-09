@@ -193,6 +193,7 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
       {/* Revisão Avançada por IA — portão de qualidade antes de baixar */}
       {corpoTrabalho?.trim() && (
         <AdvancedReview
+          trabalhoId={trabalho.id}
           trabalho={corpoTrabalho}
           tipo={getTipoLabel(trabalho.tipo_trabalho)}
           tema={trabalho.titulo ?? ''}

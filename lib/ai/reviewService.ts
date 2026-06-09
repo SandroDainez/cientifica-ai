@@ -35,6 +35,8 @@ export interface ReviewProblema {
   trecho: string
   problema: string
   sugestao: string
+  /** Texto exato que substitui o `trecho` (já corrigido). "" = remover. Ausente = não auto-aplicável. */
+  correcao?: string
   impacto_estimado: number
 }
 export interface ReviewReferenciaSuspeita {

@@ -18,6 +18,7 @@ import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
+import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService } from '@/lib/ai/reviewService'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
@@ -296,6 +297,32 @@ test('reescritaSegura: aceita REMOÇÃO legítima (encolher sem perder citação
   const orig = 'Resultado relevante. Nossa interpretação sugere algo. Fim (SILVA, 2020).'
   const bom = 'Resultado relevante. Fim (SILVA, 2020).'
   assert.equal(reescritaSegura(orig, bom).ok, true)
+})
+
+// ── 13b. Aplicação das correções da revisão nas seções ──────────────────────
+test('aplicarCorrecoesNasSecoes: aplica trecho→correcao na seção certa e salva', () => {
+  const secoes = [
+    { chave_secao: 'introducao', conteudo: 'A sepse é grave. Texto solto demais aqui.' },
+    { chave_secao: 'metodo', conteudo: 'Buscamos em bases (SILVA, 2020).' },
+  ]
+  const edicoes = correcoesParaEdicoes([
+    { trecho: 'Texto solto demais aqui.', correcao: 'A mortalidade é elevada.' }, // intro
+  ])
+  const r = aplicarCorrecoesNasSecoes(secoes, edicoes)
+  assert.equal(r.secoesAfetadas, 1)
+  assert.equal(r.atualizacoes[0].chave_secao, 'introducao')
+  assert.ok(r.atualizacoes[0].conteudo.includes('A mortalidade é elevada.'))
+})
+test('aplicarCorrecoesNasSecoes: NÃO aplica correção que perderia citação (anti-piora)', () => {
+  const secoes = [{ chave_secao: 'm', conteudo: 'A taxa subiu (SILVA, 2020).' }]
+  const edicoes = correcoesParaEdicoes([{ trecho: 'A taxa subiu (SILVA, 2020).', correcao: 'A taxa variou.' }]) // perde citação
+  const r = aplicarCorrecoesNasSecoes(secoes, edicoes)
+  assert.equal(r.secoesAfetadas, 0)
+})
+test('correcoesParaEdicoes: ignora trecho curto/ausente (não auto-aplicável)', () => {
+  const eds = correcoesParaEdicoes([{ trecho: '', correcao: 'x' }, { trecho: 'ab', correcao: 'y' }, { trecho: 'frase válida', correcao: 'z' }])
+  assert.equal(eds.length, 1)
+  assert.equal(eds[0].buscar, 'frase válida')
 })
 
 // ── 14. Revisor iterativo por IA (parsing + loop, sem chamar API) ────────────
