@@ -137,10 +137,39 @@ function ReferenciasSuspeitas({ refs }: { refs: ReviewResult['referencias_suspei
   )
 }
 
+/** Banner honesto do efeito da última rodada de correção (antes → depois). */
+function DeltaCorrecao({ delta }: { delta: { notaAntes: number; notaDepois: number; qtdAntes: number; qtdDepois: number } }) {
+  const dNota = delta.notaDepois - delta.notaAntes
+  const melhorou = dNota > 0 || delta.qtdDepois < delta.qtdAntes
+  const seta = dNota > 0 ? '↑' : dNota < 0 ? '↓' : '='
+  return (
+    <div className={cn('rounded-lg border p-3 text-sm',
+      melhorou
+        ? 'border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40'
+        : 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40')}>
+      <p className="font-semibold text-foreground mb-1">Efeito das correções aplicadas</p>
+      <p className="text-foreground/90">
+        Nota: <strong className="tabular-nums">{delta.notaAntes} → {delta.notaDepois}</strong> <span className="tabular-nums">({seta}{Math.abs(dNota)})</span>
+        {'  ·  '}Apontamentos: <strong className="tabular-nums">{delta.qtdAntes} → {delta.qtdDepois}</strong>
+      </p>
+      {!melhorou && (
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Os ajustes pontuais (gramática, citações, redação) foram salvos, mas não elevaram a nota: os apontamentos restantes
+          são de <strong>fundo</strong> — coerência, profundidade ou suporte das fontes — e não se resolvem trocando frases.
+          Reveja no Editor ou regenere as seções marcadas. A re-análise é uma nova leitura do revisor, então a lista pode variar.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas, idioma = 'pt-BR' }: Props) {
   const router = useRouter()
   const [estado, setEstado] = useState<Estado>('inicial')
   const [analise, setAnalise] = useState<ReviewResult | null>(null)
+  // Delta da última rodada de correção (antes → depois), para mostrar o efeito
+  // real em vez de o usuário comparar duas listas independentes na cabeça.
+  const [delta, setDelta] = useState<{ notaAntes: number; notaDepois: number; qtdAntes: number; qtdDepois: number } | null>(null)
   const metadados = { tipo, tema, area, normas, idioma }
 
   // Problemas que a IA pode tentar corrigir trocando texto (todos, exceto os
@@ -149,8 +178,8 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   const corrigiveis = (analise?.problemas_encontrados ?? [])
     .filter(p => p.categoria !== 'estrutura')
 
-  async function analisar(texto: string) {
-    if (!texto?.trim()) { toast.error('O trabalho está vazio.'); return }
+  async function analisar(texto: string): Promise<ReviewResult | null> {
+    if (!texto?.trim()) { toast.error('O trabalho está vazio.'); return null }
     setEstado('analisando')
     try {
       const res = await fetch('/api/review/analyze', {
@@ -161,9 +190,11 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       if (!res.ok) throw new Error(data.error ?? 'Falha na revisão.')
       setAnalise(data as ReviewResult)
       setEstado('resultado')
+      return data as ReviewResult
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao revisar.')
       setEstado(analise ? 'resultado' : 'inicial')
+      return null
     }
   }
 
@@ -203,9 +234,16 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         setEstado('resultado')
         return
       }
-      toast.success(`${data.totalAplicadas} correção(ões) aplicada(s) em ${data.secoesAfetadas} seção(ões). Re-avaliando…`)
+      const antes = analise
+      toast.success(`Apliquei ${data.totalAplicadas} ajuste(s) em ${data.secoesAfetadas} seção(ões)${data.totalAplicadas > problemas.length ? ' (alguns problemas exigiram mais de uma troca)' : ''}. Re-avaliando…`)
       router.refresh() // o editor/seções refletem a correção salva
-      await analisar(data.corpoAtualizado ?? trabalho) // re-avalia com o texto corrigido
+      const depois = await analisar(data.corpoAtualizado ?? trabalho) // re-avalia com o texto corrigido
+      if (antes && depois) {
+        setDelta({
+          notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada,
+          qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length,
+        })
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao aplicar correções.')
       setEstado('resultado')
@@ -227,7 +265,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       <CardContent className="space-y-4">
         {/* 1. INICIAL */}
         {estado === 'inicial' && (
-          <Button onClick={() => analisar(trabalho)} className="gap-2">
+          <Button onClick={() => { setDelta(null); analisar(trabalho) }} className="gap-2">
             <Sparkles className="h-4 w-4" /> Executar Revisão Avançada
           </Button>
         )}
@@ -257,6 +295,8 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               </div>
             </div>
 
+            {delta && <DeltaCorrecao delta={delta} />}
+
             <Separator />
             <div>
               <p className="text-sm font-semibold mb-2">Checklist de critérios</p>
@@ -281,7 +321,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
                   <PencilLine className="h-4 w-4" /> Os problemas apontados são estruturais — ajuste manual no Editor.
                 </p>
               )}
-              <Button variant="outline" onClick={() => { setEstado('inicial'); setAnalise(null) }}>Fechar</Button>
+              <Button variant="outline" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
             </div>
             {corrigiveis.length > 0 && (
               <p className="text-xs text-muted-foreground">
