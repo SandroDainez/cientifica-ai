@@ -109,6 +109,10 @@ export interface Referencia {
   issn?: string
   editora?: string
   cidade?: string
+  /** Resumo/abstract da fonte (Crossref/PubMed) — base para a IA citar com precisão. */
+  abstract?: string
+  /** true quando não há abstract disponível (referência usável, porém com menor prioridade). */
+  sem_abstract?: boolean
   dados_extras: Record<string, unknown>
   referencia_formatada_abnt?: string
   referencia_formatada_vancouver?: string

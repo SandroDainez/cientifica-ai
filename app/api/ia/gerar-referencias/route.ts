@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       autores: ref.autores ?? [], ano: ref.ano, journal: ref.journal,
       volume: ref.volume, numero: ref.numero, paginas: ref.paginas,
       doi: ref.doi, pmid: ref.pmid, editora: ref.editora, isbn: ref.isbn,
+      abstract: ref.abstract ?? null, // BLOCO A: guarda o abstract da fonte
       dados_extras: {}, fonte_tipo: ref.fonte_tipo, confiabilidade: 'alta',
       referencia_formatada_abnt: formatarReferencia(parcial, 'abnt'),
       referencia_formatada_vancouver: formatarReferencia(parcial, 'vancouver'),

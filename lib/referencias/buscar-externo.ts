@@ -23,7 +23,46 @@ export interface RefExterna {
   editora?: string
   isbn?: string
   url?: string
+  /** Resumo/abstract da fonte — base para a IA escrever a partir do que a fonte diz. */
+  abstract?: string
+  /** true quando não há abstract disponível. */
+  sem_abstract?: boolean
   fonte_tipo: 'crossref' | 'pubmed' | 'openalex'
+}
+
+/** Remove tags JATS/HTML do abstract do Crossref e normaliza espaços. */
+function limparAbstract(raw?: string): string {
+  if (!raw) return ''
+  return raw
+    .replace(/<[^>]+>/g, ' ')          // remove tags <jats:p>, <p>, etc.
+    .replace(/&[a-z]+;/gi, ' ')        // entidades HTML
+    .replace(/^\s*abstract[:.]?\s*/i, '') // prefixo "Abstract"
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Busca os abstracts dos artigos do PubMed (o esummary não traz; precisa do efetch).
+ * Retorna um mapa PMID → abstract. Falhas não quebram a importação.
+ */
+async function buscarAbstractsPubMed(ids: string[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>()
+  if (ids.length === 0) return mapa
+  try {
+    const params = new URLSearchParams({ db: 'pubmed', id: ids.join(','), rettype: 'abstract', retmode: 'xml' })
+    const res = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${params}`, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return mapa
+    const xml = await res.text()
+    for (const artigo of xml.split(/<PubmedArticle[>\s]/).slice(1)) {
+      const pmid = artigo.match(/<PMID[^>]*>(\d+)<\/PMID>/)?.[1]
+      if (!pmid) continue
+      // Pode haver vários <AbstractText Label="..."> (Background, Methods, Results…)
+      const partes = [...artigo.matchAll(/<AbstractText[^>]*>([\s\S]*?)<\/AbstractText>/g)].map(m => m[1])
+      const abstract = limparAbstract(partes.join(' '))
+      if (abstract) mapa.set(pmid, abstract)
+    }
+  } catch { /* sem abstracts — segue sem */ }
+  return mapa
 }
 
 // ── Helper ──────────────────────────────────────────────────────────────────
@@ -39,7 +78,7 @@ export async function buscarCrossRef(query: string, limite: number): Promise<Ref
     const params = new URLSearchParams({
       query,
       rows:   String(Math.min(limite, 20)),
-      select: 'DOI,title,author,published,container-title,volume,issue,page,type,publisher,ISBN',
+      select: 'DOI,title,author,published,container-title,volume,issue,page,type,publisher,ISBN,abstract',
       mailto: 'app@cientifica-ai.com',
     })
 
@@ -94,6 +133,8 @@ export async function buscarCrossRef(query: string, limite: number): Promise<Ref
         paginas:  it.page   as string | undefined,
         doi:      it.DOI    as string | undefined,
         isbn:     (it.ISBN as string[] | undefined)?.[0],
+        abstract: limparAbstract(it.abstract as string | undefined) || undefined,
+        sem_abstract: !limparAbstract(it.abstract as string | undefined),
         fonte_tipo: 'crossref' as const,
       }
     })
@@ -129,6 +170,9 @@ export async function buscarPubMed(query: string, limite: number): Promise<RefEx
     if (!summaryRes.ok) return []
     const summaryData = await summaryRes.json()
     const articles = (summaryData?.result ?? {}) as Record<string, Record<string, unknown>>
+
+    // Busca os abstracts (efetch) em paralelo — base para a IA citar com precisão.
+    const abstractsMap = await buscarAbstractsPubMed(ids)
 
     const results: RefExterna[] = []
     for (const id of ids) {
@@ -176,6 +220,8 @@ export async function buscarPubMed(query: string, limite: number): Promise<RefEx
         paginas:     art.pages  as string | undefined,
         doi,
         pmid:        id,
+        abstract:    abstractsMap.get(id) || undefined,
+        sem_abstract: !abstractsMap.get(id),
         fonte_tipo:  'pubmed' as const,
       })
     }
