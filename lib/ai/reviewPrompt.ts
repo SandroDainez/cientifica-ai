@@ -53,7 +53,7 @@ TRABALHO:
 ${params.trabalho}
 
 ${params.solicitarCorrecao ?
-  'Além da análise, inclua no campo "versao_corrigida" o texto completo com as correções aplicadas.' :
+  'OBRIGATÓRIO: preencha o campo "versao_corrigida" com o TEXTO COMPLETO do trabalho já com TODAS as correções aplicadas — cada problema da lista resolvido diretamente no texto, corrigindo no nível de frase/expressão. NÃO devolva o texto igual ao original e NÃO deixe o campo vazio: o "versao_corrigida" DEVE diferir do original nos trechos com problema. Preserve tudo que já está correto e mantenha os dados, autores, anos e citações reais (nunca invente).' :
   'NÃO inclua versao_corrigida nesta análise. Deixe o campo como string vazia.'
 }
 

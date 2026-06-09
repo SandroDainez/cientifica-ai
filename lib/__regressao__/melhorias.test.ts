@@ -329,6 +329,24 @@ test('runIterativeReview: respeita o teto de iterações (3) se a nota nunca sob
   assert.ok(out.ok)
   if (out.ok) assert.equal(out.data.iteracoes, 3)     // não passa de REVIEW_MAX_ITERATIONS
 })
+test('runIterativeReview: correção sem mudança real NÃO conta iteração (nota baixa travada)', async () => {
+  // Simula o caso reportado: modelo devolve versao_corrigida IGUAL ao texto.
+  class FakeSemMudanca extends ReviewService {
+    override analyze(): Promise<ReviewOutcome<ReviewResult>> {
+      return Promise.resolve({ ok: true, data: fakeResult(25, '') })
+    }
+    override analyzeAndCorrect(p: ReviewParams): Promise<ReviewOutcome<ReviewResult>> {
+      return Promise.resolve({ ok: true, data: fakeResult(25, p.trabalho) }) // corrigida === original
+    }
+    protected override humanizarVersaoFinal(t: string): Promise<string> { return Promise.resolve(`${t} [hum]`) }
+  }
+  const out = await new FakeSemMudanca().runIterativeReview(REVIEW_PARAMS)
+  assert.ok(out.ok)
+  if (out.ok) {
+    assert.equal(out.data.iteracoes, 0)            // não fingiu iterações
+    assert.equal(out.data.versaoFinal, 'orig')     // sem mudança, sem humanização
+  }
+})
 test('runIterativeReview: nota alta de cara não corrige nada', async () => {
   const out = await new FakeReview([95]).runIterativeReview(REVIEW_PARAMS)
   assert.ok(out.ok)

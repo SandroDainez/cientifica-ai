@@ -222,11 +222,14 @@ export class ReviewService {
       const corrigida = await this.analyzeAndCorrect({ ...params, trabalho: trabalhoAtual })
       if (!corrigida.ok) return corrigida
       historico.push(corrigida.data)
-      iteracoes++
 
+      // Só conta como iteração quando a correção REALMENTE mudou o texto. Se o
+      // modelo devolveu a versão vazia ou idêntica, encerra sem contar (evita
+      // "3 iterações" sem nenhuma mudança e a nota travada na mesma).
       const nova = corrigida.data.versao_corrigida?.trim()
-      if (!nova) break // sem correção aplicável → encerra
+      if (!nova || nova === trabalhoAtual.trim()) break
       trabalhoAtual = nova
+      iteracoes++
     }
 
     // Passagem final: re-humaniza o texto CORRIGIDO (só quando houve correção),

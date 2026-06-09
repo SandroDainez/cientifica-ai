@@ -172,7 +172,15 @@ export function AdvancedReview({ trabalho, tipo, tema, area, normas, idioma = 'p
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Falha ao aplicar correções.')
-      setIterativo(data as IterativeReviewData)
+      const it = data as IterativeReviewData
+      // Se nada foi corrigido (problemas estruturais), volta ao resultado com a
+      // lista de problemas visível — em vez de fingir uma "versão final".
+      if (it.iteracoes === 0) {
+        toast.warning('A correção automática não conseguiu melhorar o texto — os problemas apontados exigem revisão manual no Editor.')
+        setEstado('resultado')
+        return
+      }
+      setIterativo(it)
       setEstado('final')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao corrigir.')
