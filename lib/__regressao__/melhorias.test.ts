@@ -319,6 +319,14 @@ test('aplicarCorrecoesNasSecoes: NÃO aplica correção que perderia citação (
   const r = aplicarCorrecoesNasSecoes(secoes, edicoes)
   assert.equal(r.secoesAfetadas, 0)
 })
+test('aplicarCorrecoesNasSecoes: NUNCA mexe na seção resumo (JSON) — abstract não some', () => {
+  const resumoJson = JSON.stringify({ resumo: 'O estudo analisou a mortalidade.', abstract: 'The study analyzed mortality.', palavras_chave: [], keywords: [] })
+  const secoes = [{ chave_secao: 'resumo', conteudo: resumoJson }]
+  // tenta corrigir um trecho que existe DENTRO do JSON
+  const edicoes = correcoesParaEdicoes([{ trecho: 'The study analyzed mortality.', correcao: 'The study assessed mortality.' }])
+  const r = aplicarCorrecoesNasSecoes(secoes, edicoes)
+  assert.equal(r.secoesAfetadas, 0)            // não tocou no resumo
+})
 test('correcoesParaEdicoes: ignora trecho curto/ausente (não auto-aplicável)', () => {
   const eds = correcoesParaEdicoes([{ trecho: '', correcao: 'x' }, { trecho: 'ab', correcao: 'y' }, { trecho: 'frase válida', correcao: 'z' }])
   assert.equal(eds.length, 1)

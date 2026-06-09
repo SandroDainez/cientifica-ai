@@ -10,6 +10,22 @@ import { aplicarEdicoes, reescritaSegura, type Edicao } from '@/lib/ai/aplicar-e
 
 export interface CorrecaoTrecho { trecho: string; correcao: string }
 
+/**
+ * Conteúdo ESTRUTURADO (JSON), como a seção "resumo" ({resumo, abstract, …}).
+ * Editar o texto cru dentro do JSON corromperia a estrutura e faria o
+ * abstract/resumo sumirem — por isso NUNCA aplicamos correções nessas seções.
+ */
+function ehConteudoEstruturado(conteudo: string): boolean {
+  const t = conteudo.trim()
+  if (!t.startsWith('{')) return false
+  try {
+    const o = JSON.parse(t)
+    return typeof o === 'object' && o !== null
+  } catch {
+    return false
+  }
+}
+
 /** Converte os problemas (trecho/correcao) em edições buscar→substituir aplicáveis. */
 export function correcoesParaEdicoes(correcoes: CorrecaoTrecho[]): Edicao[] {
   return correcoes
@@ -38,6 +54,8 @@ export function aplicarCorrecoesNasSecoes(
   for (const secao of secoes) {
     const original = secao.conteudo ?? ''
     if (!original.trim()) continue
+    // Nunca mexe em seção estruturada (JSON), ex.: resumo/abstract — corromperia.
+    if (secao.chave_secao === 'resumo' || ehConteudoEstruturado(original)) continue
     const { texto, aplicadas } = aplicarEdicoes(original, edicoes)
     if (aplicadas > 0 && texto !== original && reescritaSegura(original, texto).ok) {
       atualizacoes.push({ chave_secao: secao.chave_secao, conteudo: texto })
