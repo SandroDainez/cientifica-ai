@@ -6,8 +6,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { reviewService } from '@/lib/ai/reviewService'
-import { correcoesParaEdicoes } from '@/lib/revisao/aplicar-correcoes'
-import { aplicarEdicoes, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
+import { aplicarEdicoes, edicaoSeguraCirurgica } from '@/lib/ai/aplicar-edicoes'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import type { SecaoTrabalho } from '@/types'
 
@@ -45,8 +44,12 @@ export async function POST(request: Request) {
   let totalAplicadas = 0
   const mapaAtualizado = new Map<string, string>()
   let erroConfig: string | null = null
+  // Diagnóstico: explica POR QUE nada foi aplicado, em vez de "não consegui".
+  const diag = { geradas: 0, inseguras: 0, naoCasaram: 0 }
+  const contaPalavras = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
 
-  // Para cada seção de prosa, gera edições focadas e aplica com segurança.
+  // Para cada seção de prosa, gera edições focadas e aplica uma a uma, com a
+  // trava anti-fabricação por edição (remover citação ruim é permitido).
   for (const secao of secoes) {
     const conteudo = secao.conteudo ?? ''
     if (!conteudo.trim()) continue
@@ -55,12 +58,24 @@ export async function POST(request: Request) {
     const edOut = await reviewService.corrigirSecao(extrairTextoSecao(conteudo), problemas)
     if (!edOut.ok) { erroConfig = edOut.codigo === 'CONFIG_ERROR' ? edOut.error : erroConfig; continue }
     if (edOut.data.length === 0) continue
+    diag.geradas += edOut.data.length
 
-    const edicoes = correcoesParaEdicoes(edOut.data.map(e => ({ trecho: e.buscar, correcao: e.substituir })))
-    const { texto, aplicadas } = aplicarEdicoes(conteudo, edicoes)
-    if (aplicadas > 0 && texto !== conteudo && reescritaSegura(conteudo, texto).ok) {
-      mapaAtualizado.set(secao.chave_secao, texto)
-      totalAplicadas += aplicadas
+    let conteudoAtual = conteudo
+    let aplicadasNaSecao = 0
+    for (const e of edOut.data) {
+      const seg = edicaoSeguraCirurgica(e.buscar, e.substituir)
+      if (!seg.ok) { diag.inseguras++; continue }
+      const { texto, aplicadas } = aplicarEdicoes(conteudoAtual, [{ buscar: e.buscar, substituir: e.substituir }])
+      if (aplicadas === 0) { diag.naoCasaram++; continue }
+      conteudoAtual = texto
+      aplicadasNaSecao++
+    }
+
+    // Sanidade final da seção: bloqueia inchaço global (invenção de conteúdo).
+    // Só conta as edições da seção quando a seção é efetivamente salva.
+    if (aplicadasNaSecao > 0 && contaPalavras(conteudoAtual) <= contaPalavras(conteudo) * 1.5) {
+      mapaAtualizado.set(secao.chave_secao, conteudoAtual)
+      totalAplicadas += aplicadasNaSecao
     }
   }
 
@@ -78,5 +93,6 @@ export async function POST(request: Request) {
     .map(s => `${s.nome_secao}\n\n${extrairTextoSecao(mapaAtualizado.get(s.chave_secao) ?? s.conteudo ?? '')}`)
     .join('\n\n')
 
-  return NextResponse.json({ ok: true, totalAplicadas, secoesAfetadas: mapaAtualizado.size, corpoAtualizado })
+  console.log(`[review/corrigir] geradas=${diag.geradas} aplicadas=${totalAplicadas} inseguras=${diag.inseguras} naoCasaram=${diag.naoCasaram} secoes=${mapaAtualizado.size}`)
+  return NextResponse.json({ ok: true, totalAplicadas, secoesAfetadas: mapaAtualizado.size, corpoAtualizado, diagnostico: diag })
 }

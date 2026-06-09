@@ -19,7 +19,7 @@ import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
-import { aplicarEdicoes, parseEdicoes, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
+import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -440,6 +440,34 @@ test('parseEdicoesRevisao + aplicarEdicoes: edição segura aplica de fato', () 
   assert.equal(aplicadas, 1)
   assert.ok(!texto.includes('Faculty Opinions'))
   assert.ok(reescritaSegura(original, texto).ok)
+})
+
+// ── 13c. Revisão avançada: trava anti-fabricação por edição (corrigir) ────────
+test('edicaoSeguraCirurgica: PERMITE remover citação ruim (substituir vazio)', () => {
+  // Caso real do bug: a correção certa é REMOVER "(Faculty Opinions, 2026)".
+  const r = edicaoSeguraCirurgica(' segundo Faculty Opinions (2026)', '')
+  assert.ok(r.ok, r.motivo)
+})
+test('edicaoSeguraCirurgica: PERMITE troca que reduz citação (reescritaSegura bloquearia)', () => {
+  const buscar = 'conforme YAMADA (2026), os dados mostram'
+  const substituir = 'os dados coletados mostram'
+  assert.ok(edicaoSeguraCirurgica(buscar, substituir).ok)          // trava cirúrgica: ok
+  assert.ok(!reescritaSegura(buscar, substituir).ok)               // trava de reescrita: bloquearia (perdeu ano)
+})
+test('edicaoSeguraCirurgica: BLOQUEIA introdução de ano/citação inexistente', () => {
+  assert.ok(!edicaoSeguraCirurgica('os dados mostram aumento', 'os dados mostram aumento (SILVA, 2021)').ok)
+  assert.ok(!edicaoSeguraCirurgica('houve melhora significativa', 'houve melhora significativa [12]').ok)
+})
+test('edicaoSeguraCirurgica: BLOQUEIA substituição que infla demais (invenção)', () => {
+  const r = edicaoSeguraCirurgica('a amostra foi pequena', 'a amostra foi pequena ' + 'palavra '.repeat(30))
+  assert.ok(!r.ok)
+})
+test('edicaoSeguraCirurgica: BLOQUEIA trecho curto e troca nula', () => {
+  assert.ok(!edicaoSeguraCirurgica('ab', 'cd').ok)
+  assert.ok(!edicaoSeguraCirurgica('texto igual', 'texto igual').ok)
+})
+test('edicaoSeguraCirurgica: PERMITE correção gramatical preservando o ano', () => {
+  assert.ok(edicaoSeguraCirurgica('Segundo Silva (2020) o estudo', 'Segundo Silva (2020), o estudo demonstrou').ok)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

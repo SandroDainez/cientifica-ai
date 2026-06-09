@@ -59,6 +59,37 @@ export function reescritaSegura(original: string, novo: string): { ok: boolean; 
   return { ok: true, motivo: '' }
 }
 
+/**
+ * Segurança de UMA edição cirúrgica (buscar→substituir) na Revisão Avançada.
+ * Diferente de `reescritaSegura`: aqui REMOVER uma citação é legítimo (corrigir
+ * ou retirar referência ruim / ano fabricado), então NÃO bloqueamos perda. O que
+ * bloqueamos é FABRICAÇÃO e invenção de conteúdo:
+ *  - "buscar" curto demais (<3) → casaria em qualquer lugar;
+ *  - "substituir" idêntico ao "buscar" → não muda nada;
+ *  - "substituir" cresce demais vs "buscar" → risco de parágrafo inventado;
+ *  - "substituir" introduz ano (19xx/20xx) ou marcador [N] ausente no "buscar".
+ * Remoção (substituir vazio) é sempre permitida.
+ */
+export function edicaoSeguraCirurgica(buscar: string, substituir: string): { ok: boolean; motivo: string } {
+  if (typeof buscar !== 'string' || typeof substituir !== 'string') return { ok: false, motivo: 'tipos inválidos' }
+  const b = buscar.trim()
+  if (b.length < 3) return { ok: false, motivo: 'trecho curto demais' }
+  if (substituir === buscar) return { ok: false, motivo: 'sem mudança' }
+  const s = substituir.trim()
+  if (s.length === 0) return { ok: true, motivo: '' } // remoção legítima
+
+  const wB = b.split(/\s+/).length
+  const wS = s.split(/\s+/).length
+  if (wS > wB * 2.2 + 12) return { ok: false, motivo: 'a substituição cresceu demais (risco de invenção)' }
+
+  const anosNovos = (s.match(/(?:19|20)\d{2}/g) ?? []).filter(a => !b.includes(a))
+  if (anosNovos.length > 0) return { ok: false, motivo: 'introduziria citação (ano) inexistente no trecho' }
+  const marcadores = (t: string) => (t.match(/\[\s*\d+\s*\]/g) ?? []).length
+  if (marcadores(s) > marcadores(b)) return { ok: false, motivo: 'introduziria citação numérica nova' }
+
+  return { ok: true, motivo: '' }
+}
+
 const ehLinhaTabela = (s: string) => /^\s*\|/m.test(s)
 
 /**

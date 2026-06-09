@@ -186,10 +186,20 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trabalhoId, problemas }),
       })
-      const data = await res.json() as { ok?: boolean; totalAplicadas?: number; secoesAfetadas?: number; corpoAtualizado?: string; error?: string }
+      const data = await res.json() as {
+        ok?: boolean; totalAplicadas?: number; secoesAfetadas?: number; corpoAtualizado?: string; error?: string
+        diagnostico?: { geradas: number; inseguras: number; naoCasaram: number }
+      }
       if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha ao aplicar correções.')
       if (!data.totalAplicadas) {
-        toast.warning('A IA não conseguiu corrigir com segurança trocando texto — os itens restantes precisam de ajuste manual no Editor.')
+        const d = data.diagnostico
+        let msg = 'Estes problemas precisam de ajuste manual no Editor.'
+        if (d) {
+          if (d.geradas === 0) msg = 'A IA não encontrou trechos pontuais para corrigir — os problemas parecem estruturais. Ajuste no Editor.'
+          else if (d.naoCasaram > 0) msg = `A IA propôs ${d.naoCasaram} correção(ões), mas o texto exato não foi localizado nas seções. Reanalise ou ajuste no Editor.`
+          else if (d.inseguras > 0) msg = `${d.inseguras} correção(ões) foram bloqueadas pela trava anti-invenção (evitam citações inventadas).`
+        }
+        toast.warning(msg)
         setEstado('resultado')
         return
       }
