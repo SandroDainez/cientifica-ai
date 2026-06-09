@@ -466,6 +466,27 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
     }
   }
 
+  // ── Inserir a lista de referências REAIS (do banco) na seção Referências ──
+  async function handleInserirReferencias() {
+    setStatusIA('gerando')
+    try {
+      const res = await fetch(`/api/trabalhos/${trabalho.id}/lista-referencias`)
+      const data = await res.json() as { lista?: string; total?: number; semReferencias?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Falha ao montar a lista de referências')
+      if (data.semReferencias || !data.lista) {
+        toast.warning('Nenhuma referência cadastrada ainda. Gere/adicione referências antes de inserir a lista.')
+        return
+      }
+      setConteudoAtual(data.lista)
+      await handleSalvar(false, data.lista)
+      toast.success(`Lista de referências inserida (${data.total} ${data.total === 1 ? 'referência' : 'referências'}).`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao inserir a lista de referências.')
+    } finally {
+      setStatusIA('idle')
+    }
+  }
+
   // ── Salvar / Avançar ─────────────────────────────────────────
   async function handleSalvar(avancar = false, conteudoOverride?: string) {
     const conteudo = conteudoOverride ?? conteudoAtual
@@ -753,6 +774,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                 onConteudoChange={setConteudoAtual}
                 onGerar={handleGerar}
                 onValidar={() => handleValidar()}
+                onInserirReferencias={handleInserirReferencias}
                 onSalvar={handleSalvar}
                 temAlteracoes={temAlteracoes}
                 totalCitacoesVancouver={totalCitacoesVancouver}

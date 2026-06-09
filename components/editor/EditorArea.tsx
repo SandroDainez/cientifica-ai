@@ -23,6 +23,8 @@ interface EditorAreaProps {
   onConteudoChange: (v: string) => void
   onGerar: () => void
   onValidar: () => void
+  /** Insere a lista de referências reais (só na seção 'referencias'). */
+  onInserirReferencias?: () => void
   onSalvar: (avancar?: boolean) => void
   onAbrirIA: () => void
   statusIA: StatusIA
@@ -70,7 +72,7 @@ function scoreColor(score: number) {
 
 export function EditorArea({
   fase, conteudo, onConteudoChange,
-  onGerar, onValidar, onSalvar,
+  onGerar, onValidar, onInserirReferencias, onSalvar,
   statusIA, validacao, onAplicarSugestao, onAplicarComIA,
   isUltimaFase,
   tituloOpcoes = [], onSelecionarTituloOpcao, onGerarNovamenteTitulo,
@@ -225,14 +227,24 @@ export function EditorArea({
 
           {/* Toolbar ações IA */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            {/* Esconde "Gerar com IA" quando o card de boas-vindas já está visível com o mesmo CTA */}
-            {(!mostraIntro || temConteudo || statusIA === 'gerando') && (
-              <button onClick={onGerar} disabled={busy}
+            {/* Seção de Referências: NÃO se escreve com IA — insere-se a lista real do banco. */}
+            {fase.chave_secao === 'referencias' && onInserirReferencias ? (
+              <button onClick={onInserirReferencias} disabled={busy}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 {statusIA === 'gerando'
-                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando…</>
-                  : <><Sparkles className="h-3.5 w-3.5" /> Gerar com IA</>}
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Montando…</>
+                  : <><BookMarked className="h-3.5 w-3.5" /> Inserir lista de referências</>}
               </button>
+            ) : (
+              /* Esconde "Gerar com IA" quando o card de boas-vindas já está visível com o mesmo CTA */
+              (!mostraIntro || temConteudo || statusIA === 'gerando') && (
+                <button onClick={onGerar} disabled={busy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  {statusIA === 'gerando'
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando…</>
+                    : <><Sparkles className="h-3.5 w-3.5" /> Gerar com IA</>}
+                </button>
+              )
             )}
 
             <button onClick={onValidar} disabled={busy || !temConteudo}
