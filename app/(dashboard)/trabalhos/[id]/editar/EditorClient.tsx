@@ -193,6 +193,8 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
   const [fasesConcluidas, setFasesConcluidas] = useState<string[]>(trabalho.fases_concluidas)
   const [statusIA, setStatusIA] = useState<StatusIA>('idle')
   const [validacao, setValidacao] = useState<ResultadoValidacao | null>(null)
+  // Incrementa ao restaurar uma versão → força o ResumoEditor a remontar.
+  const [restoreNonce, setRestoreNonce] = useState(0)
   const [iaPanelOpen, setIAPanelOpen] = useState(true)
   // Opções de título geradas pela IA (picker visual em vez de markdown bruto)
   const [tituloOpcoes, setTituloOpcoes] = useState<string[]>([])
@@ -620,6 +622,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
 
   function handleRestaurarVersao(conteudo: string) {
     setConteudos(prev => ({ ...prev, [faseAtualConfig.chave_secao]: conteudo }))
+    // Força o ResumoEditor (que lê o conteúdo só na montagem) a recarregar a
+    // versão restaurada — essencial para recuperar abstract/palavras-chave.
+    setRestoreNonce(n => n + 1)
     toast.success('Versão restaurada. Salve para confirmar.')
   }
 
@@ -757,6 +762,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
           <div className="w-full lg:flex-1 min-w-0 lg:overflow-y-auto px-6 py-6">
             {faseAtualConfig.chave_secao === 'resumo' ? (
               <ResumoEditor
+                key={`resumo-${restoreNonce}`}
                 trabalho={trabalho}
                 fase={faseAtualConfig}
                 conteudoInicial={conteudoAtual}
@@ -805,16 +811,15 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
               />
             )}
 
-            {/* Histórico de versões da seção (restaurar versões anteriores) */}
-            {faseAtualConfig.chave_secao !== 'resumo' && (
-              <div className="mt-4">
-                <HistoricoVersoes
-                  trabalhoId={trabalho.id}
-                  chaveSecao={faseAtualConfig.chave_secao}
-                  onRestaurar={handleRestaurarVersao}
-                />
-              </div>
-            )}
+            {/* Histórico de versões da seção (restaurar versões anteriores) —
+                inclui o resumo, para recuperar abstract/palavras-chave perdidos. */}
+            <div className="mt-4">
+              <HistoricoVersoes
+                trabalhoId={trabalho.id}
+                chaveSecao={faseAtualConfig.chave_secao}
+                onRestaurar={handleRestaurarVersao}
+              />
+            </div>
 
             {/* Encerramento — fase final (revisar → formatar → submeter), na última seção */}
             {isUltimaFase && <BlocoFinalizacao trabalhoId={trabalho.id} />}
