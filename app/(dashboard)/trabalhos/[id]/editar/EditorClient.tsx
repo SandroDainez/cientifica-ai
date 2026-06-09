@@ -438,8 +438,11 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
   }
 
   // ── Validar seção ────────────────────────────────────────────
-  async function handleValidar() {
-    if (!conteudoAtual.trim()) return
+  // Aceita um texto explícito (conteudoOverride) para re-avaliar logo após uma
+  // correção, sem depender da atualização assíncrona do estado.
+  async function handleValidar(conteudoOverride?: string) {
+    const conteudo = conteudoOverride ?? conteudoAtual
+    if (!conteudo.trim()) return
     setStatusIA('validando')
     setValidacao(null)
     try {
@@ -448,8 +451,8 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           trabalhoId: trabalho.id,
-          chaveSecao: faseAtualConfig.chave_secao,
-          conteudo: conteudoAtual,
+          chaveSecao: faseAtualRef.current.chave_secao,
+          conteudo,
         }),
       })
       const json = await res.json()
@@ -578,6 +581,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
         action: { label: 'Desfazer', onClick: () => { void desfazer() } },
         duration: 12000,
       })
+      // Re-avalia com o texto JÁ corrigido: os alertas antigos somem e aparece
+      // uma nova avaliação refletindo a correção.
+      if (acumulado.trim()) await handleValidar(acumulado)
     } catch (err) {
       console.error('Erro ao aplicar sugestão:', err)
       // Restaura o conteúdo original em caso de falha
@@ -743,7 +749,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                 conteudo={conteudoAtual}
                 onConteudoChange={setConteudoAtual}
                 onGerar={handleGerar}
-                onValidar={handleValidar}
+                onValidar={() => handleValidar()}
                 onSalvar={handleSalvar}
                 temAlteracoes={temAlteracoes}
                 totalCitacoesVancouver={totalCitacoesVancouver}
@@ -803,6 +809,8 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
                   // Atualiza o editor e persiste reaproveitando o save existente
                   setConteudoAtual(novoTexto)
                   void handleSalvar(false, novoTexto)
+                  // Re-avalia com o texto corrigido: alertas antigos somem, nova avaliação aparece
+                  void handleValidar(novoTexto)
                 }}
               />
             </div>
