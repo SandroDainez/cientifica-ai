@@ -75,7 +75,7 @@ export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progr
                     ativa && 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20',
                     !ativa && concluida && 'text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950',
                     !ativa && !concluida && acessivel && 'text-foreground hover:bg-accent',
-                    bloqueada && 'text-muted-foreground/40 cursor-not-allowed',
+                    bloqueada && 'text-muted-foreground/70 cursor-not-allowed',
                   )}
                 >
                   {/* Número + ícone de status */}
@@ -91,7 +91,7 @@ export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progr
                         </span>
                       </span>
                     ) : bloqueada ? (
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground/30" />
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground/60" />
                     ) : (
                       <span className="flex h-4 w-4 rounded-full border border-muted-foreground/30 items-center justify-center">
                         <span className="text-[9px] text-muted-foreground font-medium">{idx + 1}</span>
