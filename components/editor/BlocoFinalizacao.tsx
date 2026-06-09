@@ -20,7 +20,7 @@ export function BlocoFinalizacao({ trabalhoId }: Props) {
       titulo: 'Revisar o trabalho',
       descricao: 'Confira coerência, o Revisor de Consistência (referências) e o checklist final.',
       acao: 'Abrir revisão',
-      href: `/trabalhos/${trabalhoId}/visualizar`,
+      href: `/trabalhos/${trabalhoId}/visualizar?revisao=1`,
     },
     {
       n: 2,

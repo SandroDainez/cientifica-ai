@@ -8,10 +8,12 @@ import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ revisao?: string }>
 }
 
-export default async function VisualizarPage({ params }: Props) {
+export default async function VisualizarPage({ params, searchParams }: Props) {
   const { id } = await params
+  const { revisao } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -60,6 +62,7 @@ export default async function VisualizarPage({ params }: Props) {
       referencias={referencias}
       autorNome={pData?.nome}
       autorInstituicao={pData?.instituicao ?? trabalho.instituicao_destino}
+      abrirRevisao={revisao === '1'}
     />
   )
 }

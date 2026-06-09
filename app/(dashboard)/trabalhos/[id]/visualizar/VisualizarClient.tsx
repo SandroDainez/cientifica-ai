@@ -20,6 +20,7 @@ import { RelatorioQualidade } from '@/components/visualizacao/RelatorioQualidade
 import { ChecklistFinal } from '@/components/visualizacao/ChecklistFinal'
 import { VerificadorCoerencia } from '@/components/visualizacao/VerificadorCoerencia'
 import { PainelRevisaoConsistencia } from '@/components/revisao/PainelRevisaoConsistencia'
+import { AdvancedReview } from '@/components/review/AdvancedReview'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
 
 interface Props {
@@ -30,6 +31,8 @@ interface Props {
   referencias: Referencia[]
   autorNome?: string
   autorInstituicao?: string
+  /** Abre o painel de revisão automaticamente (vindo de "Abrir revisão"). */
+  abrirRevisao?: boolean
 }
 
 /**
@@ -89,7 +92,7 @@ function ConteudoSecao({ texto }: { texto: string }) {
   )
 }
 
-export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes, referencias, autorNome, autorInstituicao }: Props) {
+export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes, referencias, autorNome, autorInstituicao, abrirRevisao = false }: Props) {
   const titulo = capitalizarTitulo(tituloTrabalho?.trim() || trabalho.titulo?.trim() || '')
   const autor = nomeProprioCase(autorNome)
 
@@ -104,7 +107,7 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
     return { resumo: secaoResumo.conteudo }
   })()
   const [tocAberto, setTocAberto] = useState(false)
-  const [checklistAberto, setChecklistAberto] = useState(false)
+  const [checklistAberto, setChecklistAberto] = useState(abrirRevisao)
   const [relatorioAberto, setRelatorioAberto] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -147,7 +150,7 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
               onClick={() => { setChecklistAberto(v => !v); setTocAberto(false) }}
               className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}
             >
-              <ClipboardCheck className="h-4 w-4" /> Checklist
+              <ClipboardCheck className="h-4 w-4" /> Revisão
             </button>
             <Link href={`/trabalhos/${trabalho.id}/referencias`}
               className={cn(buttonVariants({ variant: 'ghost' }), 'gap-2 text-sm')}>
@@ -204,6 +207,14 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
       {checklistAberto && (
         <div className="no-print border-t bg-gray-50 shadow-md max-w-5xl mx-auto">
           <div className="px-4 py-4 max-w-lg space-y-3">
+            <AdvancedReview
+              trabalho={secoesComConteudo.map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`).join('\n\n')}
+              tipo={getTipoLabel(trabalho.tipo_trabalho)}
+              tema={titulo}
+              area={trabalho.area_conhecimento ?? ''}
+              normas={(trabalho.formato_citacao ?? 'abnt').toUpperCase()}
+              idioma="pt-BR"
+            />
             <VerificadorCoerencia trabalhoId={trabalho.id} />
             <PainelRevisaoConsistencia
               trabalhoId={trabalho.id}
