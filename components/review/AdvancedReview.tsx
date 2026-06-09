@@ -143,9 +143,11 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   const [analise, setAnalise] = useState<ReviewResult | null>(null)
   const metadados = { tipo, tema, area, normas, idioma }
 
-  // Correções auto-aplicáveis = problemas com trecho exato + correcao definida.
-  const autoAplicaveis = (analise?.problemas_encontrados ?? [])
-    .filter(p => (p.trecho?.trim().length ?? 0) >= 3 && typeof p.correcao === 'string')
+  // Problemas que a IA pode tentar corrigir trocando texto (todos, exceto os
+  // puramente estruturais, que dependem de reorganizar/criar seções). A correção
+  // em si é gerada na hora, seção por seção, pelo endpoint /api/review/corrigir.
+  const corrigiveis = (analise?.problemas_encontrados ?? [])
+    .filter(p => p.categoria !== 'estrutura')
 
   async function analisar(texto: string) {
     if (!texto?.trim()) { toast.error('O trabalho está vazio.'); return }
@@ -166,21 +168,28 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   }
 
   async function aplicarCorrecoes() {
-    const correcoes = autoAplicaveis.map(p => ({ trecho: p.trecho, correcao: p.correcao ?? '' }))
-    if (correcoes.length === 0) {
-      toast.warning('Não há correções automáticas — os problemas exigem ajuste manual no Editor.')
+    // Descreve cada problema (com o trecho exato, quando houver) para o revisor
+    // localizar e corrigir. A correção surgical é gerada no servidor.
+    const problemas = corrigiveis.map(p => {
+      const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
+      if (p.trecho?.trim()) partes.push(`Trecho: "${p.trecho.trim()}"`)
+      if (p.sugestao?.trim()) partes.push(`Sugestão: ${p.sugestao.trim()}`)
+      return partes.join(' — ')
+    })
+    if (problemas.length === 0) {
+      toast.warning('Os problemas apontados são estruturais — exigem ajuste manual no Editor.')
       return
     }
     setEstado('aplicando')
     try {
-      const res = await fetch('/api/review/aplicar', {
+      const res = await fetch('/api/review/corrigir', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trabalhoId, correcoes }),
+        body: JSON.stringify({ trabalhoId, problemas }),
       })
       const data = await res.json() as { ok?: boolean; totalAplicadas?: number; secoesAfetadas?: number; corpoAtualizado?: string; error?: string }
       if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha ao aplicar correções.')
       if (!data.totalAplicadas) {
-        toast.warning('Nenhuma correção pôde ser aplicada com segurança — ajuste manual no Editor.')
+        toast.warning('A IA não conseguiu corrigir com segurança trocando texto — os itens restantes precisam de ajuste manual no Editor.')
         setEstado('resultado')
         return
       }
@@ -253,21 +262,21 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
 
             {/* Ações */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {autoAplicaveis.length > 0 ? (
+              {corrigiveis.length > 0 ? (
                 <Button onClick={aplicarCorrecoes} className="gap-2">
-                  <Wand2 className="h-4 w-4" /> Aplicar {autoAplicaveis.length} correç{autoAplicaveis.length === 1 ? 'ão' : 'ões'} no trabalho
+                  <Wand2 className="h-4 w-4" /> Corrigir {corrigiveis.length} problema{corrigiveis.length === 1 ? '' : 's'} no trabalho
                 </Button>
               ) : (
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <PencilLine className="h-4 w-4" /> Os problemas apontados precisam de ajuste manual no Editor.
+                  <PencilLine className="h-4 w-4" /> Os problemas apontados são estruturais — ajuste manual no Editor.
                 </p>
               )}
               <Button variant="outline" onClick={() => { setEstado('inicial'); setAnalise(null) }}>Fechar</Button>
             </div>
-            {autoAplicaveis.length > 0 && (
+            {corrigiveis.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                As correções aplicáveis são salvas direto nas seções e o trabalho é re-avaliado. As demais (estruturais)
-                ficam na lista acima para você ajustar no Editor.
+                A IA gera correções cirúrgicas seção por seção, com trava anti-piora (não inventa dados, não reescreve do zero),
+                salva direto nas seções e re-avalia. Itens estruturais ficam na lista acima para ajuste no Editor.
               </p>
             )}
           </div>

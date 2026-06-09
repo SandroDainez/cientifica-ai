@@ -108,6 +108,23 @@ export function extrairJsonObjeto(texto: string): unknown | null {
   return null
 }
 
+/**
+ * Extrai e VALIDA a lista de edições cirúrgicas que a IA de revisão retorna.
+ * Rejeita edições inúteis ou perigosas: "buscar" curto demais (<3 chars, risco de
+ * casar em qualquer lugar), tipos errados, ou "substituir" idêntico ao "buscar".
+ * Função pura → travada por teste de regressão.
+ */
+export function parseEdicoesRevisao(conteudo: string): { buscar: string; substituir: string }[] {
+  const json = extrairJsonObjeto(conteudo) as { edicoes?: unknown } | null
+  if (!json || !Array.isArray(json.edicoes)) return []
+  return (json.edicoes as unknown[]).filter((e): e is { buscar: string; substituir: string } => {
+    if (typeof e !== 'object' || e === null) return false
+    const { buscar, substituir } = e as Record<string, unknown>
+    return typeof buscar === 'string' && buscar.trim().length >= 3
+      && typeof substituir === 'string' && substituir !== buscar
+  })
+}
+
 export class ReviewService {
   private _client: OpenAI | null = null
 
@@ -125,6 +142,41 @@ export class ReviewService {
     if (!apiKey) return { ok: false, codigo: 'CONFIG_ERROR', error: 'REVIEW_ANTHROPIC_API_KEY ausente para a revisão.' }
     this._client = new OpenAI({ apiKey, baseURL: 'https://api.anthropic.com/v1' })
     return { ok: true, data: this._client }
+  }
+
+  /**
+   * Gera EDIÇÕES CIRÚRGICAS (buscar→substituir) para corrigir, NESTE trecho de
+   * seção, os problemas apontados na revisão. Foco e texto real → mais confiável
+   * que pedir o trabalho inteiro reescrito. Não inventa dados/citações.
+   */
+  async corrigirSecao(secaoTexto: string, problemas: string[]): Promise<ReviewOutcome<{ buscar: string; substituir: string }[]>> {
+    if (!secaoTexto.trim() || problemas.length === 0) return { ok: true, data: [] }
+    const clienteOut = this.getClient()
+    if (!clienteOut.ok) return clienteOut
+    const client = clienteOut.data
+
+    const sys = `Você é um editor acadêmico sênior. Recebe um TRECHO de uma seção de um trabalho e uma lista de problemas apontados na revisão. Devolva EDIÇÕES CIRÚRGICAS que corrijam, NESTE trecho, os problemas que se aplicam a ele.
+REGRAS ABSOLUTAS:
+- "buscar" = texto EXATO copiado deste trecho (letra por letra, sem aspas extras).
+- "substituir" = a versão corrigida do mesmo texto (ou "" para REMOVER).
+- Corrija no nível de frase/expressão; melhore clareza, gramática, coerência e o uso de citações.
+- NUNCA invente dados, autores, anos, DOI ou referências. Preserve os reais.
+- Se um problema for ESTRUTURAL (mover para outra seção, completar conteúdo ausente, reorganizar) e não der para resolver trocando texto deste trecho, NÃO crie edição para ele.
+- Não devolva edição cujo "substituir" seja igual ao "buscar".
+Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. Se nada se aplica a este trecho, {"edicoes":[]}.`
+    const user = `PROBLEMAS APONTADOS NA REVISÃO:\n${problemas.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\nTRECHO DA SEÇÃO:\n${secaoTexto}`
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: REVIEW_AI_MODEL,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        temperature: 0.2,
+        max_tokens: 8000,
+      })
+      return { ok: true, data: parseEdicoesRevisao(completion.choices[0]?.message?.content ?? '') }
+    } catch (err) {
+      return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha ao corrigir a seção.' }
+    }
   }
 
   /** Chamada única à IA de revisão (analyze ou analyzeAndCorrect). */

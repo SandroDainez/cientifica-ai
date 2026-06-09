@@ -20,7 +20,7 @@ import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
-import { extrairJsonObjeto, ReviewService } from '@/lib/ai/reviewService'
+import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
 import { formatarReferencia } from '@/lib/referencias/formatar'
@@ -405,6 +405,41 @@ test('runIterativeReview: nota alta de cara não corrige nada', async () => {
   const out = await new FakeReview([95]).runIterativeReview(REVIEW_PARAMS)
   assert.ok(out.ok)
   if (out.ok) { assert.equal(out.data.iteracoes, 0); assert.equal(out.data.versaoFinal, 'orig') }
+})
+
+// ── 13b. Revisão avançada: parse das edições cirúrgicas (corrigir seção) ──────
+test('parseEdicoesRevisao: extrai edições válidas de JSON com cercas ```json', () => {
+  const conteudo = '```json\n{"edicoes":[{"buscar":"texto antigo","substituir":"texto novo"}]}\n```'
+  const out = parseEdicoesRevisao(conteudo)
+  assert.equal(out.length, 1)
+  assert.equal(out[0].buscar, 'texto antigo')
+  assert.equal(out[0].substituir, 'texto novo')
+})
+test('parseEdicoesRevisao: aceita "substituir" vazio (remoção de trecho)', () => {
+  const out = parseEdicoesRevisao('{"edicoes":[{"buscar":"Faculty Opinions","substituir":""}]}')
+  assert.equal(out.length, 1)
+  assert.equal(out[0].substituir, '')
+})
+test('parseEdicoesRevisao: rejeita buscar curto (<3) e substituir idêntico', () => {
+  const out = parseEdicoesRevisao('{"edicoes":[{"buscar":"ab","substituir":"xy"},{"buscar":"igual","substituir":"igual"}]}')
+  assert.equal(out.length, 0)
+})
+test('parseEdicoesRevisao: tolera lixo / JSON inválido / campos errados sem quebrar', () => {
+  assert.deepEqual(parseEdicoesRevisao(''), [])
+  assert.deepEqual(parseEdicoesRevisao('sem json aqui'), [])
+  assert.deepEqual(parseEdicoesRevisao('{"edicoes":"nao-array"}'), [])
+  assert.deepEqual(parseEdicoesRevisao('{"edicoes":[{"buscar":123,"substituir":"x"}]}'), [])
+})
+test('parseEdicoesRevisao + aplicarEdicoes: edição segura aplica de fato', () => {
+  const original = 'O resultado foi de média 204 segundo Faculty Opinions e colaboradores.'
+  const edicoes = correcoesParaEdicoes(
+    parseEdicoesRevisao('{"edicoes":[{"buscar":"segundo Faculty Opinions e colaboradores","substituir":"conforme os dados coletados"}]}')
+      .map(e => ({ trecho: e.buscar, correcao: e.substituir }))
+  )
+  const { texto, aplicadas } = aplicarEdicoes(original, edicoes)
+  assert.equal(aplicadas, 1)
+  assert.ok(!texto.includes('Faculty Opinions'))
+  assert.ok(reescritaSegura(original, texto).ok)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────
