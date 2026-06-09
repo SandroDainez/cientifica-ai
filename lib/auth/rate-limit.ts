@@ -26,6 +26,8 @@ const LIMITES: Record<string, number> = {
   'sugerir-tipo-trabalho':  10,
   'extrair-arquivo':         5,
   'sugerir-palavras-chave': 10,
+  'review-analyze':          6,
+  'review-iterate':          2,
 }
 
 const LIMITE_PADRAO = 15

@@ -18,6 +18,8 @@ import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
+import { extrairJsonObjeto, ReviewService } from '@/lib/ai/reviewService'
+import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 
@@ -243,7 +245,63 @@ test('formatarReferencia: autor coletivo (WHO) não gera ", ." em APA/Vancouver'
   assert.ok(!/World Health Organization\s+\./.test(van), `Vancouver sem nome+ponto solto: ${van}`)
 })
 
-// ── 13. Integração: pós-processamento completo ───────────────────────────────
+// ── 13. Revisor iterativo por IA (parsing + loop, sem chamar API) ────────────
+test('extrairJsonObjeto: extrai JSON mesmo com ```json e texto ao redor', () => {
+  const resp = 'Claro!\n```json\n{"nota_estimada": 85, "obj": {"a": "}"}}\n```\nfim'
+  const j = extrairJsonObjeto(resp) as { nota_estimada: number; obj: { a: string } }
+  assert.equal(j.nota_estimada, 85)
+  assert.equal(j.obj.a, '}') // chave dentro de string não confunde o parser
+})
+test('extrairJsonObjeto: retorna null quando não há JSON', () => {
+  assert.equal(extrairJsonObjeto('sem json aqui'), null)
+})
+
+function fakeResult(nota: number, versao: string): ReviewResult {
+  return {
+    nota_estimada: nota, status: nota >= 80 ? 'aprovado' : 'precisa_corrigir', resumo_geral: '',
+    checklist: { coerencia_objetivos: true, linguagem_adequada: true, estrutura_completa: true, citacoes_com_suporte: true, referencias_verificadas: true, sem_contradicoes: true },
+    problemas_encontrados: [], referencias_suspeitas: [], precisa_nova_iteracao: nota < 80, motivo_nova_iteracao: '', versao_corrigida: versao,
+  }
+}
+// Subclasse que NÃO chama a API: devolve notas pré-definidas por chamada de analyze.
+class FakeReview extends ReviewService {
+  private idx = 0
+  constructor(private notas: number[]) { super() }
+  override analyze(): Promise<ReviewOutcome<ReviewResult>> {
+    const nota = this.notas[Math.min(this.idx, this.notas.length - 1)]
+    return Promise.resolve({ ok: true, data: fakeResult(nota, '') })
+  }
+  override analyzeAndCorrect(p: ReviewParams): Promise<ReviewOutcome<ReviewResult>> {
+    this.idx++
+    return Promise.resolve({ ok: true, data: fakeResult(70, `${p.trabalho} [v${this.idx}]`) })
+  }
+  // Não chama a API de humanização nos testes — apenas marca que foi aplicada.
+  protected override humanizarVersaoFinal(t: string): Promise<string> {
+    return Promise.resolve(`${t} [hum]`)
+  }
+}
+const REVIEW_PARAMS: ReviewParams = { trabalho: 'orig', tipo: 'artigo', tema: 't', area: 'a', normas: 'ABNT', idioma: 'pt-BR' }
+
+test('runIterativeReview: para na nota mínima (80) e re-humaniza a versão final', async () => {
+  const out = await new FakeReview([60, 92]).runIterativeReview(REVIEW_PARAMS)
+  assert.ok(out.ok)
+  if (out.ok) {
+    assert.equal(out.data.iteracoes, 1)                       // 1 correção aplicada
+    assert.equal(out.data.versaoFinal, 'orig [v1] [hum]')     // corrigido E humanizado
+  }
+})
+test('runIterativeReview: respeita o teto de iterações (3) se a nota nunca sobe', async () => {
+  const out = await new FakeReview([50, 50, 50, 50, 50]).runIterativeReview(REVIEW_PARAMS)
+  assert.ok(out.ok)
+  if (out.ok) assert.equal(out.data.iteracoes, 3)     // não passa de REVIEW_MAX_ITERATIONS
+})
+test('runIterativeReview: nota alta de cara não corrige nada', async () => {
+  const out = await new FakeReview([95]).runIterativeReview(REVIEW_PARAMS)
+  assert.ok(out.ok)
+  if (out.ok) { assert.equal(out.data.iteracoes, 0); assert.equal(out.data.versaoFinal, 'orig') }
+})
+
+// ── 14. Integração: pós-processamento completo ───────────────────────────────
 test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   const refs = [] as never[]
   const entrada = 'Resultado — média 204,5. summarise(groups = "drop"). a = TTestIndPower. \\(d^2\\). Falta (SOBRENOME, ANO).'
