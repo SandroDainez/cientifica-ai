@@ -174,7 +174,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
             type="button"
             onClick={gerarResumo}
             disabled={gerandoResumo}
-            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2 text-sm')}
+            className={cn(buttonVariants({ variant: 'default' }), 'gap-2 text-sm font-semibold shadow-sm')}
           >
             {gerandoResumo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {gerandoResumo ? 'Gerando resumo…' : 'Gerar resumo com IA'}
@@ -234,7 +234,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
             type="button"
             onClick={gerarAbstract}
             disabled={gerandoAbstract || !dados.resumo.trim()}
-            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2 text-sm')}
+            className={cn(buttonVariants({ variant: 'default' }), 'gap-2 text-sm font-semibold shadow-sm')}
           >
             {gerandoAbstract ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
             {gerandoAbstract ? 'Generating abstract…' : 'Generate abstract with AI'}
