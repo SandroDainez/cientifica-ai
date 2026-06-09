@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
+import { extrairTextoSecao } from '@/lib/ai/utils'
 import { ExportarClient } from './ExportarClient'
 import { Paywall } from '@/components/pagamento/Paywall'
 import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
@@ -43,12 +44,19 @@ export default async function ExportarPage({ params }: Props) {
   const totalFases = fluxo?.fases.length ?? 1
   const secoesComConteudo = secoes.filter(s => !!s.conteudo?.trim()).length
 
+  // Texto completo do trabalho (seções com conteúdo) para a Revisão Avançada.
+  const corpoTrabalho = secoes
+    .filter(s => !!s.conteudo?.trim())
+    .map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`)
+    .join('\n\n')
+
   return (
     <ExportarClient
       trabalho={trabalho}
       totalFases={totalFases}
       secoesComConteudo={secoesComConteudo}
       referencias={(rData ?? []) as Referencia[]}
+      corpoTrabalho={corpoTrabalho}
     />
   )
 }

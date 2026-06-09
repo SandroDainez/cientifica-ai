@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { getTipoLabel } from '@/components/trabalho/TipoTrabalhoIcon'
 import { useReferenceValidator } from '@/hooks/useReferenceValidator'
 import { PERIODICOS } from '@/lib/exportacao/periodicos'
+import { AdvancedReview } from '@/components/review/AdvancedReview'
 import type { Trabalho, Referencia } from '@/types'
 
 interface Props {
@@ -20,11 +21,13 @@ interface Props {
   totalFases: number
   secoesComConteudo: number
   referencias?: Referencia[]
+  /** Texto completo do trabalho (seções concatenadas) para a Revisão Avançada. */
+  corpoTrabalho?: string
 }
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error'
 
-export function ExportarClient({ trabalho, totalFases, secoesComConteudo, referencias }: Props) {
+export function ExportarClient({ trabalho, totalFases, secoesComConteudo, referencias, corpoTrabalho }: Props) {
   const [statusDocx, setStatusDocx] = useState<ExportStatus>('idle')
   const [statusPptx, setStatusPptx] = useState<ExportStatus>('idle')
 
@@ -186,6 +189,18 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
           )
         })()}
       </div>
+
+      {/* Revisão Avançada por IA — portão de qualidade antes de baixar */}
+      {corpoTrabalho?.trim() && (
+        <AdvancedReview
+          trabalho={corpoTrabalho}
+          tipo={getTipoLabel(trabalho.tipo_trabalho)}
+          tema={trabalho.titulo ?? ''}
+          area={trabalho.area_conhecimento ?? ''}
+          normas={(trabalho.formato_citacao ?? 'abnt').toUpperCase()}
+          idioma="pt-BR"
+        />
+      )}
 
       {/* Opções de exportação */}
       <div className="space-y-3">
