@@ -18,6 +18,7 @@ import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
+import { aplicarEdicoes, parseEdicoes } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService } from '@/lib/ai/reviewService'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -245,7 +246,40 @@ test('formatarReferencia: autor coletivo (WHO) não gera ", ." em APA/Vancouver'
   assert.ok(!/World Health Organization\s+\./.test(van), `Vancouver sem nome+ponto solto: ${van}`)
 })
 
-// ── 13. Revisor iterativo por IA (parsing + loop, sem chamar API) ────────────
+// ── 13. Edições cirúrgicas do "Aplicar com IA" (match robusto) ───────────────
+test('aplicarEdicoes: match exato substitui o trecho', () => {
+  const { texto, aplicadas } = aplicarEdicoes('A taxa subiu muito no período.', [{ buscar: 'subiu muito', substituir: 'aumentou' }])
+  assert.equal(aplicadas, 1)
+  assert.equal(texto, 'A taxa aumentou no período.')
+})
+test('aplicarEdicoes: match TOLERANTE a espaços/quebras (o que antes falhava)', () => {
+  // No texto a frase tem quebra de linha; o "buscar" do modelo vem com espaço.
+  const texto = 'Os achados indicam\nalta mortalidade por sepse no Brasil.'
+  const { texto: out, aplicadas } = aplicarEdicoes(texto, [
+    { buscar: 'Os achados indicam alta mortalidade por sepse no Brasil.', substituir: 'A busca cobriu o período de 2010 a 2024.' },
+  ])
+  assert.equal(aplicadas, 1)
+  assert.ok(out.includes('A busca cobriu o período'))
+  assert.ok(!out.includes('mortalidade'))
+})
+test('aplicarEdicoes: remoção (substituir vazio) limpa pontuação', () => {
+  const { texto, aplicadas } = aplicarEdicoes('Resultado importante. Nossa interpretação sugere algo. Fim.', [
+    { buscar: 'Nossa interpretação sugere algo. ', substituir: '' },
+  ])
+  assert.equal(aplicadas, 1)
+  assert.equal(texto, 'Resultado importante. Fim.')
+})
+test('aplicarEdicoes: NÃO mexe em linha de tabela', () => {
+  const { aplicadas } = aplicarEdicoes('| col | valor |', [{ buscar: '| col | valor |', substituir: '| x | y |' }])
+  assert.equal(aplicadas, 0)
+})
+test('parseEdicoes: lê JSON com cercas ```json', () => {
+  const eds = parseEdicoes('```json\n{"edicoes":[{"buscar":"a","substituir":"b"}]}\n```')
+  assert.equal(eds.length, 1)
+  assert.equal(eds[0].buscar, 'a')
+})
+
+// ── 14. Revisor iterativo por IA (parsing + loop, sem chamar API) ────────────
 test('extrairJsonObjeto: extrai JSON mesmo com ```json e texto ao redor', () => {
   const resp = 'Claro!\n```json\n{"nota_estimada": 85, "obj": {"a": "}"}}\n```\nfim'
   const j = extrairJsonObjeto(resp) as { nota_estimada: number; obj: { a: string } }

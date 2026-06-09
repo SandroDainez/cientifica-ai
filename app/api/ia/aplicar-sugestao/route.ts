@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callAI, streamStringComEfeito } from '@/lib/ai/stream'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
+import { parseEdicoes, aplicarEdicoes } from '@/lib/ai/aplicar-edicoes'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 
 export const maxDuration = 120
@@ -117,42 +118,4 @@ TEXTO CORRIGIDO (completo):`
   }
 
   return streamStringComEfeito(removerTravessoes(corrigido))
-}
-
-interface Edicao { buscar: string; substituir: string }
-
-/** Extrai e valida o array de edições do JSON retornado pelo modelo. */
-function parseEdicoes(raw: string): Edicao[] {
-  if (!raw) return []
-  // Remove cercas de código e isola o objeto JSON
-  let txt = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
-  const ini = txt.indexOf('{')
-  const fim = txt.lastIndexOf('}')
-  if (ini >= 0 && fim > ini) txt = txt.slice(ini, fim + 1)
-  try {
-    const obj = JSON.parse(txt) as { edicoes?: Edicao[] }
-    if (!Array.isArray(obj.edicoes)) return []
-    return obj.edicoes
-      .filter(e => e && typeof e.buscar === 'string' && typeof e.substituir === 'string' && e.buscar.length > 0)
-      .slice(0, 12)
-  } catch {
-    return []
-  }
-}
-
-/** Aplica as edições por substituição literal (1ª ocorrência). Protege tabelas. */
-function aplicarEdicoes(texto: string, edicoes: Edicao[]): { texto: string; aplicadas: number } {
-  let resultado = texto
-  let aplicadas = 0
-  for (const e of edicoes) {
-    // Nunca aceita edição que mexa em linha de tabela
-    if (/^\s*\|/m.test(e.buscar) || /^\s*\|/m.test(e.substituir)) continue
-    const idx = resultado.indexOf(e.buscar)
-    if (idx === -1) continue // trecho não bate verbatim → ignora (não arrisca)
-    resultado = resultado.slice(0, idx) + e.substituir + resultado.slice(idx + e.buscar.length)
-    aplicadas++
-  }
-  // Limpa eventuais linhas em branco triplas deixadas por remoções
-  resultado = resultado.replace(/\n{3,}/g, '\n\n')
-  return { texto: resultado, aplicadas }
 }
