@@ -162,6 +162,11 @@ test('CONTRATO apontamentos: descarta preferência de estilo (frase longa / troc
   // PROIBIDO pela calibração: frase longa e troca de palavra por gosto.
   assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Período muito longo com múltiplas subordinadas, prejudicando a clareza', sugestao: 'Dividir em duas frases' }), true)
   assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: "Uso impreciso de 'pontuais' - seria mais adequado 'específicas'", sugestao: 'Substituir por termo mais preciso' }), true)
+  // Família "poderia ser mais específico/detalhado" disfarçada de genérica/vaga.
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Frase genérica que não adiciona informação específica', sugestao: 'Remover ou especificar melhor' }), true)
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: "Afirmação muito genérica sobre 'literatura fragmentada'", sugestao: 'Ser mais específico sobre as lacunas' }), true)
+  // Afirmação SEM SUPORTE é erro real (pede citação) → NÃO descarta.
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Afirmação genérica sem suporte de fonte', sugestao: 'Adicionar citação' }), false)
   // REAL: repetição, redundância, concordância, ortografia → NÃO descarta.
   assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: "Repetição da expressão 'A literatura demonstra'", sugestao: 'Variar' }), false)
   assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Concordância verbal incorreta', sugestao: 'Corrigir' }), false)

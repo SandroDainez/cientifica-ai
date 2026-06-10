@@ -58,10 +58,15 @@ export function ehFalsoPositivoDataAtual(p: ApontamentoMinimo, anoAtual: number 
 export function ehPreferenciaEstilo(p: ApontamentoMinimo): boolean {
   if ((p.categoria ?? '') !== 'linguagem') return false
   const txt = `${p.problema ?? ''} ${p.sugestao ?? ''}`.toLowerCase()
-  if (/repeti|redund|concord|gram[aá]|ortog|grafia|acentua|pontua[çc]/.test(txt)) return false
+  // ERRO REAL — nunca tratar como estilo: repetição/redundância, gramática/ortografia,
+  // e afirmação SEM SUPORTE (essa pede citação, é problema legítimo).
+  if (/repeti|redund|concord|gram[aá]|ortog|grafia|acentua|pontua[çc]|sem (suporte|fundament|apoio|cita)|sem fonte/.test(txt)) return false
   const fraseLonga = /frase (muito )?longa|per[ií]odo (muito )?longo|dividir em (duas|mais|v[áa]rias) frases|m[uú]ltiplas (ora[çc][õo]es )?subordinadas|prejudica(ndo)? a (clareza|fluidez|flu[êe]ncia)/.test(txt)
   const escolhaPalavra = /uso impreciso|termo mais (preciso|adequado|espec[ií]fico)|seria mais adequado|palavra mais (precisa|adequada)|soaria melhor|poderia ser mais (clar|precis|espec[ií]fic|fluid|detalhad)/.test(txt)
-  return fraseLonga || escolhaPalavra
+  // "Poderia ser mais específico/detalhado" disfarçado: frase genérica/vaga, ser mais
+  // específico, não adiciona informação. A calibração proíbe — é gosto, não erro.
+  const vagueza = /(frase|afirma[çc][ãa]o|express[ãa]o) (muito )?(gen[ée]rica|vaga)|muito gen[ée]rica|ser mais espec[ií]fic|especificar melhor|n[ãa]o adiciona informa[çc][ãa]o|mais detalhad|pouco espec[ií]fic/.test(txt)
+  return fraseLonga || escolhaPalavra || vagueza
 }
 
 /** Normaliza para casamento tolerante (caixa, aspas curvas/retas, travessões, espaços). */
