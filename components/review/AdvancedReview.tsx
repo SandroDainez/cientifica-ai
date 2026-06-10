@@ -181,9 +181,9 @@ function DeltaCorrecao({ delta }: { delta: { notaAntes: number; notaDepois: numb
       </p>
       {!melhorou && (
         <p className="text-xs text-muted-foreground mt-1.5">
-          Os ajustes pontuais (gramática, citações, redação) foram salvos, mas não elevaram a nota: os apontamentos restantes
-          são de <strong>fundo</strong> — coerência, profundidade ou suporte das fontes — e não se resolvem trocando frases.
-          Reveja no Editor ou regenere as seções marcadas. A re-análise é uma nova leitura do revisor, então a lista pode variar.
+          As correções <strong>foram aplicadas e salvas no texto</strong>. A nota é uma <strong>estimativa</strong> do revisor que
+          oscila a cada leitura (ele sempre acha novos detalhes), então pode não subir mesmo com o texto melhor — confie no texto e
+          na lista de problemas, não no número. Os apontamentos que sobram costumam ser de fundo (profundidade, suporte das fontes).
         </p>
       )}
     </div>
@@ -225,41 +225,46 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     }
   }
 
+  // Aplica a correção EXATA que o revisor já entregou (trecho→correcao), de forma
+  // cirúrgica e SEM regenerar a seção (evita o efeito esteira). Devolve o corpo
+  // atualizado + quantas aplicou. Os problemas sem correção pronta vão para a
+  // geração de edição (corrigir) como fallback.
+  async function aplicarCorrecoesExatas(probs: ReviewProblema[]): Promise<{ totalAplicadas: number; corpo?: string }> {
+    const comCorrecao = probs.filter(p => (p.trecho?.trim().length ?? 0) >= 3 && typeof p.correcao === 'string')
+    const semCorrecao = probs.filter(p => p.categoria !== 'estrutura' && !((p.trecho?.trim().length ?? 0) >= 3 && typeof p.correcao === 'string'))
+    let totalAplicadas = 0
+    let corpo: string | undefined
+    if (comCorrecao.length > 0) {
+      const correcoes = comCorrecao.map(p => ({ trecho: p.trecho, correcao: p.correcao ?? '' }))
+      const res = await fetch('/api/review/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trabalhoId, correcoes }) })
+      const data = await res.json() as { ok?: boolean; totalAplicadas?: number; corpoAtualizado?: string }
+      if (res.ok && data.ok) { totalAplicadas += data.totalAplicadas ?? 0; corpo = data.corpoAtualizado ?? corpo }
+    }
+    if (semCorrecao.length > 0) {
+      const res = await fetch('/api/review/corrigir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trabalhoId, problemas: semCorrecao.map(descreverProblema) }) })
+      const data = await res.json() as { ok?: boolean; totalAplicadas?: number; corpoAtualizado?: string }
+      if (res.ok && data.ok) { totalAplicadas += data.totalAplicadas ?? 0; corpo = data.corpoAtualizado ?? corpo }
+    }
+    return { totalAplicadas, corpo }
+  }
+
   async function aplicarCorrecoes() {
-    // Descreve cada problema (com o trecho exato, quando houver) para o revisor
-    // localizar e corrigir. A correção surgical é gerada no servidor.
-    const problemas = corrigiveis.map(descreverProblema)
-    if (problemas.length === 0) {
+    if (corrigiveis.length === 0) {
       toast.warning('Os problemas apontados são estruturais — exigem ajuste manual no Editor.')
       return
     }
     setEstado('aplicando')
     try {
-      const res = await fetch('/api/review/corrigir', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trabalhoId, problemas }),
-      })
-      const data = await res.json() as {
-        ok?: boolean; totalAplicadas?: number; secoesAfetadas?: number; corpoAtualizado?: string; error?: string
-        diagnostico?: { geradas: number; inseguras: number; naoCasaram: number }
-      }
-      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha ao aplicar correções.')
-      if (!data.totalAplicadas) {
-        const d = data.diagnostico
-        let msg = 'Estes problemas precisam de ajuste manual no Editor.'
-        if (d) {
-          if (d.geradas === 0) msg = 'A IA não encontrou trechos pontuais para corrigir — os problemas parecem estruturais. Ajuste no Editor.'
-          else if (d.naoCasaram > 0) msg = `A IA propôs ${d.naoCasaram} correção(ões), mas o texto exato não foi localizado nas seções. Reanalise ou ajuste no Editor.`
-          else if (d.inseguras > 0) msg = `${d.inseguras} correção(ões) foram bloqueadas pela trava anti-invenção (evitam citações inventadas).`
-        }
-        toast.warning(msg)
+      const antes = analise
+      const { totalAplicadas, corpo } = await aplicarCorrecoesExatas(corrigiveis)
+      if (totalAplicadas === 0) {
+        toast.warning('Nada pôde ser aplicado com segurança — reanalise (Executar Revisão) para o revisor gerar as correções, ou ajuste no Editor.')
         setEstado('resultado')
         return
       }
-      const antes = analise
-      toast.success(`Apliquei ${data.totalAplicadas} ajuste(s) em ${data.secoesAfetadas} seção(ões)${data.totalAplicadas > problemas.length ? ' (alguns problemas exigiram mais de uma troca)' : ''}. Re-avaliando…`)
-      router.refresh() // o editor/seções refletem a correção salva
-      const depois = await analisar(data.corpoAtualizado ?? trabalho) // re-avalia com o texto corrigido
+      toast.success(`Apliquei ${totalAplicadas} correção(ões) exata(s). Re-avaliando…`)
+      router.refresh()
+      const depois = await analisar(corpo ?? trabalho)
       if (antes && depois) {
         setDelta({
           notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada,
@@ -304,18 +309,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       toast.error(e instanceof Error ? e.message : 'Erro na revisão profunda.')
       setEstado('resultado')
     }
-  }
-
-  // Uma passada do servidor: pesquisa+acrescenta fontes, reescreve as seções e
-  // devolve o corpo. Retorna {secoesRevisadas, corpoAtualizado} ou null em erro.
-  async function umaPassadaProfunda(problemas: string[], remover: string[]): Promise<{ secoesRevisadas: number; corpoAtualizado?: string } | null> {
-    const res = await fetch('/api/review/revisar', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trabalhoId, problemas, remover }),
-    })
-    const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; corpoAtualizado?: string; error?: string }
-    if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha na revisão.'); return null }
-    return { secoesRevisadas: data.secoesRevisadas ?? 0, corpoAtualizado: data.corpoAtualizado }
   }
 
   // LIMPEZA DETERMINÍSTICA: remove por código as referências marcadas "remover"
@@ -392,7 +385,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   // bater o teto de passadas. Cada passada tem as travas do servidor.
   async function revisaoFinalCompleta() {
     const MAX_PASSADAS = 3
-    const META_NOTA = 85
     setEstado('revisando')
     try {
       let atual = analise ?? await analisar(trabalho)
@@ -415,22 +407,23 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
 
       let passada = 0
       while (passada < MAX_PASSADAS) {
-        if (atual.nota_estimada >= META_NOTA && atual.problemas_encontrados.length === 0) break
+        if (atual.problemas_encontrados.length === 0) break
         setEstado('revisando')
-        toast.message(`Passada ${passada + 1}: pesquisando fontes, reescrevendo e aprofundando…`)
-        const passOut = await umaPassadaProfunda(atual.problemas_encontrados.map(descreverProblema), listaRemover(atual))
-        if (!passOut) break
-        if (passOut.secoesRevisadas === 0) {
-          toast.message('Nada mais pôde ser reescrito com segurança — encerrando.')
+        toast.message(`Passada ${passada + 1}: aplicando as correções exatas do revisor…`)
+        // Aplica a correção EXATA de cada problema (trecho→correcao) — cirúrgico,
+        // sem regenerar a seção (não reintroduz os mesmos padrões = sem esteira).
+        const { totalAplicadas, corpo } = await aplicarCorrecoesExatas(atual.problemas_encontrados)
+        if (totalAplicadas === 0) {
+          toast.message('Sem novas correções pontuais a aplicar — encerrando os ajustes.')
           break
         }
         router.refresh()
-        const nova = await analisar(passOut.corpoAtualizado ?? trabalho)
+        const nova = await analisar(corpo ?? trabalho)
         if (!nova) break
         passada++
-        const melhorou = nova.nota_estimada > atual.nota_estimada || nova.problemas_encontrados.length < atual.problemas_encontrados.length
+        const melhorou = nova.problemas_encontrados.length < atual.problemas_encontrados.length || nova.nota_estimada > atual.nota_estimada
         atual = nova
-        if (!melhorou) break // não oscila: para se uma passada não melhora
+        if (!melhorou) break // não oscila: para se uma passada não reduz problemas
       }
 
       // Passo final: COERÊNCIA GLOBAL (alinha intro↔objetivos↔resultados↔conclusão).
@@ -543,10 +536,10 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               <Button variant="ghost" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              <strong>Revisão final completa</strong>: o revisor pesquisa e acrescenta fontes reais onde falta, reescreve cada
-              seção (remove/ajusta/aprofunda), revisa de novo e repete até o trabalho ficar correto e de bom nível (até 3 passadas;
-              leva alguns minutos). <strong>Nunca inventa</strong> dados ou citações (trava anti-fabricação) e guarda a versão
-              anterior de cada seção — você pode restaurar pelo histórico no Editor. As demais opções fazem só parte disso.
+              <strong>Revisão final completa</strong>: remove o que não serve, aplica a <strong>correção exata</strong> de cada
+              problema (trecho→correção, cirúrgico — não regenera a seção, então não reintroduz os mesmos erros), alinha a coerência
+              e repete (até 3 passadas). <strong>Nunca inventa</strong> dados/citações e guarda a versão anterior de cada seção
+              (restaurável no histórico do Editor). “Só reescrever” faz uma reescrita mais profunda; “Coerência global” só alinha.
             </p>
           </div>
         )}
