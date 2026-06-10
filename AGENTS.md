@@ -94,6 +94,10 @@ Objetivo: TUDO que a revisão detecta de errado deve ser corrigido. A revisão
 ACHA (analyze) e a Revisão Profunda CORRIGE (reescreve). Regras travadas por
 teste (`CONTRATO revisão*`):
 
+- `lib/ai/reviewService.ts` → `callReview` (analyze): roda a `temperature: 0`. A
+  NOTA e os apontamentos têm de ser REPRODUTÍVEIS — o MESMO texto não pode dar 85
+  numa execução e 78 noutra (isso fazia o usuário "corrigir" de novo achando que
+  regrediu, quando o trabalho estava idêntico). NÃO subir a temperatura da análise.
 - `lib/ai/reviewPrompt.ts` (`REVIEW_SYSTEM_PROMPT` + `buildReviewUserPrompt`):
   • Injeta o ANO ATUAL — só é "data futura" ano POSTERIOR ao atual; não
     falso-flagar publicações recentes (ano corrente/anteriores). NUNCA remover.

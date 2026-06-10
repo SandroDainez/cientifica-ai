@@ -343,7 +343,10 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
           { role: 'system', content: REVIEW_SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.2,
+        // Nota e apontamentos PRECISAM ser reprodutíveis: o MESMO texto não pode
+        // pontuar 85 numa execução e 78 noutra (era o que fazia o usuário "corrigir"
+        // de novo achando que regrediu). temperature 0 = avaliação estável/determinística.
+        temperature: 0,
         // Correção devolve o texto completo → precisa de mais tokens de saída.
         max_tokens: solicitarCorrecao ? 16000 : 4096,
       })
