@@ -21,7 +21,7 @@ import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
-import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes } from '@/lib/referencias/dossie'
+import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -522,6 +522,21 @@ test('formatarRefsParaPrompt: injeta "Resumo da fonte" só nas selecionadas', ()
   assert.ok(out.includes('Resumo da fonte: Este estudo mostra'))   // a selecionada expõe o resumo
   const linhasFonte2 = out.split('\n').filter(l => l.includes('Fonte sem resumo'))
   assert.ok(linhasFonte2.every(l => !l.includes('Resumo da fonte')))  // a não-selecionada não
+})
+
+// ── 13e. BLOCO E: revisão lê os resumos das fontes citadas ────────────────────
+test('montarFontesParaRevisao: lista citação + título + resumo só das fontes com abstract', () => {
+  const refs = [
+    fakeRef('1', 'Mortalidade em UTI', 'Estudo de coorte prospectivo que avaliou a mortalidade em pacientes internados em UTI com diagnóstico de sepse grave e choque séptico ao longo de doze meses.'),
+    fakeRef('2', 'Sem resumo', undefined),
+  ]
+  const out = montarFontesParaRevisao(refs, 'abnt', 18)
+  assert.ok(out.includes('Mortalidade em UTI'))
+  assert.ok(out.includes('coorte prospectivo que avaliou'))
+  assert.ok(!out.includes('Sem resumo'))   // sem abstract → fora
+})
+test('montarFontesParaRevisao: vazio quando nenhuma fonte tem abstract', () => {
+  assert.equal(montarFontesParaRevisao([fakeRef('1', 'X', undefined)], 'abnt'), '')
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

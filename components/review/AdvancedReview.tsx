@@ -184,7 +184,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     try {
       const res = await fetch('/api/review/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...metadados, trabalho: texto, modoCorrecao: false }),
+        body: JSON.stringify({ ...metadados, trabalho: texto, modoCorrecao: false, trabalhoId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Falha na revisão.')

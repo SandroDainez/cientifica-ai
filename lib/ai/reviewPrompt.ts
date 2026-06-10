@@ -39,6 +39,7 @@ export const buildReviewUserPrompt = (params: {
   normas: string;
   idioma: string;
   solicitarCorrecao: boolean;
+  fontesResumo?: string;
 }) => `
 Revise o seguinte trabalho científico com máximo rigor.
 
@@ -48,7 +49,11 @@ METADADOS:
 - Área: ${params.area}
 - Normas: ${params.normas}
 - Idioma: ${params.idioma}
-
+${params.fontesResumo ? `
+FONTES CITADAS — RESUMO REAL DE CADA UMA (use para checar SUPORTE):
+Abaixo está o que cada fonte realmente diz (resumo do artigo). Para CADA citação no texto, confira se a fonte citada de fato sustenta a afirmação. Se a afirmação atribui à fonte um achado que o resumo dela NÃO apoia, registre como problema (categoria "citacao", gravidade "alta") com "trecho" = a frase com a citação indevida e "correcao" = a frase sem essa citação (ou com ressalva), e/ou em "referencias_suspeitas" com acao "corrigir_contexto"/"remover". NÃO invente nada; baseie-se apenas nos resumos abaixo.
+${params.fontesResumo}
+` : ''}
 TRABALHO:
 ${params.trabalho}
 

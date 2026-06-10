@@ -5,6 +5,9 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { reviewService, type ReviewParams, type ReviewErrorCode } from '@/lib/ai/reviewService'
+import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
+import { montarFontesParaRevisao } from '@/lib/referencias/dossie'
+import type { Referencia, FormatoCitacao } from '@/types'
 
 // Revisão pode ser longa (modelo grande) — aumenta o timeout da função.
 export const maxDuration = 300
@@ -17,6 +20,8 @@ const Schema = z.object({
   normas: z.string(),
   idioma: z.string(),
   modoCorrecao: z.boolean(),
+  trabalhoId: z.string().optional(),       // BLOCO E: p/ carregar fontes citadas
+  formato: z.string().optional(),          // formato de citação (abnt/vancouver/apa)
 })
 
 function statusDoErro(codigo: ReviewErrorCode): number {
@@ -48,8 +53,28 @@ export async function POST(request: Request) {
     )
   }
 
-  const { modoCorrecao, ...rest } = parsed.data
+  const { modoCorrecao, trabalhoId, formato, ...rest } = parsed.data
   const params: ReviewParams = rest
+
+  // BLOCO E: se houver trabalhoId, dá à revisão o RESUMO das fontes citadas,
+  // para ela conferir se cada citação tem suporte real na fonte. Best-effort.
+  if (trabalhoId) {
+    try {
+      const { data: trab } = await supabase
+        .from('trabalhos').select('id, formato_citacao').eq('id', trabalhoId).eq('usuario_id', user.id).single()
+      if (trab) {
+        const { data: refsData } = await supabase
+          .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
+        const refs = (refsData ?? []) as Referencia[]
+        if (refs.length > 0) {
+          const fmt = ((formato || (trab as { formato_citacao?: string }).formato_citacao) ?? 'abnt') as FormatoCitacao
+          const { citadas } = separarReferenciasCitadas(refs, params.trabalho, fmt)
+          const fontesResumo = montarFontesParaRevisao(citadas, fmt, 18)
+          if (fontesResumo) params.fontesResumo = fontesResumo
+        }
+      }
+    } catch { /* segue sem o resumo das fontes */ }
+  }
 
   const out = modoCorrecao
     ? await reviewService.analyzeAndCorrect(params)

@@ -9,7 +9,8 @@
 //
 // Tudo aqui é determinístico e puro → travado por teste de regressão.
 
-import type { Referencia } from '@/types'
+import type { Referencia, FormatoCitacao } from '@/types'
+import { citacaoInTexto } from '@/lib/referencias/formatar'
 
 // Stopwords PT + EN: palavras vazias que não ajudam a medir relevância.
 const STOPWORDS = new Set([
@@ -83,4 +84,17 @@ export function selecionarFontesRelevantes(
     .sort((a, b) => b.score - a.score || a.i - b.i)
     .slice(0, max)
     .map(x => x.ref)
+}
+
+/**
+ * BLOCO E — monta o bloco "FONTES CITADAS (com resumo)" para a Revisão Avançada
+ * conferir se cada citação tem suporte na fonte. Só entram fontes COM abstract;
+ * resumo curto (300 chars) para caber no orçamento de tokens da revisão.
+ */
+export function montarFontesParaRevisao(refs: Referencia[], formato: FormatoCitacao = 'abnt', max = 18): string {
+  const comAbstract = refs.filter(r => (r.abstract ?? '').trim().length >= 80).slice(0, max)
+  if (comAbstract.length === 0) return ''
+  return comAbstract
+    .map((ref, i) => `${citacaoInTexto(ref, formato, i + 1)} — "${ref.titulo}": ${resumirAbstract(ref.abstract ?? '', 300)}`)
+    .join('\n')
 }

@@ -63,6 +63,8 @@ export interface ReviewParams {
   area: string
   normas: string
   idioma: string
+  /** BLOCO E: resumo das fontes citadas, p/ a revisão checar suporte das citações. */
+  fontesResumo?: string
 }
 
 export interface IterativeReviewData {
@@ -183,7 +185,7 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
   private async callReview(params: ReviewParams, solicitarCorrecao: boolean): Promise<ReviewOutcome<ReviewResult>> {
     // Req. 7: valida o tamanho ANTES de enviar (estimativa grosseira ~4 chars/token).
     const limiteChars = REVIEW_MAX_TOKENS_INPUT * 4
-    if ((params.trabalho?.length ?? 0) > limiteChars) {
+    if (((params.trabalho?.length ?? 0) + (params.fontesResumo?.length ?? 0)) > limiteChars) {
       return {
         ok: false,
         codigo: 'INPUT_TOO_LARGE',
