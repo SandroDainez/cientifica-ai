@@ -74,6 +74,13 @@ mexer em geração/formatação, altere AQUI — nunca duplique a lógica em out
 Regras travadas por teste (`CONTRATO citações`/`CONTRATO geração`). Aplicam-se a
 QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
 
+- ÂNCORA TEMPORAL (`buildGerarSecaoPrompt`, travado por `CONTRATO geração`): o prompt
+  de geração injeta a DATA ATUAL (mês/ano). O modelo gerador tende a escrever datas
+  perto do treinamento dele (ex.: "busca conduzida em março de 2024") mesmo num
+  trabalho feito hoje → inconsistência temporal. A regra força a data da busca e o
+  recorte de anos a TERMINAREM no ano corrente. Exceção: se houver PERÍODO REAL do
+  estudo (dados_projeto), usar o real. NÃO remover essa injeção.
+
 - `lib/ai/prompts.ts` → `buildInstrucaoCitacaoReferencias()`: instrução ÚNICA de
   citação, usada PELAS DUAS rotas de geração (`gerar-secao` e
   `gerar-documento-projeto`). Exige AMPLITUDE (citar MUITAS fontes reais

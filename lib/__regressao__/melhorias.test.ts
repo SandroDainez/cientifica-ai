@@ -603,6 +603,16 @@ test('CONTRATO geração: TODO tipo de trabalho recebe a lista de refs + instru�
   assert.match(prompt, /Resumo da fonte/)   // ancoragem na fonte aplicada
 })
 
+test('CONTRATO geração: injeta a DATA ATUAL (âncora temporal) p/ a busca não sair no passado', () => {
+  const fase = { id: 'metodologia', chave_secao: 'metodologia', nome: 'Metodologia', instrucoes: 'x', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
+  const prompt = buildGerarSecaoPrompt(fase, { titulo: 'Sepse no Brasil', formato_citacao: 'abnt' })
+  const anoAtual = new Date().getFullYear()
+  assert.match(prompt, /Data atual:/)
+  assert.ok(prompt.includes(String(anoAtual)), 'injeta o ano atual no prompt')
+  assert.match(prompt, /NUNCA uma data passada/i)
+  assert.match(prompt, /per[ií]odo real/i)   // exceção: respeita período real informado
+})
+
 test('formatarRefsParaPrompt: injeta "Resumo da fonte" só nas selecionadas', () => {
   const refs = [
     fakeRef('1', 'Fonte com resumo', 'Este estudo mostra que o tratamento reduz a mortalidade em 30%.'),
