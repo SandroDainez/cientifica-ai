@@ -5,8 +5,10 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
-import { acharRefPorCitacao, extrairSobrenomeAno, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
+import { acharRefPorCitacao, extrairSobrenomeAno, removerEntradaDeCitacoes, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
+import { ordenarReferencias } from '@/lib/referencias/formatar'
+import { filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import type { SecaoTrabalho, Referencia, FormatoCitacao, Trabalho } from '@/types'
 
@@ -35,10 +37,6 @@ export async function POST(request: Request) {
     .from('trabalhos').select('id, formato_citacao').eq('id', trabalhoId).eq('usuario_id', user.id).single()
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
   const formato: FormatoCitacao = (trabalhoData as Trabalho).formato_citacao ?? 'abnt'
-  if (formato === 'vancouver') {
-    // Vancouver é numérico [N]; remover do meio renumeraria tudo → não saneamos aqui.
-    return NextResponse.json({ ok: true, refsRemovidas: 0, mensagem: 'Saneamento automático não se aplica ao formato Vancouver.' })
-  }
 
   const { data: refsData } = await supabase.from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
   const referencias = (refsData ?? []) as Referencia[]
@@ -59,6 +57,16 @@ export async function POST(request: Request) {
     .eq('trabalho_id', trabalhoId).order('ordem')
   const secoes = (secoesData ?? []) as Pick<SecaoTrabalho, 'nome_secao' | 'chave_secao' | 'conteudo' | 'status'>[]
 
+  // Vancouver: posição [N] de cada ref-alvo na lista citável ordenada (p/ renumerar).
+  const posicoesVancouver: number[] = []
+  if (formato === 'vancouver' && alvos.size > 0) {
+    const ordenadas = ordenarReferencias(filtrarRefsCitaveis(referencias), 'vancouver')
+    for (const id of alvos.keys()) {
+      const idx = ordenadas.findIndex(r => r.id === id)
+      if (idx >= 0) posicoesVancouver.push(idx + 1)
+    }
+  }
+
   // 1) Exclui as referências off-topic da TABELA (as órfãs não têm linha no banco).
   const ids = [...alvos.keys()]
   if (ids.length > 0) await supabase.from('referencias').delete().in('id', ids).eq('trabalho_id', trabalhoId)
@@ -72,15 +80,21 @@ export async function POST(request: Request) {
     if (!conteudo.trim() || secao.chave_secao === 'resumo' || secao.chave_secao === 'referencias' || conteudo.trim().startsWith('{')) continue
     let texto = conteudo
     let mexeu = false
-    for (const ref of alvos.values()) {
-      const sob = ref.autores?.[0]?.sobrenome
-      if (!sob || !ref.ano) continue
-      const r = removerEntradaDeCitacoes(texto, sob, ref.ano)
+    if (formato === 'vancouver') {
+      // Numérico: remove [N] das refs-alvo e RENUMERA o resto (consistente c/ a lista).
+      const r = renumerarVancouverRemovendo(texto, posicoesVancouver)
       if (r.removidas > 0) { texto = r.texto; citacoesRemovidas += r.removidas; mexeu = true }
-    }
-    for (const o of orfas) {
-      const r = removerEntradaDeCitacoes(texto, o.sobrenome, o.ano)
-      if (r.removidas > 0) { texto = r.texto; citacoesRemovidas += r.removidas; mexeu = true }
+    } else {
+      for (const ref of alvos.values()) {
+        const sob = ref.autores?.[0]?.sobrenome
+        if (!sob || !ref.ano) continue
+        const r = removerEntradaDeCitacoes(texto, sob, ref.ano)
+        if (r.removidas > 0) { texto = r.texto; citacoesRemovidas += r.removidas; mexeu = true }
+      }
+      for (const o of orfas) {
+        const r = removerEntradaDeCitacoes(texto, o.sobrenome, o.ano)
+        if (r.removidas > 0) { texto = r.texto; citacoesRemovidas += r.removidas; mexeu = true }
+      }
     }
     if (mexeu && texto !== conteudo) novoPorChave.set(secao.chave_secao, texto)
   }

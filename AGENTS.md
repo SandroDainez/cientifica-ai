@@ -120,8 +120,10 @@ CÓDIGO — não depende do modelo: `acharRefPorCitacao` casa a citação textua
 ref real (sobrenome+ano); `removerEntradaDeCitacoes` apaga as citações do corpo
 INCLUSIVE dentro de grupos "(A; B, 2022; C, 2023)" (split por ';' que segue um ano),
 limpa pontuação, faz backup e exclui a ref da lista. Roda como passo 0 da "Revisão
-final completa" e como botão "Remover N ref(s) que não servem". Vancouver é pulado
-(numérico). NÃO regredir para remoção dependente de LLM.
+final completa" e como botão "Remover N ref(s) que não servem". TODOS os formatos:
+ABNT/APA via `removerEntradaDeCitacoes`; Vancouver via `renumerarVancouverRemovendo`
+(remove `[k]` e renumera os maiores → consistente com a bibliografia recompilada da
+tabela). NÃO regredir para remoção dependente de LLM nem reintroduzir "pula Vancouver".
 
 ## Coerência global (cross-seção) — REGRA DO APP
 

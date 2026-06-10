@@ -35,6 +35,31 @@ export function acharRefPorCitacao(refs: Referencia[], citacao: string): Referen
 }
 
 /**
+ * VANCOUVER: remove com segurança as citações [N] das referências em `posicoesRemovidas`
+ * (posições 1-based na lista ordenada) e RENUMERA o resto — `[j]` com j > k vira `[j-k_count]`.
+ * Mantém o corpo consistente com a bibliografia recompilada (que renumera 1..M).
+ * Trabalha com colchetes simples `[N]` (formato gerado pelo app). Pura/testada.
+ */
+export function renumerarVancouverRemovendo(corpo: string, posicoesRemovidas: number[]): { texto: string; removidas: number } {
+  if (!corpo || posicoesRemovidas.length === 0) return { texto: corpo, removidas: 0 }
+  const removidas = new Set(posicoesRemovidas)
+  let cont = 0
+  let out = corpo.replace(/\[(\d+)\]/g, (_full, numStr: string) => {
+    const n = Number.parseInt(numStr, 10)
+    if (removidas.has(n)) { cont++; return '' }          // citação da ref removida → apaga
+    const shift = posicoesRemovidas.filter(p => p < n).length
+    return `[${n - shift}]`                               // decrementa pelas removidas antes dele
+  })
+  // Limpeza de pontuação/espaço órfão deixado pela citação removida.
+  out = out
+    .replace(/ +([.,;:)])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/,\s*\./g, '.')
+    .replace(/ +\./g, '.')
+  return { texto: out, removidas: cont }
+}
+
+/**
  * Remove TODAS as citações parentéticas de uma referência (1º sobrenome + ano) do
  * texto — inclusive quando ela está DENTRO de um grupo. Em ABNT, refs num mesmo
  * parêntese são separadas por ';' que vem DEPOIS de um ano; o ';' entre autores de

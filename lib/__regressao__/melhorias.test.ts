@@ -24,7 +24,7 @@ import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProf
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
 import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
-import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno } from '@/lib/revisao/sanear-refs'
+import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -764,6 +764,27 @@ test('ISOLAMENTO: toda rota de revisão exige posse (usuario_id) + escopo (traba
     assert.ok(/usuario_id['"]\s*,\s*user\.id/.test(src), `rota ${r}: falta checagem de posse (usuario_id)`)
     assert.ok(/trabalho_?[iI]d/.test(src), `rota ${r}: falta escopo por trabalho`)
   }
+})
+
+// ── 13o. Vancouver: remover ref renumera o resto (consistente com a lista) ────
+test('renumerarVancouverRemovendo: remove [k] e decrementa os maiores', () => {
+  // Remove a ref #2. Esperado: [2] some; [3]→[2], [4]→[3]; [1] fica.
+  const r = renumerarVancouverRemovendo('Achado A [1]. Achado B [2]. Achado C [3] e D [4].', [2])
+  assert.equal(r.removidas, 1)
+  assert.ok(r.texto.includes('[1]'))
+  assert.ok(!/\[4\]/.test(r.texto))        // não sobra o número antigo mais alto
+  assert.ok(r.texto.includes('[3]'))       // [4] virou [3]
+  assert.ok(!r.texto.includes('B .') && !r.texto.includes('B  '))  // limpou pontuação órfã
+})
+test('renumerarVancouverRemovendo: múltiplas remoções deslocam corretamente', () => {
+  const r = renumerarVancouverRemovendo('[1] [2] [3] [4] [5] [6]', [2, 5])
+  // [1]→[1], [2]rm, [3]→[2], [4]→[3], [5]rm, [6]→[4]
+  assert.equal(r.texto.trim(), '[1] [2] [3] [4]')
+  assert.equal(r.removidas, 2)
+})
+test('renumerarVancouverRemovendo: sem posições não muda nada', () => {
+  const t = 'texto [1] e [2].'
+  assert.equal(renumerarVancouverRemovendo(t, []).texto, t)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────
