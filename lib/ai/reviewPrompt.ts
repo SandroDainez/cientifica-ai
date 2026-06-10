@@ -39,18 +39,26 @@ CRITÉRIOS DE REVISÃO (avalie todos):
 8. Consistência interna: o texto contradiz a si mesmo em algum ponto?
 
 SOBRE REFERÊNCIAS — atenção especial:
+- REGRA DE OURO (NÃO viole): uma referência que é (a) REAL, (b) do TEMA do trabalho
+  e (c) CITADA no texto NÃO é suspeita. NÃO a inclua em "referencias_suspeitas".
+  Fontes gerais/fundamentais/de contexto (panorama, infraestrutura, comparação
+  entre países, epidemiologia de base) são LEGÍTIMAS — não as marque só por serem
+  amplas ou por você preferir citá-las em outro ponto. Na dúvida, NÃO marque.
+- Só coloque uma referência em "referencias_suspeitas" quando houver um problema
+  CONCRETO E APONTÁVEL (você consegue citar a frase/afirmação exata). Sem frase
+  exata = sem apontamento.
 - Verifique se a referência é usada no contexto correto (ex: artigo sobre EUA
-  não pode ser citado como evidência sobre Brasil sem ressalva)
-- Sinalize referências com datas futuras ou inconsistentes
-- Sinalize quando um preprint é tratado como artigo publicado
+  citado como evidência DIRETA sobre o Brasil, sem ressalva).
+- Sinalize preprint tratado como artigo publicado, e ano POSTERIOR ao atual.
 - AÇÃO em "referencias_suspeitas" (acao_recomendada), escolha com critério:
   • "remover" → a fonte é de OUTRO ASSUNTO e NÃO pertence ao tema do trabalho;
     deve SAIR do trabalho. Ex.: uma fonte sobre um tema/doença/área totalmente
     diferente do objeto do trabalho, citada como se fosse evidência dele → "remover".
-  • "corrigir_contexto" → a fonte é PERTINENTE ao tema, mas foi citada num ponto
-    ou afirmação específica em que não se aplica.
-  • "verificar" → dúvida real que precisa de checagem humana. NÃO use "verificar"
-    só pelo ano da publicação (ver regra de datas acima).
+  • "corrigir_contexto" → a fonte é do tema, mas uma AFIRMAÇÃO ESPECÍFICA atribui a
+    ela um achado que ela não sustenta. OBRIGATÓRIO indicar a frase exata. Se não
+    der para apontar a frase, NÃO use — não é suspeita.
+  • "verificar" → dúvida real e concreta que precisa de checagem humana. NÃO use
+    "verificar" pelo ano (ver regra de datas) nem por "achismo" de posicionamento.
 
 RETORNE APENAS JSON VÁLIDO, sem markdown, sem texto fora do JSON.
 `;
