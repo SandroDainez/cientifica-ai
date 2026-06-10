@@ -65,6 +65,52 @@ async function buscarAbstractsPubMed(ids: string[]): Promise<Map<string, string>
   return mapa
 }
 
+/** Busca o abstract de UM artigo pelo DOI (Crossref works/{doi}). Best-effort. */
+async function buscarAbstractDoi(doi: string): Promise<string> {
+  try {
+    const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
+      headers: { 'User-Agent': 'Cientifica-AI/1.0 (mailto:app@cientifica-ai.com)' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return ''
+    const data = await res.json()
+    return limparAbstract((data?.message as Record<string, unknown> | undefined)?.abstract as string | undefined)
+  } catch { return '' }
+}
+
+/**
+ * BACKFILL de abstracts em referências JÁ existentes (importadas antes do BLOCO A,
+ * sem abstract). Recebe refs com id/doi/pmid e devolve um mapa id → abstract para
+ * as que faltam. PubMed em lote (1 requisição); DOIs restantes via Crossref,
+ * sequencial e limitado. Falhas são silenciosas (best-effort).
+ */
+export async function enriquecerAbstractsFaltantes(
+  refs: { id: string; doi?: string | null; pmid?: string | null; abstract?: string | null }[],
+  opts: { maxDoi?: number } = {},
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const faltantes = refs.filter(r => !(r.abstract ?? '').trim() && (r.pmid || r.doi))
+  if (faltantes.length === 0) return out
+
+  // 1) PubMed em lote (rápido — uma requisição para todos os PMIDs)
+  const pmids = faltantes.map(r => r.pmid).filter((p): p is string => !!p)
+  if (pmids.length > 0) {
+    const mapa = await buscarAbstractsPubMed(pmids)
+    for (const r of faltantes) {
+      const ab = r.pmid ? mapa.get(r.pmid) : undefined
+      if (ab) out.set(r.id, ab)
+    }
+  }
+
+  // 2) DOIs restantes via Crossref (sequencial, limitado para não estourar tempo)
+  const restantesDoi = faltantes.filter(r => r.doi && !out.has(r.id)).slice(0, opts.maxDoi ?? 12)
+  for (const r of restantesDoi) {
+    const ab = await buscarAbstractDoi(r.doi as string)
+    if (ab) out.set(r.id, ab)
+  }
+  return out
+}
+
 // ── Helper ──────────────────────────────────────────────────────────────────
 
 function calcIniciais(nome: string): string {

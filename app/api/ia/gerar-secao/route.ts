@@ -11,7 +11,7 @@ import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias
 export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
-import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
+import { buscarRefsExternas, enriquecerAbstractsFaltantes } from '@/lib/referencias/buscar-externo'
 import { ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, Referencia } from '@/types'
@@ -189,6 +189,25 @@ export async function POST(request: Request) {
   })
   referencias = refsResult.referencias
   const guardrail = refsResult.guardrail
+
+  // ── Backfill de abstracts (BLOCO A→C) ──────────────────────────────────────
+  // Refs antigas não têm abstract; sem ele a geração não consegue "ler a fonte".
+  // Busca os que faltam (PubMed em lote + DOIs), persiste e usa já nesta geração.
+  try {
+    const novosAbstracts = await enriquecerAbstractsFaltantes(
+      referencias.map(r => ({ id: r.id, doi: r.doi, pmid: r.pmid, abstract: r.abstract })),
+    )
+    if (novosAbstracts.size > 0) {
+      await Promise.allSettled(
+        [...novosAbstracts].map(([id, abstract]) =>
+          supabase.from('referencias').update({ abstract }).eq('id', id)),
+      )
+      referencias = referencias.map(r => novosAbstracts.has(r.id) ? { ...r, abstract: novosAbstracts.get(r.id) } : r)
+      console.log(`[gerar-secao] backfill de abstracts: +${novosAbstracts.size}`)
+    }
+  } catch (e) {
+    console.error('[gerar-secao] backfill de abstracts falhou (segue sem):', e)
+  }
 
 
   // Carrega conteúdo das seções anteriores para contexto
