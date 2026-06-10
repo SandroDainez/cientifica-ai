@@ -367,15 +367,15 @@ export function buildGerarSecaoPrompt(
   partes.push(`## Seção a redigir: ${fase.nome}`)
   partes.push(`\n${fase.instrucoes}`)
 
-  // ANCORA TEMPORAL: o modelo gerador tende a usar datas perto do treinamento dele
-  // (ex.: "busca conduzida em março de 2024") mesmo quando o trabalho é feito hoje —
-  // o que cria inconsistência temporal num trabalho gerado anos depois. Injeta a data
-  // ATUAL para que a data da busca e o recorte de anos saiam no presente. Universal.
+  // ANCORA TEMPORAL (TODO tipo de trabalho, qualquer área): o modelo gerador tende a
+  // usar datas perto do treinamento dele (ex.: "conduzido em março de 2024") mesmo
+  // quando o trabalho é feito hoje — inconsistência temporal num trabalho gerado anos
+  // depois. Injeta a data ATUAL para que QUALQUER referência temporal saia no presente.
   const MESES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
   const agora = new Date()
   const mesAtual = MESES_PT[agora.getMonth()]
   const anoAtual = agora.getFullYear()
-  partes.push(`\n**Data atual: ${mesAtual} de ${anoAtual}.** Quando descrever QUANDO a busca/levantamento bibliográfico foi feito ou o RECORTE temporal das publicações (em revisões), use a data atual (${mesAtual}/${anoAtual}) e TERMINE o intervalo de anos em ${anoAtual} — NUNCA uma data passada (não escreva "busca em março de 2024" se o ano é ${anoAtual}). Exceção: se o pesquisador informou um PERÍODO REAL do estudo (campo Período/notas), use o período real — esta regra vale só para a data de busca da literatura.`)
+  partes.push(`\n**Data atual: ${mesAtual} de ${anoAtual}.** Ao mencionar QUANDO algo foi feito por este trabalho (busca/levantamento bibliográfico, coleta de dados, condução do estudo, experimento, análise) ou QUALQUER recorte temporal de anos, use a data atual (${mesAtual}/${anoAtual}) e termine os intervalos de anos em ${anoAtual} — NUNCA uma data passada por hábito (não escreva "em março de 2024" se o ano é ${anoAtual}). Exceção: se o pesquisador informou data ou PERÍODO REAL do estudo (campo Período/notas), use SEMPRE os reais. Vale para qualquer tipo de trabalho e qualquer área.`)
 
   if (dadosTrabalho.titulo) {
     partes.push(`\n**Título do trabalho:** ${dadosTrabalho.titulo}`)
