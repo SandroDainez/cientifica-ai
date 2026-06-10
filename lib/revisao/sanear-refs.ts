@@ -12,19 +12,26 @@ import type { Referencia } from '@/types'
 const normSob = (s: string) =>
   (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 
+/** Extrai o 1º sobrenome + ano de uma citação/referência textual. null se não der. */
+export function extrairSobrenomeAno(citacao: string): { sobrenome: string; ano: number } | null {
+  const my = citacao.match(/(?:19|20)\d{2}/)
+  if (!my) return null
+  const ano = Number.parseInt(my[0], 10)
+  const antesAno = citacao.slice(0, citacao.indexOf(my[0]))
+  const sobrenome = antesAno.match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+/)?.[0]
+  if (!sobrenome) return null
+  return { sobrenome, ano }
+}
+
 /**
  * Casa uma citação textual ("GALVÃO; SILVA, 2022", "SANTOS et al., 2022") com a
  * referência real da lista, pelo sobrenome do 1º autor + ano. Retorna null se não achar.
  */
 export function acharRefPorCitacao(refs: Referencia[], citacao: string): Referencia | null {
-  const my = citacao.match(/(?:19|20)\d{2}/)
-  if (!my) return null
-  const ano = Number.parseInt(my[0], 10)
-  const antesAno = citacao.slice(0, citacao.indexOf(my[0]))
-  const primeira = antesAno.match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+/)?.[0]
-  if (!primeira) return null
-  const alvo = normSob(primeira)
-  return refs.find(r => r.ano === ano && normSob(r.autores?.[0]?.sobrenome ?? '') === alvo) ?? null
+  const sa = extrairSobrenomeAno(citacao)
+  if (!sa) return null
+  const alvo = normSob(sa.sobrenome)
+  return refs.find(r => r.ano === sa.ano && normSob(r.autores?.[0]?.sobrenome ?? '') === alvo) ?? null
 }
 
 /**

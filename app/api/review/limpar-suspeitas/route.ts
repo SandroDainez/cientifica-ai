@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
-import { acharRefPorCitacao, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
+import { acharRefPorCitacao, extrairSobrenomeAno, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import type { SecaoTrabalho, Referencia, FormatoCitacao, Trabalho } from '@/types'
 
@@ -43,13 +43,18 @@ export async function POST(request: Request) {
   const referencias = (refsData ?? []) as Referencia[]
 
   // Casa cada citação marcada "remover" com a referência real (sobrenome + ano).
+  // As que NÃO têm referência no banco (citações órfãs) também são removidas do
+  // texto por sobrenome+ano — uma citação sem referência é um defeito.
   const alvos = new Map<string, Referencia>()
+  const orfas: { sobrenome: string; ano: number }[] = []
   for (const cit of remover) {
     const ref = acharRefPorCitacao(referencias, cit)
-    if (ref) alvos.set(ref.id, ref)
+    if (ref) { alvos.set(ref.id, ref); continue }
+    const sa = extrairSobrenomeAno(cit)
+    if (sa) orfas.push(sa)
   }
-  if (alvos.size === 0) {
-    return NextResponse.json({ ok: true, refsRemovidas: 0, mensagem: 'Nenhuma das referências indicadas foi localizada na lista.' })
+  if (alvos.size === 0 && orfas.length === 0) {
+    return NextResponse.json({ ok: true, refsRemovidas: 0, mensagem: 'Nada a remover (referências não localizadas).' })
   }
 
   const { data: secoesData } = await supabase
@@ -71,6 +76,10 @@ export async function POST(request: Request) {
       const r = removerEntradaDeCitacoes(texto, sob, ref.ano)
       if (r.removidas > 0) { texto = r.texto; citacoesRemovidas += r.removidas; mexeu = true }
     }
+    for (const o of orfas) {
+      const r = removerEntradaDeCitacoes(texto, o.sobrenome, o.ano)
+      if (r.removidas > 0) { texto = r.texto; citacoesRemovidas += r.removidas; mexeu = true }
+    }
     if (mexeu && texto !== conteudo) novoPorChave.set(secao.chave_secao, texto)
   }
 
@@ -81,15 +90,15 @@ export async function POST(request: Request) {
     await supabase.from('secoes_trabalho').update({ conteudo: texto, status: 'editado' }).eq('trabalho_id', trabalhoId).eq('chave_secao', chave)
   }
 
-  // Exclui as referências off-topic da lista.
+  // Exclui as referências off-topic da lista (as órfãs não têm linha no banco).
   const ids = [...alvos.keys()]
-  await supabase.from('referencias').delete().in('id', ids).eq('trabalho_id', trabalhoId)
+  if (ids.length > 0) await supabase.from('referencias').delete().in('id', ids).eq('trabalho_id', trabalhoId)
 
   const corpoAtualizado = secoes
     .filter(s => (novoPorChave.get(s.chave_secao) ?? s.conteudo)?.trim())
     .map(s => `${s.nome_secao}\n\n${extrairTextoSecao(novoPorChave.get(s.chave_secao) ?? s.conteudo ?? '')}`)
     .join('\n\n')
 
-  console.log(`[review/limpar-suspeitas] refs removidas=${alvos.size} citações apagadas=${citacoesRemovidas} seções=${novoPorChave.size}`)
-  return NextResponse.json({ ok: true, refsRemovidas: alvos.size, citacoesRemovidas, secoesAfetadas: novoPorChave.size, corpoAtualizado })
+  console.log(`[review/limpar-suspeitas] refs removidas=${alvos.size} órfãs=${orfas.length} citações apagadas=${citacoesRemovidas} seções=${novoPorChave.size}`)
+  return NextResponse.json({ ok: true, refsRemovidas: alvos.size, orfasRemovidas: orfas.length, itensRemovidos: alvos.size + orfas.length, citacoesRemovidas, secoesAfetadas: novoPorChave.size, corpoAtualizado })
 }

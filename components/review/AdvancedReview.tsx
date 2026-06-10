@@ -41,10 +41,22 @@ const CATEGORIA_ROTULO: Record<ReviewProblema['categoria'], string> = {
   referencia: 'Referência', coerencia: 'Coerência', formatacao: 'Formatação',
 }
 
-/** Referências que o revisor marcou como "remover" (não pertencem ao trabalho). */
+// Sinais de que uma referência é OFF-TOPIC (não pertence ao trabalho) — mesmo quando
+// o revisor a rotula como "corrigir_contexto" em vez de "remover".
+const OFF_TOPIC = /n[ãa]o (se )?relacion|n[ãa]o tem rela|outro tema|tema (completamente )?diferente|n[ãa]o pertence|fora do (tema|escopo)|sem rela[çc][ãa]o com o tema|assunto diferente|n[ãa]o se relaciona diretamente/i
+// Citação órfã: mencionada no texto mas SEM referência correspondente na lista.
+const ORFA = /n[ãa]o (est[áa]|presente|consta|aparece) (n[ao]s? )?(refer|lista)|mencionada no texto mas n[ãa]o/i
+
+/** Referências/citações a ELIMINAR: "remover", off-topic, ou citação órfã (sem ref). */
 function listaRemover(a: ReviewResult): string[] {
   return (a.referencias_suspeitas ?? [])
-    .filter(r => r.acao_recomendada === 'remover')
+    .filter(r => {
+      const p = r.problema ?? ''
+      if (r.acao_recomendada === 'remover') return true
+      if (OFF_TOPIC.test(p)) return true     // off-topic, qualquer que seja o rótulo
+      if (ORFA.test(p)) return true          // citação sem referência → tirar
+      return false
+    })
     .map(r => `${r.referencia}${r.problema ? ` — ${r.problema}` : ''}`)
 }
 
@@ -314,9 +326,9 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trabalhoId, remover }),
     })
-    const data = await res.json() as { ok?: boolean; refsRemovidas?: number; corpoAtualizado?: string; error?: string }
+    const data = await res.json() as { ok?: boolean; itensRemovidos?: number; corpoAtualizado?: string; error?: string }
     if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha ao remover referências.'); return null }
-    return { refsRemovidas: data.refsRemovidas ?? 0, corpoAtualizado: data.corpoAtualizado }
+    return { refsRemovidas: data.itensRemovidos ?? 0, corpoAtualizado: data.corpoAtualizado }
   }
 
   // Botão standalone: remover referências que não servem.
@@ -328,8 +340,8 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       const antes = analise
       const out = await passadaLimpeza(remover)
       if (!out) { setEstado('resultado'); return }
-      if (out.refsRemovidas === 0) { toast.message('Não localizei essas referências na lista (talvez já tenham saído).'); setEstado('resultado'); return }
-      toast.success(`${out.refsRemovidas} referência(s) off-topic removida(s) do texto e da lista. Re-avaliando…`)
+      if (out.refsRemovidas === 0) { toast.message('Nada a remover (já saíram ou não localizadas).'); setEstado('resultado'); return }
+      toast.success(`${out.refsRemovidas} item(ns) suspeito(s) removido(s) do texto/lista. Re-avaliando…`)
       router.refresh()
       const depois = await analisar(out.corpoAtualizado ?? trabalho)
       if (antes && depois) setDelta({ notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada, qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length })
@@ -520,7 +532,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               </Button>
               {analise && listaRemover(analise).length > 0 && (
                 <Button onClick={removerNaoServem} variant="outline" className="gap-2 text-red-600 dark:text-red-400 border-red-300 dark:border-red-800">
-                  <FileWarning className="h-4 w-4" /> Remover {listaRemover(analise).length} ref(s) que não servem
+                  <FileWarning className="h-4 w-4" /> Remover {listaRemover(analise).length} item(ns) suspeito(s)
                 </Button>
               )}
               {corrigiveis.length > 0 && (

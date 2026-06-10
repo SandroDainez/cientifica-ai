@@ -24,7 +24,7 @@ import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProf
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
 import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
-import { acharRefPorCitacao, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
+import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno } from '@/lib/revisao/sanear-refs'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
@@ -702,6 +702,16 @@ test('removerEntradaDeCitacoes: remove citação SOLO e limpa pontuação', () =
   assert.equal(r.removidas, 1)
   assert.ok(r.texto.includes('estudo isolado.'))
   assert.ok(!r.texto.includes('SANTOS'))
+})
+test('extrairSobrenomeAno: extrai 1º sobrenome + ano (p/ remover citação órfã sem ref no banco)', () => {
+  assert.deepEqual(extrairSobrenomeAno('MANFROI; FACCIOLI JAPUR, 2021'), { sobrenome: 'MANFROI', ano: 2021 })
+  assert.deepEqual(extrairSobrenomeAno('RAGAVAN, 2012 — citação órfã'), { sobrenome: 'RAGAVAN', ano: 2012 })
+  assert.equal(extrairSobrenomeAno('sem ano aqui'), null)
+})
+test('removerEntradaDeCitacoes: remove citação órfã (sobrenome+ano sem referência) do texto', () => {
+  const r = removerEntradaDeCitacoes('alguns autores (MANFROI; FACCIOLI JAPUR, 2021) sugerem isso.', 'MANFROI', 2021)
+  assert.equal(r.removidas, 1)
+  assert.ok(!r.texto.includes('MANFROI'))
 })
 test('removerEntradaDeCitacoes: NÃO remove ref de outro ano/sobrenome', () => {
   const r = removerEntradaDeCitacoes('texto (SILVA, 2020; COSTA, 2021) fim.', 'Galvão', 2022)
