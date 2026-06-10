@@ -27,6 +27,14 @@ SOBRE REFERÊNCIAS — atenção especial:
   não pode ser citado como evidência sobre Brasil sem ressalva)
 - Sinalize referências com datas futuras ou inconsistentes
 - Sinalize quando um preprint é tratado como artigo publicado
+- AÇÃO em "referencias_suspeitas" (acao_recomendada), escolha com critério:
+  • "remover" → a fonte é de OUTRO ASSUNTO e NÃO pertence ao tema do trabalho;
+    deve SAIR do trabalho. Ex.: artigo sobre suicídio, aneurisma ou câncer num
+    trabalho sobre sepse → "remover".
+  • "corrigir_contexto" → a fonte é PERTINENTE ao tema, mas foi citada num ponto
+    ou afirmação específica em que não se aplica.
+  • "verificar" → dúvida real que precisa de checagem humana. NÃO use "verificar"
+    só pelo ano da publicação (ver regra de datas acima).
 
 RETORNE APENAS JSON VÁLIDO, sem markdown, sem texto fora do JSON.
 `;

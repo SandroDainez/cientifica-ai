@@ -21,6 +21,7 @@ export const maxDuration = 300
 const Schema = z.object({
   trabalhoId: z.string(),
   problemas: z.array(z.string()).default([]),
+  remover: z.array(z.string()).default([]),   // refs que NÃO pertencem ao trabalho
 })
 
 // Não reescreve seções estruturadas / curtas demais (título, resumo JSON, refs,
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
   try { body = await request.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
   const parsed = Schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
-  const { trabalhoId, problemas } = parsed.data
+  const { trabalhoId, problemas, remover } = parsed.data
 
   const { data: trabalhoData } = await supabase
     .from('trabalhos').select('*').eq('id', trabalhoId).eq('usuario_id', user.id).single()
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
     const fontesResumo = formatarRefsParaPrompt(referencias, formato, idsComResumo)
 
     const out = await reviewService.revisarSecaoProfunda({
-      nomeSecao: secao.nome_secao, secaoTexto: conteudo, problemas, fontesResumo, tipo, tema,
+      nomeSecao: secao.nome_secao, secaoTexto: conteudo, problemas, fontesResumo, tipo, tema, remover,
     })
     if (!out.ok) {
       if (out.codigo === 'CONFIG_ERROR') erroConfig = out.error

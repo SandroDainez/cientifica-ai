@@ -41,6 +41,13 @@ const CATEGORIA_ROTULO: Record<ReviewProblema['categoria'], string> = {
   referencia: 'Referência', coerencia: 'Coerência', formatacao: 'Formatação',
 }
 
+/** Referências que o revisor marcou como "remover" (não pertencem ao trabalho). */
+function listaRemover(a: ReviewResult): string[] {
+  return (a.referencias_suspeitas ?? [])
+    .filter(r => r.acao_recomendada === 'remover')
+    .map(r => `${r.referencia}${r.problema ? ` — ${r.problema}` : ''}`)
+}
+
 /** Descreve um problema (com trecho/sugestão) para o revisor localizar e corrigir. */
 function descreverProblema(p: ReviewProblema): string {
   const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
@@ -257,11 +264,12 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   // ancorado nas fontes reais, com trava anti-fabricação e backup de versão.
   async function revisarProfundo() {
     const problemas = (analise?.problemas_encontrados ?? []).map(descreverProblema)
+    const remover = analise ? listaRemover(analise) : []
     setEstado('revisando')
     try {
       const res = await fetch('/api/review/revisar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trabalhoId, problemas }),
+        body: JSON.stringify({ trabalhoId, problemas, remover }),
       })
       const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; secoesAvaliadas?: number; corpoAtualizado?: string; error?: string }
       if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha na revisão profunda.')
@@ -288,10 +296,10 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
 
   // Uma passada do servidor: pesquisa+acrescenta fontes, reescreve as seções e
   // devolve o corpo. Retorna {secoesRevisadas, corpoAtualizado} ou null em erro.
-  async function umaPassadaProfunda(problemas: string[]): Promise<{ secoesRevisadas: number; corpoAtualizado?: string } | null> {
+  async function umaPassadaProfunda(problemas: string[], remover: string[]): Promise<{ secoesRevisadas: number; corpoAtualizado?: string } | null> {
     const res = await fetch('/api/review/revisar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trabalhoId, problemas }),
+      body: JSON.stringify({ trabalhoId, problemas, remover }),
     })
     const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; corpoAtualizado?: string; error?: string }
     if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha na revisão.'); return null }
@@ -316,7 +324,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         if (atual.nota_estimada >= META_NOTA && atual.problemas_encontrados.length === 0) break
         setEstado('revisando')
         toast.message(`Passada ${passada + 1}: pesquisando fontes, reescrevendo e aprofundando…`)
-        const passOut = await umaPassadaProfunda(atual.problemas_encontrados.map(descreverProblema))
+        const passOut = await umaPassadaProfunda(atual.problemas_encontrados.map(descreverProblema), listaRemover(atual))
         if (!passOut) break
         if (passOut.secoesRevisadas === 0) {
           toast.message('Nada mais pôde ser reescrito com segurança — encerrando.')

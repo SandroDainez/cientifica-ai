@@ -196,6 +196,7 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
     fontesResumo: string
     tipo: string
     tema: string
+    remover?: string[]
   }): Promise<ReviewOutcome<string>> {
     if (!params.secaoTexto.trim()) return { ok: true, data: params.secaoTexto }
     const clienteOut = this.getClient()
@@ -221,7 +222,10 @@ SAÍDA: devolva APENAS o texto final da seção, em prosa/estrutura adequada —
     const partesProblemas = params.problemas.length
       ? `PROBLEMAS APONTADOS NA REVISÃO (resolva os que se aplicam a esta seção):\n${params.problemas.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n`
       : ''
-    const user = `Trabalho: ${params.tipo} sobre "${params.tema}".\nSeção a revisar: ${params.nomeSecao}\n\n${partesProblemas}${partesFontes}TEXTO ATUAL DA SEÇÃO:\n${params.secaoTexto}`
+    const partesRemover = params.remover?.length
+      ? `REFERÊNCIAS A ELIMINAR (NÃO pertencem ao trabalho — remova TODAS as citações a elas, INCLUSIVE dentro de citações em grupo como "(A; B, 2022; C, 2023)", e reescreva a frase para ficar correta; JAMAIS as cite):\n${params.remover.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n\n`
+      : ''
+    const user = `Trabalho: ${params.tipo} sobre "${params.tema}".\nSeção a revisar: ${params.nomeSecao}\n\n${partesRemover}${partesProblemas}${partesFontes}TEXTO ATUAL DA SEÇÃO:\n${params.secaoTexto}`
 
     try {
       const completion = await client.chat.completions.create({
