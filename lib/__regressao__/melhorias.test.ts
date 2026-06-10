@@ -26,6 +26,7 @@ import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
+import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -632,6 +633,18 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO subseções: renumera "1.1" pela seção pai (4 → 4.1) sem tocar valores no texto', () => {
+  const conteudo = 'Parágrafo de abertura da seção.\n\n1.1 Desigualdades regionais\n\nTexto. A razão foi de 2.5 vezes maior.\n\n1.2 Determinantes estruturais\n\nMais texto.'
+  const out = renumerarSubsecoes(conteudo, 4)
+  assert.match(out, /^4\.1 Desigualdades regionais$/m)
+  assert.match(out, /^4\.2 Determinantes estruturais$/m)
+  assert.ok(out.includes('2.5 vezes maior'), 'NÃO toca número no meio do texto (minúscula após)')
+  // Subnível preserva o resto: "1.2.3 Algo" → "4.2.3 Algo".
+  assert.match(renumerarSubsecoes('1.2.3 Subnível Profundo', 4), /^4\.2\.3 Subnível Profundo$/)
+  // Já correto (4.1) permanece; seção inválida não altera.
+  assert.match(renumerarSubsecoes('4.1 Já Correto', 4), /^4\.1 Já Correto$/)
+  assert.equal(renumerarSubsecoes('1.1 Título', 0), '1.1 Título')
 })
 test('CONTRATO integridade: geração PROÍBE número sem fonte e uso de ref de outro assunto', () => {
   const refs = [fakeRef('1', 'A', 'resumo com conteúdo suficiente para passar do limiar de oitenta caracteres exigido aqui pelo dossiê.')]

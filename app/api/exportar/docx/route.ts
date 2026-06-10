@@ -4,6 +4,7 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { formatarReferencia, ordenarReferencias } from '@/lib/referencias/formatar'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
+import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
 import { validarCitacoesReais, removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { extrairParagrafosParaDocx, extrairTextoSecao } from '@/lib/ai/utils'
 import { tituloEfetivo, capitalizarTitulo, nomeProprioCase } from '@/lib/trabalho/titulo'
@@ -447,12 +448,13 @@ export async function GET(request: Request) {
       secaoHeading(i + 1, secao.nome_secao),
     )
 
-    // Reprocessa citações contra as referências reais e converte LaTeX matemático
-    const conteudoResolvido = converterMathLatexParaTexto(validarCitacoesReais(
+    // Reprocessa citações contra as referências reais e converte LaTeX matemático.
+    // Renumera subseções pelo número da seção pai (i+1): "1.1" no Desenvolvimento (4) → "4.1".
+    const conteudoResolvido = renumerarSubsecoes(converterMathLatexParaTexto(validarCitacoesReais(
       secao.conteudo ?? '',
       referencias,
       trabalho.formato_citacao,
-    ))
+    )), i + 1)
 
     // Separa o conteúdo em blocos: tabelas markdown (linhas com "|") viram
     // tabelas reais; o restante vira parágrafos justificados.

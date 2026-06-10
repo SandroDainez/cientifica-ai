@@ -85,6 +85,12 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
   (linguagem de sistemática em revisão narrativa); (E) base de dados alegada e não
   usada. NÃO regredir nem enfraquecer.
 
+- NUMERAÇÃO DE SUBSEÇÕES (`lib/formatacao/subsecoes.ts` → `renumerarSubsecoes`, travado
+  por `CONTRATO subseções`): o modelo numera subseções a partir de 1 em cada seção
+  ("1.1" no Desenvolvimento). No RENDER/EXPORT (docx, docx-periodico, visualizar) o
+  prefixo é corrigido pelo número da seção pai (i+1): "1.1"→"4.1". Só toca linha que
+  começa com d.d[.d] + espaço + MAIÚSCULA (não confunde com "2.5 vezes"). NÃO regredir.
+
 ## Citações: AMPLITUDE + ancoragem (vale para TODO tipo de trabalho)
 
 Regras travadas por teste (`CONTRATO citações`/`CONTRATO geração`). Aplicam-se a

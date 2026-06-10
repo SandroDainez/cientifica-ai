@@ -11,6 +11,7 @@ import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { removerTravessoes } from '@/lib/ai/validar-citacoes'
 import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
+import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -363,7 +364,7 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
               {i + 1} {secao.nome_secao.toUpperCase()}
             </h2>
             <div className="doc-content">
-              <ConteudoSecao texto={extrairTextoSecao(secao.conteudo ?? '')} />
+              <ConteudoSecao texto={renumerarSubsecoes(extrairTextoSecao(secao.conteudo ?? ''), i + 1)} />
             </div>
           </section>
         ))}
