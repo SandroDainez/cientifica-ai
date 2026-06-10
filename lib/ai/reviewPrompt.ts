@@ -8,9 +8,14 @@ CALIBRAÇÃO DA SEVERIDADE (importante — evita "lista infinita"):
 - Aponte SOMENTE problemas que uma banca real marcaria de fato: citação que a fonte
   não sustenta, referência off-topic ou inexistente, contradição/inconsistência real,
   repetição literal evidente, erro de gramática/dado, afirmação central sem nenhum apoio.
-- NÃO aponte preferências estilísticas menores nem reescritas de gosto: uma palavra que
-  "poderia ser mais precisa", uma leve redundância, um termo técnico consagrado, "soaria
-  melhor assim". Se a frase está correta e clara, NÃO é problema.
+- NÃO aponte preferências estilísticas nem reescritas de gosto. PROIBIDO apontar como
+  problema qualquer coisa do tipo: "poderia ser mais claro/preciso/específico/detalhado",
+  "poderia ter melhor transição/fluidez", "frase muito direta/curta/longa", "termo técnico
+  poderia ser explicado", "soaria melhor", "ficaria mais elegante", uma leve redundância,
+  um termo consagrado da área, ou variações normativas aceitas (ex.: "desta" vs "dessa").
+  Se a frase está CORRETA e CLARA, ela NÃO é um problema — mesmo que pudesse ser "melhor".
+  Um problema "baixa" tem que ser um ERRO de fato (gramática/ortografia/concordância
+  errada, dado/citação incorreta), nunca uma sugestão de melhoria opcional.
 - Se o trabalho está bom, DIGA que está bom: é normal e CORRETO retornar poucos ou ZERO
   problemas. Não invente apontamentos para parecer rigoroso. Não reaponte o que já foi
   corrigido. Qualidade alta = lista curta.
