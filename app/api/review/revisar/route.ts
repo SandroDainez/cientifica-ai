@@ -9,7 +9,6 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { reviewService } from '@/lib/ai/reviewService'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
-import { garantirReferenciasReais } from '@/lib/referencias/auto-import'
 import { enriquecerAbstractsFaltantes } from '@/lib/referencias/buscar-externo'
 import { selecionarFontesRelevantes } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
@@ -67,19 +66,9 @@ export async function POST(request: Request) {
     .from('referencias').select('*').eq('trabalho_id', trabalhoId).order('created_at')
   let referencias = (refsData ?? []) as Referencia[]
 
-  // GAP-FILLING: "pesquise o que falta e acrescente". Reforça a base de fontes
-  // REAIS (Crossref/PubMed, validadas) quando ela está abaixo do alvo — barato
-  // quando o trabalho já tem muitas refs; nunca inventa.
-  try {
-    const dadosProjeto = (trabalho.dados_trabalho as Record<string, unknown> | undefined)?.dados_projeto as { pergunta_pesquisa?: string } | undefined
-    const topUp = await garantirReferenciasReais({
-      supabase, trabalhoId, titulo: trabalho.titulo, area: trabalho.area_conhecimento,
-      tipoTrabalho: trabalho.tipo_trabalho, pergunta: dadosProjeto?.pergunta_pesquisa,
-      refsExistentes: referencias, meta: 48, limiar: 40,
-    })
-    referencias = topUp.referencias
-  } catch { /* segue com as refs atuais */ }
-
+  // Modo correção mínima: NÃO faz gap-filling (não adiciona refs — isso encheria a
+  // bibliografia de fontes não citadas). Só completa abstracts das refs existentes,
+  // p/ o revisor julgar se uma citação está no contexto certo.
   try {
     const novos = await enriquecerAbstractsFaltantes(referencias.map(r => ({ id: r.id, doi: r.doi, pmid: r.pmid, abstract: r.abstract })))
     if (novos.size > 0) {

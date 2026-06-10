@@ -639,12 +639,12 @@ test('CONTRATO revisão: prompt informa o ano atual e a regra de data futura', (
 
 // ── 13i. CONTRATO da Revisão Profunda (regras travadas p/ todo trabalho) ──────
 const RP_BASE = { nomeSecao: 'Introdução', secaoTexto: 'Texto da seção com (SILVA, 2020).', problemas: [], fontesResumo: '', tipo: 'tcc', tema: 'Sepse no Brasil' }
-test('CONTRATO revisão profunda: regras invioláveis (anti-fabricação, amplitude, preservar dados)', () => {
+test('CONTRATO revisão profunda: regras invioláveis (mudança mínima, anti-fabricação, manter lógica)', () => {
   const { sys } = buildRevisaoProfundaPrompt(RP_BASE)
   assert.match(sys, /NUNCA invente/i)
-  assert.match(sys, /PRESERVE EXATAMENTE/i)
-  assert.match(sys, /AMPLITUDE DE CITAÇÕES/i)
-  assert.match(sys, /REMOVA decisivamente toda citação cujo conteúdo da fonte NÃO sustente/i)
+  assert.match(sys, /MUDAN[ÇC]A M[ÍI]NIMA|palavra por palavra/i)   // não regenera = sem esteira
+  assert.match(sys, /MANTER A L[ÓO]GICA|buraco|sem sentido/i)       // remoção mantém coerência
+  assert.match(sys, /contexto errado|n[ãa]o sustente|repeti[çc][ãa]o/i)  // sabe resolver os tipos
 })
 test('CONTRATO revisão profunda: lista "REFERÊNCIAS A ELIMINAR" entra quando há remover', () => {
   const { user } = buildRevisaoProfundaPrompt({ ...RP_BASE, remover: ['GALVÃO; SILVA, 2022 — sobre suicídio'] })
