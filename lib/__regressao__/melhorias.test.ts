@@ -22,6 +22,8 @@ import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/a
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica, revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProfundaPrompt, REVIEW_INPUT_CHAR_LIMIT } from '@/lib/ai/reviewService'
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
+import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
+import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
@@ -649,6 +651,29 @@ test('CONTRATO revisão: system prompt classifica remover (off-topic) vs corrigi
 test('CONTRATO revisão: limite de input alto o bastante p/ trabalho completo (≥400k chars)', () => {
   // 12k tokens (48k chars) era baixo demais e barrava a revisão. Piso seguro p/ Sonnet 4.
   assert.ok(REVIEW_INPUT_CHAR_LIMIT >= 400_000, `limite muito baixo: ${REVIEW_INPUT_CHAR_LIMIT}`)
+})
+
+// ── 13j. CONTRATO Coerência global (só ajusta enquadramento, nunca os fatos) ──
+test('CONTRATO coerência: SÓ seções de enquadramento são editáveis (fatos protegidos)', () => {
+  // editáveis (enquadramento/narrativa)
+  for (const c of ['introducao', 'justificativa', 'discussao', 'conclusao', 'consideracoes_finais', 'revisao_literatura']) {
+    assert.ok(ehSecaoEnquadramento(c), `deveria ser editável: ${c}`)
+  }
+  // NUNCA editáveis (fatos/estrutura)
+  for (const c of ['metodologia', 'metodos_coleta', 'resultados', 'dados', 'titulo', 'resumo', 'referencias', 'objetivos', 'pico']) {
+    assert.ok(!ehSecaoEnquadramento(c), `NÃO pode editar: ${c}`)
+  }
+})
+test('CONTRATO coerência: prompt protege metodologia/resultados (ajusta enquadramento aos fatos)', () => {
+  const { sys } = buildCoerenciaGlobalPrompt({ mapa: 'x', tipo: 'tcc', tema: 'sepse' })
+  assert.match(sys, /METODOLOGIA e os RESULTADOS são a VERDADE FACTUAL e NÃO podem ser alterados/i)
+  assert.match(sys, /NUNCA invente/i)
+})
+test('CONTRATO coerência: parseAjustesCoerencia valida (chave+buscar≥3+substituir≠buscar)', () => {
+  const ok = parseAjustesCoerencia('{"ajustes":[{"chave_secao":"conclusao","buscar":"texto antigo","substituir":"texto novo"}]}')
+  assert.equal(ok.length, 1)
+  const bad = parseAjustesCoerencia('{"ajustes":[{"chave_secao":"","buscar":"x","substituir":"y"},{"chave_secao":"intro","buscar":"ab","substituir":"cd"},{"chave_secao":"intro","buscar":"igual","substituir":"igual"}]}')
+  assert.equal(bad.length, 0)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

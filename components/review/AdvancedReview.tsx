@@ -306,6 +306,42 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     return { secoesRevisadas: data.secoesRevisadas ?? 0, corpoAtualizado: data.corpoAtualizado }
   }
 
+  // COERÊNCIA GLOBAL: alinha intro↔objetivos↔resultados↔conclusão (só ajusta o
+  // enquadramento p/ casar com os fatos). Retorna o resultado ou null em erro.
+  async function passadaCoerencia(): Promise<{ ajustesAplicados: number; corpoAtualizado?: string } | null> {
+    const res = await fetch('/api/review/coerencia', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trabalhoId }),
+    })
+    const data = await res.json() as { ok?: boolean; ajustesAplicados?: number; corpoAtualizado?: string; error?: string }
+    if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha na coerência global.'); return null }
+    return { ajustesAplicados: data.ajustesAplicados ?? 0, corpoAtualizado: data.corpoAtualizado }
+  }
+
+  // Botão standalone de coerência global.
+  async function coerenciaGlobal() {
+    setEstado('revisando')
+    try {
+      const antes = analise
+      toast.message('Alinhando a coerência global do trabalho…')
+      const out = await passadaCoerencia()
+      if (!out) { setEstado('resultado'); return }
+      if (out.ajustesAplicados === 0) {
+        toast.success('Trabalho já coerente — nenhum ajuste necessário.')
+        setEstado('resultado'); return
+      }
+      toast.success(`${out.ajustesAplicados} ajuste(s) de coerência aplicado(s). Re-avaliando…`)
+      router.refresh()
+      const depois = await analisar(out.corpoAtualizado ?? trabalho)
+      if (antes && depois) {
+        setDelta({ notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada, qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length })
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro na coerência global.')
+      setEstado('resultado')
+    }
+  }
+
   // REVISÃO FINAL COMPLETA (orquestrada): vê tudo → pesquisa/acrescenta fontes →
   // reescreve → revisa de novo → repete até atingir a meta, parar de melhorar ou
   // bater o teto de passadas. Cada passada tem as travas do servidor.
@@ -337,6 +373,16 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         const melhorou = nova.nota_estimada > atual.nota_estimada || nova.problemas_encontrados.length < atual.problemas_encontrados.length
         atual = nova
         if (!melhorou) break // não oscila: para se uma passada não melhora
+      }
+
+      // Passo final: COERÊNCIA GLOBAL (alinha intro↔objetivos↔resultados↔conclusão).
+      setEstado('revisando')
+      toast.message('Alinhando a coerência global do trabalho…')
+      const coOut = await passadaCoerencia()
+      if (coOut && coOut.ajustesAplicados > 0) {
+        router.refresh()
+        const nova = await analisar(coOut.corpoAtualizado ?? trabalho)
+        if (nova) atual = nova
       }
 
       setDelta({
@@ -422,6 +468,9 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               </Button>
               <Button onClick={revisarProfundo} variant="outline" className="gap-2">
                 <Wand2 className="h-4 w-4" /> Só reescrever (1 passada)
+              </Button>
+              <Button onClick={coerenciaGlobal} variant="outline" className="gap-2">
+                <Wand2 className="h-4 w-4" /> Coerência global
               </Button>
               {corrigiveis.length > 0 && (
                 <Button onClick={aplicarCorrecoes} variant="ghost" className="gap-2 text-muted-foreground">

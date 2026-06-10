@@ -178,6 +178,31 @@ SAÍDA: devolva APENAS o texto final da seção, em prosa/estrutura adequada —
   return { sys, user }
 }
 
+export interface CoerenciaGlobalParams {
+  mapa: string   // todas as seções (chave + nome + texto)
+  tipo: string
+  tema: string
+}
+
+/**
+ * Prompt da COERÊNCIA GLOBAL (puro, travado por teste). Pede ajustes cross-seção
+ * que só tocam o ENQUADRAMENTO (introdução/justificativa/discussão/conclusão) para
+ * casar com os FATOS (metodologia/resultados). NUNCA alterar dados/números/método.
+ */
+export function buildCoerenciaGlobalPrompt(params: CoerenciaGlobalParams): { sys: string; user: string } {
+  const sys = `Você é um revisor acadêmico sênior responsável pela COERÊNCIA GLOBAL de um trabalho científico — o todo, não cada seção isolada.
+Avalie o alinhamento entre as seções: objetivos ↔ metodologia ↔ resultados ↔ discussão ↔ conclusão; contradições de números/datas/amostra; promessas da Introdução não cumpridas; conclusões sem base nos resultados.
+REGRA DE OURO (segurança): a METODOLOGIA e os RESULTADOS são a VERDADE FACTUAL e NÃO podem ser alterados. Quando houver incoerência, ajuste SEMPRE a seção de ENQUADRAMENTO (Introdução, Justificativa, Discussão, Conclusão) para casar com os fatos — nunca o contrário.
+REGRAS ABSOLUTAS:
+- NUNCA invente dados, números, autores, anos ou citações. NÃO altere números/dados de metodologia/resultados.
+- Cada ajuste é uma EDIÇÃO CIRÚRGICA numa seção de enquadramento: "buscar" = trecho EXATO daquela seção; "substituir" = a versão coerente (ou "" para remover).
+- Só proponha ajustes em seções de enquadramento (introducao, justificativa, discussao, conclusao, consideracoes_finais, revisao_literatura). NUNCA em metodologia/resultados/dados/título/resumo/objetivos/referências.
+- Não reescreva seções inteiras; corrija no nível de frase para alinhar o discurso aos fatos.
+Retorne APENAS JSON válido: {"ajustes":[{"chave_secao":"...","buscar":"...","substituir":"...","motivo":"..."}]}. Se já está coerente, {"ajustes":[]}.`
+  const user = `Trabalho: ${params.tipo} sobre "${params.tema}".\n\nSEÇÕES (chave | nome | texto):\n${params.mapa}\n\nIdentifique as incoerências ENTRE seções e devolva os ajustes (só em seções de enquadramento) que as resolvem alinhando o discurso aos fatos.`
+  return { sys, user }
+}
+
 export class ReviewService {
   private _client: OpenAI | null = null
 
@@ -260,6 +285,30 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
       return { ok: true, data: txt }
     } catch (err) {
       return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha na revisão profunda da seção.' }
+    }
+  }
+
+  /**
+   * COERÊNCIA GLOBAL: lê o trabalho inteiro e devolve o JSON bruto com os ajustes
+   * cross-seção (a rota faz o parse + aplica com travas). Não inventa.
+   */
+  async ajustarCoerenciaGlobal(params: CoerenciaGlobalParams): Promise<ReviewOutcome<string>> {
+    if ((params.mapa?.length ?? 0) > REVIEW_INPUT_CHAR_LIMIT) {
+      return { ok: false, codigo: 'INPUT_TOO_LARGE', error: 'O trabalho é muito longo para a coerência global de uma vez.' }
+    }
+    const clienteOut = this.getClient()
+    if (!clienteOut.ok) return clienteOut
+    const { sys, user } = buildCoerenciaGlobalPrompt(params)
+    try {
+      const completion = await clienteOut.data.chat.completions.create({
+        model: REVIEW_AI_MODEL,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        temperature: 0.2,
+        max_tokens: 8000,
+      })
+      return { ok: true, data: completion.choices[0]?.message?.content ?? '' }
+    } catch (err) {
+      return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha na coerência global.' }
     }
   }
 

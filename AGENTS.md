@@ -65,7 +65,20 @@ teste (`CONTRATO revisão*`):
   (suspeitas com ação "remover") em TODA passada.
 - `components/review/AdvancedReview.tsx`: "Revisão final completa" orquestra
   analyze → revisar (gap-fill+reescreve+elimina) → re-analyze, em loop até a
-  meta/parar de melhorar/3 passadas. Mostra delta. Vale p/ QUALQUER tipo de trabalho.
+  meta/parar de melhorar/3 passadas, e FECHA com a coerência global. Mostra delta.
+  Vale p/ QUALQUER tipo de trabalho.
+
+## Coerência global (cross-seção) — REGRA DO APP
+
+`app/api/review/coerencia` + `buildCoerenciaGlobalPrompt` + `lib/revisao/coerencia.ts`
+(travado por `CONTRATO coerência`). Alinha objetivos↔método↔resultados↔conclusão,
+contradições de números/datas, promessas não cumpridas. SEGURANÇA INVIOLÁVEL:
+metodologia/resultados/dados são a VERDADE e NUNCA são editados — só as seções de
+ENQUADRAMENTO (`ehSecaoEnquadramento`: introdução/justificativa/discussão/conclusão/
+revisão) são ajustadas para casar com os fatos. Edições cirúrgicas com
+`edicaoSeguraCirurgica` + `reescritaSegura` + `posProcessarTextoGerado` + BACKUP em
+`secao_versoes`. Roda no fim da "Revisão final completa" e como botão "Coerência global".
+NÃO permitir que a coerência edite metodologia/resultados/título/resumo/objetivos.
 - `app/api/ia/salvar-secao` → `lib/resumo/proteger.ts` (`protegerConteudoResumo`):
   a seção `resumo` é JSON — texto puro NUNCA a sobrescreve; save parcial não zera
   abstract/keywords. Qualquer rota que escreva em `secoes_trabalho` deve pular
