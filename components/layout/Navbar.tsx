@@ -47,7 +47,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
     : '?'
 
   return (
-    <header className="no-print sticky top-0 z-50 w-full border-b border-white/8 bg-background/90 backdrop-blur-xl">
+    <header className="no-print sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
 
@@ -73,7 +73,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     active
                       ? 'bg-primary/10 text-primary'
-                      : 'text-slate-400 hover:text-white hover:bg-white/10'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   pathname.startsWith('/admin')
                     ? 'bg-primary/10 text-primary'
-                    : 'text-teal-400 hover:text-teal-300 hover:bg-teal-900/30'
+                    : 'text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-500/10'
                 }`}
               >
                 <ShieldCheck className="h-4 w-4" />
@@ -101,7 +101,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
             {/* Toggle claro/escuro */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title={mounted ? (theme === 'dark' ? 'Modo claro' : 'Modo escuro') : 'Alternar tema'}
               suppressHydrationWarning
             >
@@ -138,7 +138,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
 
             {/* Mobile toggle */}
             <button
-              className="md:hidden p-2 rounded-md text-slate-400 hover:bg-white/10"
+              className="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => setMobileOpen(v => !v)}
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -159,7 +159,7 @@ export function Navbar({ userName, userEmail, isAdmin }: NavbarProps) {
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium ${
                     active
                       ? 'bg-primary/10 text-primary'
-                      : 'text-slate-400 hover:text-white hover:bg-white/10'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
