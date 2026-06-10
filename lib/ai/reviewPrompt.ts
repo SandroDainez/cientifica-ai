@@ -45,8 +45,8 @@ SOBRE REFERÊNCIAS — atenção especial:
 - Sinalize quando um preprint é tratado como artigo publicado
 - AÇÃO em "referencias_suspeitas" (acao_recomendada), escolha com critério:
   • "remover" → a fonte é de OUTRO ASSUNTO e NÃO pertence ao tema do trabalho;
-    deve SAIR do trabalho. Ex.: artigo sobre suicídio, aneurisma ou câncer num
-    trabalho sobre sepse → "remover".
+    deve SAIR do trabalho. Ex.: uma fonte sobre um tema/doença/área totalmente
+    diferente do objeto do trabalho, citada como se fosse evidência dele → "remover".
   • "corrigir_contexto" → a fonte é PERTINENTE ao tema, mas foi citada num ponto
     ou afirmação específica em que não se aplica.
   • "verificar" → dúvida real que precisa de checagem humana. NÃO use "verificar"
