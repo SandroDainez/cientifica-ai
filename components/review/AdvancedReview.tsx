@@ -105,11 +105,12 @@ function corNota(n: number): string {
   return 'text-red-600 dark:text-red-400'
 }
 
-function NotaGrande({ nota, rotulo }: { nota: number; rotulo: string }) {
+function NotaGrande({ nota }: { nota: number }) {
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="flex flex-col items-center justify-center text-center max-w-[150px]">
       <span className={cn('text-6xl font-bold tabular-nums', corNota(nota))}>{nota}</span>
-      <span className="text-xs text-muted-foreground mt-1">{rotulo} (0–100)</span>
+      <span className="text-xs font-medium text-muted-foreground mt-1">Indicador de qualidade (IA)</span>
+      <span className="text-[10px] text-muted-foreground/80 leading-tight mt-0.5">estimativa 0–100 — NÃO é nota de banca</span>
     </div>
   )
 }
@@ -378,6 +379,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         <CardDescription>
           Um revisor acadêmico (modelo dedicado) audita o trabalho, aponta os erros e aplica as correções
           possíveis direto nas seções — sem inventar dados nem reescrever o trabalho do zero.
+          A nota é um <strong>indicador de qualidade gerado por IA</strong>, para orientação — <strong>não substitui a avaliação da banca</strong>.
         </CardDescription>
       </CardHeader>
 
@@ -405,7 +407,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         {estado === 'resultado' && analise && (
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <NotaGrande nota={analise.nota_estimada} rotulo="Nota estimada" />
+              <NotaGrande nota={analise.nota_estimada} />
               <div className="flex-1">
                 <Badge className={cn('mb-1', analise.status === 'aprovado'
                   ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
