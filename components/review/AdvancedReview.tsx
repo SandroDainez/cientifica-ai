@@ -41,6 +41,14 @@ const CATEGORIA_ROTULO: Record<ReviewProblema['categoria'], string> = {
   referencia: 'Referência', coerencia: 'Coerência', formatacao: 'Formatação',
 }
 
+/** Descreve um problema (com trecho/sugestão) para o revisor localizar e corrigir. */
+function descreverProblema(p: ReviewProblema): string {
+  const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
+  if (p.trecho?.trim()) partes.push(`Trecho: "${p.trecho.trim()}"`)
+  if (p.sugestao?.trim()) partes.push(`Sugestão: ${p.sugestao.trim()}`)
+  return partes.join(' — ')
+}
+
 const GRAVIDADE_COR: Record<ReviewProblema['gravidade'], string> = {
   baixa: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   media: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
@@ -201,12 +209,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   async function aplicarCorrecoes() {
     // Descreve cada problema (com o trecho exato, quando houver) para o revisor
     // localizar e corrigir. A correção surgical é gerada no servidor.
-    const problemas = corrigiveis.map(p => {
-      const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
-      if (p.trecho?.trim()) partes.push(`Trecho: "${p.trecho.trim()}"`)
-      if (p.sugestao?.trim()) partes.push(`Sugestão: ${p.sugestao.trim()}`)
-      return partes.join(' — ')
-    })
+    const problemas = corrigiveis.map(descreverProblema)
     if (problemas.length === 0) {
       toast.warning('Os problemas apontados são estruturais — exigem ajuste manual no Editor.')
       return
@@ -253,12 +256,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   // REVISÃO PROFUNDA: reescreve seção a seção (remove/reescreve/ajusta/aprofunda)
   // ancorado nas fontes reais, com trava anti-fabricação e backup de versão.
   async function revisarProfundo() {
-    const problemas = (analise?.problemas_encontrados ?? []).map(p => {
-      const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
-      if (p.trecho?.trim()) partes.push(`Trecho: "${p.trecho.trim()}"`)
-      if (p.sugestao?.trim()) partes.push(`Sugestão: ${p.sugestao.trim()}`)
-      return partes.join(' — ')
-    })
+    const problemas = (analise?.problemas_encontrados ?? []).map(descreverProblema)
     setEstado('revisando')
     try {
       const res = await fetch('/api/review/revisar', {
@@ -284,6 +282,63 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro na revisão profunda.')
+      setEstado('resultado')
+    }
+  }
+
+  // Uma passada do servidor: pesquisa+acrescenta fontes, reescreve as seções e
+  // devolve o corpo. Retorna {secoesRevisadas, corpoAtualizado} ou null em erro.
+  async function umaPassadaProfunda(problemas: string[]): Promise<{ secoesRevisadas: number; corpoAtualizado?: string } | null> {
+    const res = await fetch('/api/review/revisar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trabalhoId, problemas }),
+    })
+    const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; corpoAtualizado?: string; error?: string }
+    if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha na revisão.'); return null }
+    return { secoesRevisadas: data.secoesRevisadas ?? 0, corpoAtualizado: data.corpoAtualizado }
+  }
+
+  // REVISÃO FINAL COMPLETA (orquestrada): vê tudo → pesquisa/acrescenta fontes →
+  // reescreve → revisa de novo → repete até atingir a meta, parar de melhorar ou
+  // bater o teto de passadas. Cada passada tem as travas do servidor.
+  async function revisaoFinalCompleta() {
+    const MAX_PASSADAS = 3
+    const META_NOTA = 85
+    setEstado('revisando')
+    try {
+      let atual = analise ?? await analisar(trabalho)
+      if (!atual) { setEstado(analise ? 'resultado' : 'inicial'); return }
+      const notaInicial = atual.nota_estimada
+      const qtdInicial = atual.problemas_encontrados.length
+
+      let passada = 0
+      while (passada < MAX_PASSADAS) {
+        if (atual.nota_estimada >= META_NOTA && atual.problemas_encontrados.length === 0) break
+        setEstado('revisando')
+        toast.message(`Passada ${passada + 1}: pesquisando fontes, reescrevendo e aprofundando…`)
+        const passOut = await umaPassadaProfunda(atual.problemas_encontrados.map(descreverProblema))
+        if (!passOut) break
+        if (passOut.secoesRevisadas === 0) {
+          toast.message('Nada mais pôde ser reescrito com segurança — encerrando.')
+          break
+        }
+        router.refresh()
+        const nova = await analisar(passOut.corpoAtualizado ?? trabalho)
+        if (!nova) break
+        passada++
+        const melhorou = nova.nota_estimada > atual.nota_estimada || nova.problemas_encontrados.length < atual.problemas_encontrados.length
+        atual = nova
+        if (!melhorou) break // não oscila: para se uma passada não melhora
+      }
+
+      setDelta({
+        notaAntes: notaInicial, notaDepois: atual.nota_estimada,
+        qtdAntes: qtdInicial, qtdDepois: atual.problemas_encontrados.length,
+      })
+      setEstado('resultado')
+      toast.success(`Revisão final concluída em ${passada} passada(s). Nota ${notaInicial} → ${atual.nota_estimada}.`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro na revisão final.')
       setEstado('resultado')
     }
   }
@@ -354,21 +409,24 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
 
             {/* Ações */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button onClick={revisaoFinalCompleta} className="gap-2">
+                <Sparkles className="h-4 w-4" /> Revisão final completa
+              </Button>
+              <Button onClick={revisarProfundo} variant="outline" className="gap-2">
+                <Wand2 className="h-4 w-4" /> Só reescrever (1 passada)
+              </Button>
               {corrigiveis.length > 0 && (
-                <Button onClick={aplicarCorrecoes} variant="outline" className="gap-2">
-                  <Wand2 className="h-4 w-4" /> Corrigir {corrigiveis.length} ponto{corrigiveis.length === 1 ? '' : 's'} (cirúrgico)
+                <Button onClick={aplicarCorrecoes} variant="ghost" className="gap-2 text-muted-foreground">
+                  Correção cirúrgica
                 </Button>
               )}
-              <Button onClick={revisarProfundo} className="gap-2">
-                <Sparkles className="h-4 w-4" /> Revisão profunda — reescrever e aprofundar
-              </Button>
               <Button variant="ghost" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              <strong>Correção cirúrgica</strong>: troca trechos pontuais, conservadora. <strong>Revisão profunda</strong>: o
-              revisor reescreve cada seção — remove o que sobra, reescreve o que está fraco, ajusta erros e aprofunda usando as
-              referências reais do trabalho. Nunca inventa dados/citações (trava anti-fabricação) e guarda a versão anterior, que
-              você pode restaurar no Editor pelo histórico. Vale revisar o resultado.
+              <strong>Revisão final completa</strong>: o revisor pesquisa e acrescenta fontes reais onde falta, reescreve cada
+              seção (remove/ajusta/aprofunda), revisa de novo e repete até o trabalho ficar correto e de bom nível (até 3 passadas;
+              leva alguns minutos). <strong>Nunca inventa</strong> dados ou citações (trava anti-fabricação) e guarda a versão
+              anterior de cada seção — você pode restaurar pelo histórico no Editor. As demais opções fazem só parte disso.
             </p>
           </div>
         )}
