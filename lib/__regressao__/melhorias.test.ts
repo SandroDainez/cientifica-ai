@@ -27,6 +27,7 @@ import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coere
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
+import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -633,6 +634,18 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO off-topic: sinaliza ref de outra doença (câncer num trabalho de sepse) sem falso-positivo', () => {
+  const tema = 'Sepse no Brasil: desigualdades regionais na mortalidade'
+  const refCancer = { id: '1', titulo: 'Comparison of Cancer Morbidity and Mortality Between Developed Countries', ano: 2020, autores: [{ nome: 'Q', sobrenome: 'He' }] } as never
+  const refSepse = { id: '2', titulo: 'Sepsis-related deaths in Brazil: national mortality registry', ano: 2014, autores: [{ nome: 'L', sobrenome: 'Taniguchi' }] } as never
+  const out = detectarRefsOutroAssunto([refCancer, refSepse], tema)
+  assert.equal(out.length, 1)
+  assert.equal((out[0] as { referencia: string }).referencia, 'HE, 2020')
+  assert.match((out[0] as { problema: string }).problema, /c[âa]ncer/i)
+  assert.equal((out[0] as { acao_recomendada: string }).acao_recomendada, 'verificar')
+  // Num trabalho de oncologia, a ref de câncer NÃO é off-topic.
+  assert.equal(detectarRefsOutroAssunto([refCancer], 'Câncer de mama: rastreamento no Brasil').length, 0)
 })
 test('CONTRATO subseções: renumera "1.1" pela seção pai (4 → 4.1) sem tocar valores no texto', () => {
   const conteudo = 'Parágrafo de abertura da seção.\n\n1.1 Desigualdades regionais\n\nTexto. A razão foi de 2.5 vezes maior.\n\n1.2 Determinantes estruturais\n\nMais texto.'

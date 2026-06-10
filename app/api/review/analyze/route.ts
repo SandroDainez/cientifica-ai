@@ -7,6 +7,7 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { reviewService, type ReviewParams, type ReviewErrorCode } from '@/lib/ai/reviewService'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { montarFontesParaRevisao } from '@/lib/referencias/dossie'
+import { detectarRefsOutroAssunto, type SuspeitaOffTopic } from '@/lib/referencias/off-topic'
 import type { Referencia, FormatoCitacao } from '@/types'
 
 // Revisão pode ser longa (modelo grande) — aumenta o timeout da função.
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
 
   // BLOCO E: se houver trabalhoId, dá à revisão o RESUMO das fontes citadas,
   // para ela conferir se cada citação tem suporte real na fonte. Best-effort.
+  // Também roda a trava DETERMINÍSTICA de off-topic (ref de outra doença/campo).
+  let suspeitasOffTopic: SuspeitaOffTopic[] = []
   if (trabalhoId) {
     try {
       const { data: trab } = await supabase
@@ -71,6 +74,8 @@ export async function POST(request: Request) {
           const { citadas } = separarReferenciasCitadas(refs, params.trabalho, fmt)
           const fontesResumo = montarFontesParaRevisao(citadas, fmt, 18)
           if (fontesResumo) params.fontesResumo = fontesResumo
+          // Off-topic determinístico: só sobre refs CITADAS (as da lista final).
+          suspeitasOffTopic = detectarRefsOutroAssunto(citadas, `${params.tema ?? ''} ${params.area ?? ''}`)
         }
       }
     } catch { /* segue sem o resumo das fontes */ }
@@ -81,5 +86,16 @@ export async function POST(request: Request) {
     : await reviewService.analyze(params)
 
   if (!out.ok) return NextResponse.json({ error: out.error, codigo: out.codigo }, { status: statusDoErro(out.codigo) })
+
+  // Mescla as suspeitas determinísticas (off-topic por assunto) nas do LLM, sem duplicar
+  // (dedup pela "referencia"). Garante que um estudo de outra doença seja sinalizado mesmo
+  // que o modelo o tenha deixado passar.
+  if (suspeitasOffTopic.length > 0 && out.data && typeof out.data === 'object') {
+    const existentes = Array.isArray(out.data.referencias_suspeitas) ? out.data.referencias_suspeitas : []
+    const jaTem = new Set(existentes.map(s => (s.referencia ?? '').toLowerCase().replace(/\s+/g, '')))
+    const novas = suspeitasOffTopic.filter(s => !jaTem.has(s.referencia.toLowerCase().replace(/\s+/g, '')))
+    out.data.referencias_suspeitas = [...existentes, ...novas]
+  }
+
   return NextResponse.json(out.data)
 }

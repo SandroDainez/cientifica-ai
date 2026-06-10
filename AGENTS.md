@@ -78,6 +78,13 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
   regional) se constar no "Resumo da fonte"; senão, descrever QUALITATIVAMENTE.
   Fonte tem que ser do ASSUNTO (não usar câncer/projeção p/ sustentar outro tema).
   Não alegar base de dados (DATASUS) que não será apresentada.
+- OFF-TOPIC DETERMINÍSTICO (`lib/referencias/off-topic.ts` → `detectarRefsOutroAssunto`,
+  travado por `CONTRATO off-topic`): complementa o LLM. Sinaliza (acao "verificar",
+  NUNCA remove sozinho) ref cujo TÍTULO é dominado por uma doença/campo (lista bilíngue
+  PT/EN: câncer, diabetes, HIV, projeção demográfica, etc.) que o TEMA do trabalho não
+  cobre. Conservador (só dispara se o tópico está no título e ausente do tema). A rota
+  `analyze` mescla nas `referencias_suspeitas` sem duplicar. NÃO transformar em remoção
+  automática (risco de falso-positivo) nem regredir.
 - REVISÃO (`REVIEW_SYSTEM_PROMPT`, bloco INTEGRIDADE A-E): caça (A) número sem fonte
   → "alta", correcao generaliza o número; (B) ref off-topic pelo ASSUNTO REAL (câncer
   num trabalho de sepse) → "remover"; (C) fonte fraca/não-primária (newsletter,
