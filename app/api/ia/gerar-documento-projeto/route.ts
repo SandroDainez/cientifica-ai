@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildDocumentoPrompt } from '@/lib/ai/prompts/documentos-projeto'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
+import { enriquecerAbstractsFaltantes } from '@/lib/referencias/buscar-externo'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { substituirListaReferencias } from '@/lib/referencias/lista-referencias'
 import type { Trabalho, DadosProjeto, TipoDocumento, Referencia, FormatoCitacao } from '@/types'
@@ -130,6 +131,16 @@ export async function POST(request: Request) {
     })
     referencias = filtrarRefsCitaveis(refsResult.referencias)
     guardrail = refsResult.guardrail
+
+    // Backfill de abstracts → a ancoragem na fonte (resumo no prompt) também
+    // funciona aqui, igual ao editor. Best-effort.
+    try {
+      const novos = await enriquecerAbstractsFaltantes(referencias.map(r => ({ id: r.id, doi: r.doi, pmid: r.pmid, abstract: r.abstract })))
+      if (novos.size > 0) {
+        await Promise.allSettled([...novos].map(([id, abstract]) => supabase.from('referencias').update({ abstract }).eq('id', id)))
+        referencias = referencias.map(r => novos.has(r.id) ? { ...r, abstract: novos.get(r.id) } : r)
+      }
+    } catch { /* segue sem o backfill */ }
   }
 
   const { system: systemBase, user: userPrompt } = buildDocumentoPrompt(

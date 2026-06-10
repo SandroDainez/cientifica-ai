@@ -22,7 +22,7 @@ import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/a
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica, revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
-import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
+import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -514,6 +514,27 @@ test('selecionarFontesRelevantes: sem nenhum abstract → vazio (degrada p/ tít
   const refs = [fakeRef('1', 'Tema X', undefined), fakeRef('2', 'Tema Y', '')]
   assert.deepEqual(selecionarFontesRelevantes(refs, 'tema', 16), [])
 })
+test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs reais por tema', () => {
+  const refs = [fakeRef('1', 'A', 'resumo um com conteúdo suficiente para passar do limiar de oitenta caracteres exigido aqui.'), fakeRef('2', 'B', undefined), fakeRef('3', 'C', undefined)]
+  const instr = buildInstrucaoCitacaoReferencias(refs, 'abnt')
+  assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
+  assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
+  assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO citações: instrução SEM refs ainda força marcador (SOBRENOME, ANO) e proíbe inventar', () => {
+  const instr = buildInstrucaoCitacaoReferencias([], 'abnt')
+  assert.match(instr, /\(SOBRENOME, ANO\)/)
+  assert.match(instr, /PROIBIDO inventar/i)
+})
+test('CONTRATO geração: TODO tipo de trabalho recebe a lista de refs + instrução de citação', () => {
+  const refs = [fakeRef('1', 'Estudo sobre sepse', 'resumo real com tamanho suficiente para entrar no dossiê de fontes do prompt de geração.')]
+  // fase mínima (qualquer tipo de trabalho usa este builder)
+  const fase = { id: 'introducao', chave_secao: 'introducao', nome: 'Introdução', instrucoes: 'x', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
+  const prompt = buildGerarSecaoPrompt(fase, { titulo: 'Sepse no Brasil', referencias: refs, formato_citacao: 'abnt' })
+  assert.match(prompt, /REFERÊNCIAS REAIS DISPONÍVEIS/)
+  assert.match(prompt, /Resumo da fonte/)   // ancoragem na fonte aplicada
+})
+
 test('formatarRefsParaPrompt: injeta "Resumo da fonte" só nas selecionadas', () => {
   const refs = [
     fakeRef('1', 'Fonte com resumo', 'Este estudo mostra que o tratamento reduz a mortalidade em 30%.'),

@@ -21,6 +21,38 @@ mexer em geração/formatação, altere AQUI — nunca duplique a lógica em out
 - `lib/referencias/qualidade.ts`: rejeita ref sem autor real / não-original.
 - `lib/referencias/citadas.ts`: remove da lista refs não citadas no corpo.
 
+## Citações: AMPLITUDE + ancoragem (vale para TODO tipo de trabalho)
+
+Regras travadas por teste (`CONTRATO citações`/`CONTRATO geração`). Aplicam-se a
+QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
+
+- `lib/ai/prompts.ts` → `buildInstrucaoCitacaoReferencias()`: instrução ÚNICA de
+  citação, usada PELAS DUAS rotas de geração (`gerar-secao` e
+  `gerar-documento-projeto`). Exige AMPLITUDE (citar MUITAS fontes reais
+  distintas — a lista de Referências mostra só o que é citado; citar pouco deixa
+  o trabalho com poucas refs) E ancoragem (ancore no "Resumo da fonte" quando
+  houver, sem contradizê-lo). Citar uma ref REAL da lista pelo tema é correto;
+  PROIBIDO é INVENTAR fora da lista. NÃO reintroduzir "proibido citar pelo
+  título" — isso colapsou as citações (trabalho saiu com 4 refs).
+- `lib/referencias/dossie.ts` (`selecionarFontesRelevantes`, `resumirAbstract`):
+  expõe o resumo (abstract, BLOCO A) das fontes relevantes no prompt. Ambas as
+  rotas de geração usam `formatarRefsParaPrompt(refs, formato, idsComResumo)`.
+- `lib/referencias/buscar-externo.ts` → `enriquecerAbstractsFaltantes`: backfill
+  de abstracts em refs antigas (sem isso a ancoragem não pega em trabalhos velhos).
+
+## Revisão final / correção (travas anti-piora e anti-fabricação)
+
+- `app/api/review/revisar` + `reviewService.revisarSecaoProfunda`: reescreve por
+  seção (remove/reescreve/ajusta/aprofunda) ancorado na lista COMPLETA de fontes;
+  antes faz gap-filling (`garantirReferenciasReais`, meta 48/limiar 40) e backfill.
+  Cada seção passa por `posProcessarTextoGerado` + `revisaoProfundaSegura`
+  (não esvazia <40% / não incha >3x) + anti-colapso de citações (não perde >40%).
+  FAZ BACKUP em `secao_versoes` antes de sobrescrever. Pula resumo/título/objetivos/refs.
+- `app/api/ia/salvar-secao` → `lib/resumo/proteger.ts` (`protegerConteudoResumo`):
+  a seção `resumo` é JSON — texto puro NUNCA a sobrescreve; save parcial não zera
+  abstract/keywords. Qualquer rota que escreva em `secoes_trabalho` deve pular
+  `chave_secao === 'resumo'` (ou conteúdo começando com `{`).
+
 ## REGRA DE OURO: rode os testes antes de cada deploy
 
 `npm run check`  (= `npm test` + `npm run build`)

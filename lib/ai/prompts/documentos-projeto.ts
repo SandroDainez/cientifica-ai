@@ -1,6 +1,7 @@
 import type { TipoDocumento, DadosProjeto, Referencia, FormatoCitacao } from '@/types'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias } from '@/lib/ai/prompts'
 import { getNormasSecao } from '@/lib/ai/normas-cientificas'
+import { selecionarFontesRelevantes } from '@/lib/referencias/dossie'
 
 const SYSTEM_PROMPT = `Você é um especialista em pesquisa científica brasileira com profundo domínio em normas ABNT, regulamentações do CEP/CONEP e publicação científica. Gere documentos acadêmicos completos e prontos para uso.
 
@@ -763,14 +764,19 @@ export function buildDocumentoPrompt(
 
   // Injeta as referências reais + instrução de ancoragem (densidade máxima) no system prompt
   if (referencias && referencias.length > 0) {
+    // Ancoragem na fonte (lê → escreve → cita) também aqui: mostra o resumo das
+    // fontes mais relevantes ao documento, sem deixar de listar todas (amplitude).
+    const termos = [trabalhoTitulo, dados.objetivo_geral, dados.pergunta_pesquisa, dados.contexto_geral, tipo]
+      .filter(Boolean).join(' ')
+    const idsComResumo = new Set(selecionarFontesRelevantes(referencias, termos, 16).map(r => r.id))
     system += `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO DOCUMENTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Cada linha mostra: a citação no texto → o título do estudo.
+Cada linha mostra: a citação no texto → o título do estudo. Algumas trazem "Resumo da fonte".
 
-${formatarRefsParaPrompt(referencias, formato)}
+${formatarRefsParaPrompt(referencias, formato, idsComResumo)}
 ${buildInstrucaoCitacaoReferencias(referencias, formato)}`
   } else {
     system += `\n${buildInstrucaoCitacaoReferencias([], formato)}`
