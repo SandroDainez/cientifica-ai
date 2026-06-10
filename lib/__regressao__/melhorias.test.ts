@@ -25,6 +25,8 @@ import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewProm
 import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
@@ -705,6 +707,26 @@ test('removerEntradaDeCitacoes: NÃO remove ref de outro ano/sobrenome', () => {
   const r = removerEntradaDeCitacoes('texto (SILVA, 2020; COSTA, 2021) fim.', 'Galvão', 2022)
   assert.equal(r.removidas, 0)
   assert.equal(r.texto, 'texto (SILVA, 2020; COSTA, 2021) fim.')
+})
+
+// ── 13l. MANIFESTO: o pipeline de excelência da revisão NUNCA pode sair do app ─
+test('MANIFESTO revisão de excelência: todas as peças do pipeline existem', () => {
+  // Se qualquer rota/módulo do ciclo (detectar → remover → reescrever → coerência)
+  // for apagada, este teste falha e o deploy não sai.
+  const obrigatorios = [
+    'app/api/review/analyze/route.ts',        // detectar
+    'app/api/review/limpar-suspeitas/route.ts', // remover off-topic (determinístico)
+    'app/api/review/corrigir/route.ts',       // correção cirúrgica
+    'app/api/review/revisar/route.ts',        // reescrever/aprofundar + gap-filling
+    'app/api/review/coerencia/route.ts',      // coerência global
+    'lib/revisao/sanear-refs.ts',
+    'lib/revisao/coerencia.ts',
+    'lib/resumo/proteger.ts',
+    'lib/referencias/dossie.ts',
+  ]
+  for (const p of obrigatorios) {
+    assert.ok(existsSync(join(process.cwd(), p)), `peça do pipeline ausente: ${p}`)
+  }
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

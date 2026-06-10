@@ -4,6 +4,36 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+# ⭐ REGRA SUPREMA DA REVISÃO DE EXCELÊNCIA (vale para TODO tipo de trabalho)
+
+Esta é uma regra PERMANENTE do app, para QUALQUER trabalho gerado aqui, de
+qualquer tipo (TCC, artigo, revisão, dissertação, tese, relato, etc.). NUNCA
+remover, enfraquecer ou regredir:
+
+> **A revisão final deve revisar o trabalho INTEIRO, encontrar TUDO que está
+> errado ou pode melhorar e CORRIGIR de fato — excluindo o que não serve,
+> adaptando, reescrevendo, aprofundando e alinhando — até o trabalho ficar
+> correto, coerente e de nível PROFISSIONAL/EXCELÊNCIA. Detectar sem corrigir é
+> falha. NUNCA inventar dados, números, autores, anos ou referências.**
+
+Pipeline obrigatório (orquestrado em "Revisão final completa", travado pelo teste
+`MANIFESTO revisão de excelência` — se alguma peça sumir, o build quebra):
+1. **Detectar** — `/api/review/analyze` (sabe o ANO ATUAL; classifica refs
+   remover/corrigir_contexto/verificar).
+2. **Remover o que não serve (determinístico)** — `/api/review/limpar-suspeitas`
+   (`lib/revisao/sanear-refs.ts`): apaga refs off-topic e suas citações por código,
+   inclusive em grupo; exclui da lista. NÃO depender de LLM para isso.
+3. **Reescrever/adaptar/aprofundar + pesquisar o que falta** — `/api/review/revisar`
+   (`buildRevisaoProfundaPrompt` + gap-filling `garantirReferenciasReais`): remove
+   citação sem suporte, mantém AMPLITUDE de citações, acrescenta fontes reais.
+4. **Coerência global** — `/api/review/coerencia`: alinha enquadramento aos fatos
+   (metodologia/resultados nunca são alterados).
+5. **Re-analisar e repetir** até a meta / parar de melhorar / teto de passadas.
+
+Invariantes invioláveis em CADA passo: anti-fabricação (`posProcessarTextoGerado`),
+preservar dados reais, AMPLITUDE de citações, BACKUP em `secao_versoes` antes de
+sobrescrever, e NUNCA tocar na seção `resumo` (JSON) com texto puro.
+
 # Contrato de consistência (NÃO regredir as melhorias)
 
 As melhorias de qualidade são CENTRALIZADAS em fontes únicas de verdade. Ao
