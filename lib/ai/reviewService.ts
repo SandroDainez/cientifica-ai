@@ -18,7 +18,16 @@ const REVIEW_AI_PROVIDER = (process.env.REVIEW_AI_PROVIDER || 'claude') as 'clau
 const REVIEW_AI_MODEL = process.env.REVIEW_AI_MODEL || 'claude-sonnet-4-20250514'
 const REVIEW_MAX_ITERATIONS = Number.parseInt(process.env.REVIEW_MAX_ITERATIONS || '3', 10)
 const REVIEW_MIN_SCORE = Number.parseInt(process.env.REVIEW_MIN_SCORE || '80', 10)
-const REVIEW_MAX_TOKENS_INPUT = Number.parseInt(process.env.REVIEW_MAX_TOKENS_INPUT || '12000', 10)
+// O modelo de revisão (Claude Sonnet 4) tem 200k de contexto. O limite de input
+// nunca deve ficar abaixo de 120k tokens — senão um trabalho completo + os resumos
+// das fontes estouram e a revisão nem roda ("excede o limite de tokens"). O env
+// pode AUMENTAR, nunca derrubar abaixo do piso seguro.
+const REVIEW_MAX_TOKENS_INPUT = Math.max(
+  Number.parseInt(process.env.REVIEW_MAX_TOKENS_INPUT || '0', 10) || 0,
+  120000,
+)
+/** Limite de caracteres do input da revisão (~4 chars/token). Travado por teste. */
+export const REVIEW_INPUT_CHAR_LIMIT = REVIEW_MAX_TOKENS_INPUT * 4
 
 // ── Tipos do resultado de revisão (espelham o JSON do prompt) ────────────────
 export interface ReviewChecklist {
@@ -256,13 +265,20 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
 
   /** Chamada única à IA de revisão (analyze ou analyzeAndCorrect). */
   private async callReview(params: ReviewParams, solicitarCorrecao: boolean): Promise<ReviewOutcome<ReviewResult>> {
-    // Req. 7: valida o tamanho ANTES de enviar (estimativa grosseira ~4 chars/token).
-    const limiteChars = REVIEW_MAX_TOKENS_INPUT * 4
-    if (((params.trabalho?.length ?? 0) + (params.fontesResumo?.length ?? 0)) > limiteChars) {
+    // Valida o tamanho ANTES de enviar (estimativa grosseira ~4 chars/token).
+    const limiteChars = REVIEW_INPUT_CHAR_LIMIT
+    const tamTrabalho = params.trabalho?.length ?? 0
+    let fontesResumo = params.fontesResumo
+    // Degrada com elegância: se trabalho + fontes estoura, mas o TRABALHO cabe,
+    // larga o resumo das fontes em vez de falhar (a revisão roda sem ancoragem).
+    if (tamTrabalho + (fontesResumo?.length ?? 0) > limiteChars && tamTrabalho <= limiteChars) {
+      fontesResumo = undefined
+    }
+    if (tamTrabalho + (fontesResumo?.length ?? 0) > limiteChars) {
       return {
         ok: false,
         codigo: 'INPUT_TOO_LARGE',
-        error: `Trabalho excede o limite de ~${REVIEW_MAX_TOKENS_INPUT} tokens (${limiteChars} caracteres). Revise por partes.`,
+        error: `O trabalho é muito longo para revisar de uma vez (limite ~${REVIEW_MAX_TOKENS_INPUT} tokens). Revise capítulo por capítulo.`,
       }
     }
 
@@ -270,7 +286,7 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
     if (!clienteOut.ok) return clienteOut
     const client = clienteOut.data
 
-    const userPrompt = buildReviewUserPrompt({ ...params, solicitarCorrecao })
+    const userPrompt = buildReviewUserPrompt({ ...params, fontesResumo, solicitarCorrecao })
 
     try {
       const completion = await client.chat.completions.create({

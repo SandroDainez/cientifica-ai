@@ -20,7 +20,7 @@ import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica, revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
-import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProfundaPrompt } from '@/lib/ai/reviewService'
+import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProfundaPrompt, REVIEW_INPUT_CHAR_LIMIT } from '@/lib/ai/reviewService'
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
@@ -644,6 +644,11 @@ test('CONTRATO revisão: system prompt classifica remover (off-topic) vs corrigi
   assert.match(REVIEW_SYSTEM_PROMPT, /"remover"/)
   assert.match(REVIEW_SYSTEM_PROMPT, /NÃO pertence ao tema|outro assunto/i)
   assert.match(REVIEW_SYSTEM_PROMPT, /"corrigir_contexto"/)
+})
+
+test('CONTRATO revisão: limite de input alto o bastante p/ trabalho completo (≥400k chars)', () => {
+  // 12k tokens (48k chars) era baixo demais e barrava a revisão. Piso seguro p/ Sonnet 4.
+  assert.ok(REVIEW_INPUT_CHAR_LIMIT >= 400_000, `limite muito baixo: ${REVIEW_INPUT_CHAR_LIMIT}`)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────
