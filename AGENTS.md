@@ -117,6 +117,11 @@ teste (`CONTRATO revisão*`):
   e o corretor nunca acharia para corrigir (é a raiz do "acha e não corrige"). Por isso
   `normalizarResultado(data, textoAnalisado)` recebe o texto. Trechos < 15 chars não são
   validados (evita descarte indevido). Só vale quando o texto é passado. NÃO regredir.
+  (4) PREFERÊNCIA DE ESTILO (`ehPreferenciaEstilo`): a calibração PROÍBE apontar "frase
+  muito longa/dividir em frases" e troca de palavra por gosto ("uso impreciso/termo mais
+  adequado/soaria melhor"); o modelo às vezes desobedece. A trava ENFORÇA a regra: descarta
+  esses (categoria linguagem) — mas NUNCA erro real (repetição, redundância, concordância,
+  gramática, ortografia, pontuação, acentuação continuam). NÃO regredir.
 - `lib/ai/reviewService.ts` → `callReview` (analyze): roda a `temperature: 0`. A
   NOTA e os apontamentos têm de ser REPRODUTÍVEIS — o MESMO texto não pode dar 85
   numa execução e 78 noutra (isso fazia o usuário "corrigir" de novo achando que

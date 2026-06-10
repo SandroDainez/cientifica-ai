@@ -49,6 +49,21 @@ export function ehFalsoPositivoDataAtual(p: ApontamentoMinimo, anoAtual: number 
   return anos.includes(anoAtual) && anos.every(a => a <= anoAtual)
 }
 
+/**
+ * Verdadeiro quando o apontamento é PREFERÊNCIA DE ESTILO que a calibração do revisor
+ * já PROÍBE (frase longa "dividir em frases", troca de palavra "uso impreciso / termo
+ * mais adequado / soaria melhor"). NÃO dispara em erro REAL (repetição, redundância,
+ * concordância, gramática, ortografia, pontuação, acentuação) — esses continuam.
+ */
+export function ehPreferenciaEstilo(p: ApontamentoMinimo): boolean {
+  if ((p.categoria ?? '') !== 'linguagem') return false
+  const txt = `${p.problema ?? ''} ${p.sugestao ?? ''}`.toLowerCase()
+  if (/repeti|redund|concord|gram[aá]|ortog|grafia|acentua|pontua[çc]/.test(txt)) return false
+  const fraseLonga = /frase (muito )?longa|per[ií]odo (muito )?longo|dividir em (duas|mais|v[áa]rias) frases|m[uú]ltiplas (ora[çc][õo]es )?subordinadas|prejudica(ndo)? a (clareza|fluidez|flu[êe]ncia)/.test(txt)
+  const escolhaPalavra = /uso impreciso|termo mais (preciso|adequado|espec[ií]fico)|seria mais adequado|palavra mais (precisa|adequada)|soaria melhor|poderia ser mais (clar|precis|espec[ií]fic|fluid|detalhad)/.test(txt)
+  return fraseLonga || escolhaPalavra
+}
+
 /** Normaliza para casamento tolerante (caixa, aspas curvas/retas, travessões, espaços). */
 function normalizarMatch(s: string): string {
   return s.toLowerCase()
@@ -79,6 +94,7 @@ export function filtrarApontamentos<T extends ApontamentoMinimo>(problemas: T[],
   return problemas.filter(p => {
     if (ehFalsoPositivoFormatacaoReferencia(p)) return false
     if (ehFalsoPositivoDataAtual(p)) return false
+    if (ehPreferenciaEstilo(p)) return false
     if (textoTrabalho && (p.trecho?.trim().length ?? 0) >= 15 && !trechoExisteNoTexto(p.trecho ?? '', textoTrabalho)) return false
     return true
   })

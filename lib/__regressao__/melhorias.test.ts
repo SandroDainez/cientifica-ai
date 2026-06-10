@@ -26,7 +26,7 @@ import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
-import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto } from '@/lib/revisao/filtrar-apontamentos'
+import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
 import { existsSync } from 'node:fs'
@@ -157,6 +157,17 @@ test('CONTRATO resumo: trava anti-fabricação e anti-colapso', () => {
   const orig = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40%.'
   const cand = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40% nacional.'
   assert.equal(alinhamentoResumoSeguro(orig, cand, `${orig}\n${corpo}`).aceitar, true)
+})
+test('CONTRATO apontamentos: descarta preferência de estilo (frase longa / troca de palavra) mas mantém erro real', () => {
+  // PROIBIDO pela calibração: frase longa e troca de palavra por gosto.
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Período muito longo com múltiplas subordinadas, prejudicando a clareza', sugestao: 'Dividir em duas frases' }), true)
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: "Uso impreciso de 'pontuais' - seria mais adequado 'específicas'", sugestao: 'Substituir por termo mais preciso' }), true)
+  // REAL: repetição, redundância, concordância, ortografia → NÃO descarta.
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: "Repetição da expressão 'A literatura demonstra'", sugestao: 'Variar' }), false)
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Concordância verbal incorreta', sugestao: 'Corrigir' }), false)
+  assert.equal(ehPreferenciaEstilo({ categoria: 'linguagem', problema: 'Erro de ortografia em "analise"', sugestao: 'acentuar' }), false)
+  // Só categoria linguagem é afetada.
+  assert.equal(ehPreferenciaEstilo({ categoria: 'citacao', problema: 'frase muito longa', sugestao: 'dividir' }), false)
 })
 test('CONTRATO apontamentos: descarta trecho que NÃO existe no texto (citação errada/alucinada do revisor)', () => {
   const texto = 'A mortalidade por sepse no Brasil mantém-se estagnada há décadas em patamares elevados. As regiões Norte e Nordeste concentram os piores indicadores.'
