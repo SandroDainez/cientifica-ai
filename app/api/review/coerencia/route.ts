@@ -11,6 +11,8 @@ import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coere
 import { aplicarEdicoes, edicaoSeguraCirurgica, reescritaSegura } from '@/lib/ai/aplicar-edicoes'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { extrairTextoSecao } from '@/lib/ai/utils'
+import { parseResumoEstruturado } from '@/lib/resumo/proteger'
+import { alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
 import type { SecaoTrabalho, Referencia, FormatoCitacao, Trabalho } from '@/types'
 
 export const maxDuration = 300
@@ -75,7 +77,33 @@ export async function POST(request: Request) {
     aplicados++
   }
 
-  if (aplicados === 0) {
+  // ALINHA o RESUMO (PT) e o ABSTRACT (EN) ao CORPO — corrige promessas/comparações/
+  // fontes que o corpo NÃO sustenta (ex.: abstract cita países/bases que o trabalho não
+  // usa). Resumo é JSON protegido: PRESERVA palavras-chave/keywords, faz BACKUP antes e
+  // só grava se passar nas travas (sem número fabricado, sem colapso/inflação). Universal.
+  let resumoAjustado = 0
+  const secaoResumo = comTexto.find(s => s.chave_secao === 'resumo')
+  const estrut = parseResumoEstruturado(secaoResumo?.conteudo)
+  if (secaoResumo && estrut && (estrut.resumo.trim() || estrut.abstract.trim())) {
+    const corpoTexto = comTexto
+      .filter(s => s.chave_secao !== 'resumo' && s.chave_secao !== 'referencias')
+      .map(s => extrairTextoSecao(novoPorChave.get(s.chave_secao) ?? s.conteudo ?? ''))
+      .join('\n\n')
+    const out2 = await reviewService.alinharResumoAoCorpo({ resumoPt: estrut.resumo, abstractEn: estrut.abstract, corpo: corpoTexto, tipo, tema })
+    if (out2.ok) {
+      const base = `${estrut.resumo}\n${estrut.abstract}\n${corpoTexto}`
+      const novoResumo = alinhamentoResumoSeguro(estrut.resumo, out2.data.resumo, base).aceitar ? out2.data.resumo.trim() : estrut.resumo
+      const novoAbstract = alinhamentoResumoSeguro(estrut.abstract, out2.data.abstract, base).aceitar ? out2.data.abstract.trim() : estrut.abstract
+      if (novoResumo !== estrut.resumo || novoAbstract !== estrut.abstract) {
+        const novoJson = JSON.stringify({ resumo: novoResumo, abstract: novoAbstract, palavras_chave: estrut.palavras_chave, keywords: estrut.keywords })
+        await supabase.from('secao_versoes').insert({ trabalho_id: trabalhoId, chave_secao: 'resumo', conteudo: secaoResumo.conteudo ?? '', status: secaoResumo.status ?? 'editado' })
+        await supabase.from('secoes_trabalho').update({ conteudo: novoJson, status: 'editado' }).eq('trabalho_id', trabalhoId).eq('chave_secao', 'resumo')
+        resumoAjustado = 1
+      }
+    }
+  }
+
+  if (aplicados === 0 && resumoAjustado === 0) {
     return NextResponse.json({ ok: true, ajustesAplicados: 0, corpoAtualizado: '', mensagem: 'Trabalho já coerente (nenhum ajuste seguro a aplicar).' })
   }
 
@@ -93,6 +121,6 @@ export async function POST(request: Request) {
     .map(s => `${s.nome_secao}\n\n${extrairTextoSecao(novoPorChave.get(s.chave_secao) ?? s.conteudo ?? '')}`)
     .join('\n\n')
 
-  console.log(`[review/coerencia] ajustes aplicados=${aplicados} seções=${novoPorChave.size}`)
-  return NextResponse.json({ ok: true, ajustesAplicados: aplicados, secoesAfetadas: novoPorChave.size, corpoAtualizado })
+  console.log(`[review/coerencia] ajustes aplicados=${aplicados} seções=${novoPorChave.size} resumoAjustado=${resumoAjustado}`)
+  return NextResponse.json({ ok: true, ajustesAplicados: aplicados + resumoAjustado, secoesAfetadas: novoPorChave.size + resumoAjustado, resumoAjustado, corpoAtualizado })
 }

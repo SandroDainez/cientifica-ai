@@ -149,7 +149,17 @@ ENQUADRAMENTO (`ehSecaoEnquadramento`: introdução/justificativa/discussão/con
 revisão) são ajustadas para casar com os fatos. Edições cirúrgicas com
 `edicaoSeguraCirurgica` + `reescritaSegura` + `posProcessarTextoGerado` + BACKUP em
 `secao_versoes`. Roda no fim da "Revisão final completa" e como botão "Coerência global".
-NÃO permitir que a coerência edite metodologia/resultados/título/resumo/objetivos.
+NÃO permitir que a coerência edite metodologia/resultados/título/objetivos.
+
+ALINHAMENTO DO RESUMO (REGRA DO APP, universal — travado por `CONTRATO resumo`): a
+coerência também ALINHA o resumo/abstract ao CORPO (`reviewService.alinharResumoAoCorpo`
++ `lib/resumo/alinhar.ts`), corrigindo promessas/comparações/fontes que o corpo não
+sustenta (ex.: abstract cita países/bases que o trabalho não usa). O resumo é JSON: o
+passo PRESERVA palavras-chave/keywords, faz BACKUP em `secao_versoes`, e só grava se
+passar nas travas DETERMINÍSTICAS `alinhamentoResumoSeguro` (sem número fabricado fora
+do corpo, sem colapso >50% nem inflação >2x). O corpo é a VERDADE; o resumo descreve o
+corpo, nunca o contrário. NÃO inventar dados. Vale p/ TODO tipo de trabalho. Esta é a
+ÚNICA via que pode reescrever o JSON do resumo — fora dela, `resumo` continua intocável.
 - `app/api/ia/salvar-secao` → `lib/resumo/proteger.ts` (`protegerConteudoResumo`):
   a seção `resumo` é JSON — texto puro NUNCA a sobrescreve; save parcial não zera
   abstract/keywords. Qualquer rota que escreva em `secoes_trabalho` deve pular

@@ -202,6 +202,47 @@ Retorne APENAS JSON válido: {"ajustes":[{"chave_secao":"...","buscar":"...","su
   return { sys, user }
 }
 
+export interface AlinharResumoParams {
+  resumoPt: string
+  abstractEn: string
+  corpo: string   // texto do CORPO do trabalho (sem o resumo)
+  tipo: string
+  tema: string
+}
+
+/**
+ * Prompt do ALINHAMENTO DO RESUMO (puro, travado por teste). Reescreve SÓ o resumo
+ * (PT) e o abstract (EN) para ficarem FIÉIS ao corpo do trabalho — removendo
+ * promessas/comparações/fontes que o corpo NÃO sustenta (ex.: abstract diz que
+ * compara com "Alemanha e EUA" mas o trabalho compara com a Inglaterra). NUNCA
+ * inventa nada nem altera números reais; preserva os achados do corpo.
+ */
+export function buildAlinharResumoPrompt(params: AlinharResumoParams): { sys: string; user: string } {
+  const sys = `Você é um editor acadêmico sênior. Sua tarefa é ALINHAR o RESUMO/ABSTRACT ao CORPO do trabalho — o corpo é a VERDADE; o resumo deve descrevê-lo fielmente.
+O QUE CORRIGIR (e SÓ isto):
+- Afirmações, COMPARAÇÕES (ex.: países comparados), FONTES/BASES de dados, números ou achados citados no resumo/abstract que o CORPO NÃO sustenta → corrija para bater com o corpo (ou remova a parte sem suporte), mantendo o texto fluido.
+- O abstract (inglês) deve ser tradução fiel do resumo (português) já corrigido.
+REGRAS ABSOLUTAS:
+- NUNCA invente dados, números, países, autores, anos ou fontes. NÃO acrescente nada que não esteja no corpo.
+- PRESERVE os números/achados que o corpo de fato apresenta (não os apague).
+- Mantenha o gênero textual de resumo acadêmico (contexto, objetivo, método, resultados, conclusão) e tamanho parecido com o original.
+- Responda no MESMO idioma de cada campo (resumo em português, abstract em inglês).
+Retorne APENAS JSON válido: {"resumo":"<texto PT corrigido>","abstract":"<texto EN corrigido>"}. Se já estiver coerente com o corpo, devolva o resumo/abstract IGUAIS aos originais.`
+  const user = `Trabalho: ${params.tipo} sobre "${params.tema}".
+
+RESUMO ATUAL (PT):
+${params.resumoPt || '(vazio)'}
+
+ABSTRACT ATUAL (EN):
+${params.abstractEn || '(vazio)'}
+
+CORPO DO TRABALHO (a verdade a ser descrita):
+${params.corpo}
+
+Devolva o resumo e o abstract alinhados ao corpo (sem inventar nada).`
+  return { sys, user }
+}
+
 export class ReviewService {
   private _client: OpenAI | null = null
 
@@ -308,6 +349,35 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
       return { ok: true, data: completion.choices[0]?.message?.content ?? '' }
     } catch (err) {
       return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha na coerência global.' }
+    }
+  }
+
+  /**
+   * ALINHA o resumo (PT) e abstract (EN) ao CORPO do trabalho. Devolve
+   * { resumo, abstract } ou erro. temperature 0 (correção fiel, reprodutível).
+   * As travas anti-fabricação/anti-colapso são aplicadas DEPOIS, na rota.
+   */
+  async alinharResumoAoCorpo(params: AlinharResumoParams): Promise<ReviewOutcome<{ resumo: string; abstract: string }>> {
+    if (!params.resumoPt.trim() && !params.abstractEn.trim()) return { ok: true, data: { resumo: '', abstract: '' } }
+    if ((params.corpo?.length ?? 0) > REVIEW_INPUT_CHAR_LIMIT) {
+      return { ok: false, codigo: 'INPUT_TOO_LARGE', error: 'Trabalho muito longo para alinhar o resumo de uma vez.' }
+    }
+    const clienteOut = this.getClient()
+    if (!clienteOut.ok) return clienteOut
+    const { sys, user } = buildAlinharResumoPrompt(params)
+    try {
+      const completion = await clienteOut.data.chat.completions.create({
+        model: REVIEW_AI_MODEL,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        temperature: 0,
+        max_tokens: 4000,
+      })
+      const json = extrairJsonObjeto(completion.choices[0]?.message?.content ?? '')
+      if (!json || typeof json !== 'object') return { ok: false, codigo: 'PARSE_ERROR', error: 'Alinhamento do resumo não retornou JSON.' }
+      const o = json as { resumo?: unknown; abstract?: unknown }
+      return { ok: true, data: { resumo: typeof o.resumo === 'string' ? o.resumo : '', abstract: typeof o.abstract === 'string' ? o.abstract : '' } }
+    } catch (err) {
+      return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha ao alinhar o resumo.' }
     }
   }
 

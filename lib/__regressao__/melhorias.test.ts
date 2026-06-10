@@ -27,6 +27,8 @@ import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coere
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia } from '@/lib/revisao/filtrar-apontamentos'
+import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
+import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
@@ -134,6 +136,27 @@ test('separarReferenciasCitadas (ABNT): remove órfã, mantém citada', () => {
   assert.equal(citadas.length, 1)
   assert.equal((citadas[0] as { id: string }).id, '1')
   assert.equal((naoCitadas[0] as { id: string }).id, '2')
+})
+test('CONTRATO resumo: alinhamento ao corpo é PURO e proíbe inventar', () => {
+  const { sys, user } = buildAlinharResumoPrompt({ resumoPt: 'compara com Alemanha', abstractEn: 'compares with Germany', corpo: 'O trabalho compara o Brasil com a Inglaterra.', tipo: 'artigo', tema: 'sepse' })
+  assert.match(sys, /NUNCA invente/i)
+  assert.match(sys, /CORPO/)                       // o corpo é a verdade
+  assert.match(user, /Inglaterra/)                 // injeta o corpo real
+  assert.match(sys, /resumo.*portugu[eê]s|portugu[eê]s/i)
+})
+test('CONTRATO resumo: trava anti-fabricação e anti-colapso', () => {
+  const corpo = 'Mortalidade média de 40%, chegando a 55% no Norte.'
+  // número novo (90%) que não está no corpo → fabricado.
+  assert.equal(temNumeroFabricado('A taxa é de 90%.', corpo), true)
+  assert.equal(temNumeroFabricado('A taxa média é 40% e o pico 55%.', corpo), false)
+  // colapso: candidato com menos de 50% do tamanho → reprova.
+  assert.equal(alinhamentoResumoSeguro('a'.repeat(200), 'curto', corpo).aceitar, false)
+  // vazio reprova.
+  assert.equal(alinhamentoResumoSeguro('texto original longo aqui', '', corpo).aceitar, false)
+  // ok: tamanho parecido, sem número novo.
+  const orig = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40%.'
+  const cand = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40% nacional.'
+  assert.equal(alinhamentoResumoSeguro(orig, cand, `${orig}\n${corpo}`).aceitar, true)
 })
 test('CONTRATO apontamentos: descarta falso-positivo de negrito na lista de referências', () => {
   // O título do periódico em negrito é destaque OBRIGATÓRIO da ABNT — não é erro.
