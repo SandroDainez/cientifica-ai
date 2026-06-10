@@ -206,7 +206,7 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
       {/* Checklist dropdown */}
       {checklistAberto && (
         <div className="no-print border-t bg-gray-50 shadow-md max-w-5xl mx-auto">
-          <div className="px-4 py-4 max-w-lg space-y-3">
+          <div className="px-4 py-4 w-full max-w-3xl mx-auto space-y-3">
             <AdvancedReview
               trabalhoId={trabalho.id}
               trabalho={secoesComConteudo.map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`).join('\n\n')}
