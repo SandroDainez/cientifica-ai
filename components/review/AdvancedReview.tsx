@@ -134,39 +134,56 @@ function Checklist({ checklist }: { checklist: ReviewResult['checklist'] }) {
   )
 }
 
+// Revisão em CAMADAS, como uma banca avalia: o grave primeiro. Integridade
+// científica (citação/referência) reprova um trabalho → vem no topo, destacada.
+// Depois coerência/estrutura. Por último, linguagem/forma (polimento).
+const CAMADAS_REVISAO: { id: string; titulo: string; nota: string; categorias: ReviewProblema['categoria'][]; grave?: boolean }[] = [
+  { id: 'integridade', titulo: 'Integridade científica', nota: 'O mais grave — é o que reprova um trabalho. Resolva isto primeiro.', categorias: ['citacao', 'referencia'], grave: true },
+  { id: 'coerencia', titulo: 'Coerência e estrutura', nota: 'Alinhamento entre objetivos, método, resultados e conclusão.', categorias: ['coerencia', 'estrutura'] },
+  { id: 'linguagem', titulo: 'Linguagem e forma', nota: 'Polimento final — gramática, repetição, formatação.', categorias: ['linguagem', 'formatacao'] },
+]
+const GRAVIDADE_ORDEM: Record<ReviewProblema['gravidade'], number> = { critica: 0, alta: 1, media: 2, baixa: 3 }
+
+function ItemProblema({ p }: { p: ReviewProblema }) {
+  return (
+    <div className="rounded-lg border border-border p-3 text-sm bg-background">
+      <div className="flex items-center gap-2 mb-1">
+        <Badge className={cn('text-[10px]', GRAVIDADE_COR[p.gravidade])}>{p.gravidade}</Badge>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{CATEGORIA_ROTULO[p.categoria] ?? p.categoria}</span>
+        {p.impacto_estimado < 0 && (
+          <span className="text-xs text-muted-foreground tabular-nums">{p.impacto_estimado} pts</span>
+        )}
+      </div>
+      {p.trecho && <p className="text-xs italic text-muted-foreground mb-1 break-words">“{p.trecho}”</p>}
+      <p className="text-foreground">{p.problema}</p>
+      {p.sugestao && <p className="text-xs text-muted-foreground mt-1"><strong>Sugestão:</strong> {p.sugestao}</p>}
+    </div>
+  )
+}
+
 function ListaProblemas({ problemas }: { problemas: ReviewProblema[] }) {
   if (problemas.length === 0) {
     return <p className="text-sm text-green-700 dark:text-green-300">Nenhum problema apontado. 🎉</p>
   }
-  // Agrupa por categoria
-  const grupos = problemas.reduce<Record<string, ReviewProblema[]>>((acc, p) => {
-    (acc[p.categoria] ??= []).push(p)
-    return acc
-  }, {})
   return (
-    <div className="space-y-3">
-      {Object.entries(grupos).map(([cat, lista]) => (
-        <div key={cat}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
-            {CATEGORIA_ROTULO[cat as ReviewProblema['categoria']] ?? cat} ({lista.length})
-          </p>
-          <div className="space-y-2">
-            {lista.map((p, i) => (
-              <div key={i} className="rounded-lg border border-border p-3 text-sm">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge className={cn('text-[10px]', GRAVIDADE_COR[p.gravidade])}>{p.gravidade}</Badge>
-                  {p.impacto_estimado < 0 && (
-                    <span className="text-xs text-muted-foreground tabular-nums">{p.impacto_estimado} pts</span>
-                  )}
-                </div>
-                {p.trecho && <p className="text-xs italic text-muted-foreground mb-1 break-words">“{p.trecho}”</p>}
-                <p className="text-foreground">{p.problema}</p>
-                {p.sugestao && <p className="text-xs text-muted-foreground mt-1"><strong>Sugestão:</strong> {p.sugestao}</p>}
-              </div>
-            ))}
+    <div className="space-y-4">
+      {CAMADAS_REVISAO.map(camada => {
+        const itens = problemas
+          .filter(p => camada.categorias.includes(p.categoria))
+          .sort((a, b) => GRAVIDADE_ORDEM[a.gravidade] - GRAVIDADE_ORDEM[b.gravidade])
+        if (itens.length === 0) return null
+        return (
+          <div key={camada.id} className={cn('rounded-lg p-3', camada.grave ? 'border-2 border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30' : 'border border-border')}>
+            <p className={cn('text-sm font-semibold', camada.grave && 'text-amber-900 dark:text-amber-200')}>
+              {camada.titulo} ({itens.length})
+            </p>
+            <p className="text-xs text-muted-foreground mb-2">{camada.nota}</p>
+            <div className="space-y-2">
+              {itens.map((p, i) => <ItemProblema key={i} p={p} />)}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
