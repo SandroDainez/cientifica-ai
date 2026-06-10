@@ -443,6 +443,46 @@ Produza o guia completo, formal e pronto para uso em campo.
 ESTILO: Escreva as seções narrativas (Introdução, Scripts de abordagem, Controle de qualidade) com ritmo variado — alterne frases de instrução curtas com explicações em prosa. Inclua pelo menos 1 "Atenção:" ou "Nota de campo:" com dica prática por seção principal. PROIBIDO: "É importante ressaltar", "Nesse contexto", "Destarte", "Outrossim".`
 }
 
+function buildProtocoloExtracao(dados: DadosProjeto, titulo?: string): string {
+  return `${dadosResumo(dados)}
+
+Gere um PROTOCOLO DE SELEÇÃO E EXTRAÇÃO DE DADOS para uma revisão de literatura/estudos${titulo ? ` sobre "${titulo}"` : ''}. É um documento de TRABALHO que o pesquisador usa enquanto lê os artigos — não é prosa corrida. Baseie tudo na pergunta e no objetivo abaixo; NÃO invente achados nem números de estudos.
+
+Pergunta de pesquisa: ${dados.pergunta_pesquisa}
+Objetivo: ${dados.objetivo_geral}
+População/contexto de interesse: ${dados.populacao_alvo || '[definir]'}
+
+O documento DEVE conter, nesta ordem:
+
+1. CRITÉRIOS DE ELEGIBILIDADE
+   Derive da pergunta de pesquisa critérios objetivos, em duas listas claras:
+   - CRITÉRIOS DE INCLUSÃO (tipo de estudo, população, intervenção/exposição, desfecho, idioma, recorte temporal — proponha valores coerentes com a pergunta, deixando [colchetes] onde o pesquisador deve decidir).
+   - CRITÉRIOS DE EXCLUSÃO (o que descartar e por quê).
+
+2. FLUXO DE SELEÇÃO (PRISMA)
+   Tabela/registro com as 4 etapas: Identificação (nº de registros por base) → Triagem por título e resumo (excluídos + motivo) → Leitura na íntegra (excluídos + motivo) → Estudos incluídos. Deixe os números em [colchetes] para o pesquisador preencher.
+
+3. FORMULÁRIO DE EXTRAÇÃO DE DADOS (um por artigo incluído)
+   Modelo de ficha com os campos, prontos para preencher por estudo:
+   - Identificação: autor(es) e ano; país; periódico
+   - Delineamento do estudo
+   - População e amostra (N, características)
+   - Intervenção/Exposição e Comparador (quando houver)
+   - Desfechos medidos
+   - Principais resultados (com os números do próprio artigo)
+   - Limitações apontadas
+   - Avaliação de qualidade / risco de viés (proponha o instrumento adequado ao delineamento — ex.: JBI, Newcastle-Ottawa, RoB 2 — e os domínios a marcar)
+   - Observações do revisor
+
+4. TABELA-SÍNTESE DAS CARACTERÍSTICAS DOS ESTUDOS
+   Cabeçalho de uma tabela (Autor/Ano | Delineamento | População/N | Intervenção | Desfecho | Principais resultados | Qualidade) com 1–2 linhas de EXEMPLO preenchidas com [colchetes] mostrando como usar.
+
+5. COMO USAR ESTE PROTOCOLO
+   Passo a passo curto: triar por título/resumo aplicando os critérios; ler na íntegra os que passaram; preencher uma ficha por estudo incluído; registrar os motivos de exclusão; consolidar tudo na tabela-síntese para depois redigir a Discussão.
+
+ESTILO: linguagem direta e prática (é um instrumento de trabalho). Use tabelas e listas onde fizer sentido. NUNCA invente autores, anos, números de estudos ou resultados — esses campos são do pesquisador (use [colchetes]).`
+}
+
 function buildGuiaAnalise(dados: DadosProjeto): string {
   const softwareEscolhido = dados.software_analise
     ? `O pesquisador escolheu: **${dados.software_analise}**. Todos os exemplos de código e passo a passo devem ser para esse software.`
@@ -692,6 +732,9 @@ export function buildDocumentoPrompt(
       break
     case 'guia_coleta':
       user = buildGuiaColeta(dados)
+      break
+    case 'protocolo_extracao':
+      user = buildProtocoloExtracao(dados, trabalhoTitulo)
       break
     case 'guia_analise':
       user = buildGuiaAnalise(dados)

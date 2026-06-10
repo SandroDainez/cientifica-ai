@@ -218,6 +218,7 @@ export type TipoDocumento =
   | 'tcle'
   | 'instrumento_coleta'
   | 'guia_coleta'
+  | 'protocolo_extracao'
   | 'calculo_amostral'
   | 'guia_analise'
   | 'sugestoes_periodicos'

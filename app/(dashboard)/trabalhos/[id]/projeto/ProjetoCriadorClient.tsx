@@ -362,6 +362,22 @@ function getDocumentosEtapa(
 ): DocumentoEtapa[] {
   if (!appExecuta) return []   // etapas manuais não têm documentos da IA
 
+  // Revisões: o passo de SELECIONAR/LER/EXTRAIR dos artigos é trabalho do
+  // pesquisador (o app não lê os PDFs externos), mas o app gera o PROTOCOLO DE
+  // EXTRAÇÃO — critérios de elegibilidade, fluxo PRISMA, ficha por estudo e
+  // tabela-síntese — para apoiar a leitura. Tipo distinto → a dedup não o esvazia.
+  const tl = etapa.titulo.toLowerCase()
+  const ehSelecaoLeituraArtigos =
+    /(selecion|triagem|sele[çc][ãa]o|leitura|\bler\b|extra)/.test(tl) &&
+    /(artigo|estudo|publica|literatura|refer[êe]ncia)/.test(tl)
+  if (ehSelecaoLeituraArtigos) {
+    return [{
+      tipo: 'protocolo_extracao',
+      label: 'Protocolo de Extração de Dados',
+      descricao: 'Critérios de elegibilidade (inclusão/exclusão), fluxo PRISMA, ficha de extração por estudo e tabela-síntese',
+    }]
+  }
+
   switch (etapa.tipo) {
     case 'preparacao': {
       // O planejador às vezes cria DUAS etapas 'preparacao' (revisão da literatura
@@ -508,6 +524,10 @@ const USO_DOCUMENTO: Record<string, { acao: string; detalhe: string }> = {
   guia_coleta: {
     acao: 'Leve para campo e use como checklist a cada dia de coleta',
     detalhe: 'Distribua para todos os pesquisadores/auxiliares que vão aplicar o instrumento.',
+  },
+  protocolo_extracao: {
+    acao: 'Use como ficha de trabalho ao ler cada artigo — preencha um formulário por estudo incluído',
+    detalhe: 'Aplique os critérios de inclusão/exclusão na triagem, leia na íntegra os que passarem e registre os dados de cada estudo na ficha. Consolide tudo na tabela-síntese — ela vira a base da sua Discussão. O app não lê os PDFs por você: esta é a sua leitura crítica.',
   },
   guia_analise: {
     acao: 'Siga o passo a passo no software indicado — ou encaminhe a um estatístico',
@@ -1707,7 +1727,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
                               <span className="flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-300">
                                 <ArrowRight className="h-3 w-3" /> No Editor
                               </span>
-                            ) : appExecuta ? (
+                            ) : appExecuta && documentosEtapa.length > 0 ? (
                               <span className="flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/60 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
                                 <Cpu className="h-3 w-3" /> App faz
                               </span>
