@@ -47,6 +47,13 @@ CRITÉRIOS DE REVISÃO (avalie todos):
 8. Consistência interna: o texto contradiz a si mesmo em algum ponto?
 
 SOBRE REFERÊNCIAS — atenção especial:
+- AS REFERÊNCIAS SÃO VALIDADAS: a lista de referências do trabalho foi importada e
+  verificada pelo app a partir de bases reais (PubMed/CrossRef, com DOI). NÃO duvide da
+  EXISTÊNCIA delas — é PROIBIDO marcar uma referência como suspeita ("verificar / não sei
+  se é um estudo real") só porque você não consegue confirmá-la pelo texto. Uma fonte
+  recente (ex.: 2025) citada várias vezes é NORMAL, não suspeita. Só aponte referência se
+  for OFF-TOPIC, se a AFIRMAÇÃO citada não for sustentada pela fonte, ou se a data for
+  FUTURA (posterior ao ano atual).
 - REGRA DE OURO (NÃO viole): uma referência que é (a) REAL, (b) do TEMA do trabalho
   e (c) CITADA no texto NÃO é suspeita. NÃO a inclua em "referencias_suspeitas".
   Fontes gerais/fundamentais/de contexto (panorama, infraestrutura, comparação
