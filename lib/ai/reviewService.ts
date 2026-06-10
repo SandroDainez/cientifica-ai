@@ -207,16 +207,17 @@ SUA TAREFA: entregar a versão FINAL e corrigida desta seção — avalie tudo, 
 REGRAS ABSOLUTAS (invioláveis):
 - NUNCA invente dados, números, resultados, autores, anos, DOIs ou referências.
 - PRESERVE EXATAMENTE todos os dados reais já presentes (números, percentuais, nomes próprios, achados, nomes de instituições, datas).
-- Só CITE fontes da lista "FONTES DISPONÍVEIS" abaixo, e só onde o RESUMO da fonte sustentar a afirmação. Para aprofundar, use apenas o que essas fontes dizem — não acrescente "fatos" sem fonte.
-- Mantenha as citações reais que já existem no texto; pode remover uma citação que estiver no contexto errado.
+- AMPLITUDE DE CITAÇÕES (essencial): cite AMPLAMENTE as fontes reais da lista "FONTES DISPONÍVEIS" — todas são reais e curadas para o tema. Toda afirmação factual deve terminar com uma citação. Use MUITAS fontes distintas (a lista de Referências do trabalho mostra só o que é citado — citar pouco deixa o trabalho com poucas referências). NÃO reduza o número de citações em relação ao texto atual; idealmente AUMENTE, trazendo fontes ainda não citadas que embasem os pontos.
+- Só CITE fontes da lista (citar uma referência real pelo tema/título é correto, não é inventar — PROIBIDO é citar algo fora da lista). Onde a fonte traz "Resumo da fonte", ancore a afirmação no resumo e não a contradiga.
+- Mantenha as citações reais que já existem no texto; pode remover só uma citação claramente no contexto errado.
 - Não invente seções novas nem conteúdo que pertença a outra seção; foque NESTA seção.
 - Mantenha o idioma, o formato de citação e o tom acadêmico do texto.
 - Escreva como um humano (ritmo variado), sem clichês de IA ("Diante do exposto", "Cabe ressaltar", "Neste sentido", etc.).
 SAÍDA: devolva APENAS o texto final da seção, em prosa/estrutura adequada — sem título da seção, sem comentários, sem JSON, sem marcações de "antes/depois".`
 
     const partesFontes = params.fontesResumo?.trim()
-      ? `FONTES DISPONÍVEIS (cite só estas, e só onde o resumo sustentar):\n${params.fontesResumo}\n\n`
-      : 'Não há resumos de fontes disponíveis: NÃO acrescente afirmações que precisem de nova citação; limite-se a corrigir e melhorar o que já existe.\n\n'
+      ? `FONTES DISPONÍVEIS — cite AMPLAMENTE estas (todas reais; cada linha = citação no texto → título; algumas trazem "Resumo da fonte"):\n${params.fontesResumo}\n\n`
+      : 'Não há fontes listadas: NÃO acrescente afirmações que precisem de nova citação; limite-se a corrigir e melhorar o que já existe.\n\n'
     const partesProblemas = params.problemas.length
       ? `PROBLEMAS APONTADOS NA REVISÃO (resolva os que se aplicam a esta seção):\n${params.problemas.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n`
       : ''

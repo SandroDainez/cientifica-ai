@@ -11,7 +11,8 @@ import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
 import { garantirReferenciasReais } from '@/lib/referencias/auto-import'
 import { enriquecerAbstractsFaltantes } from '@/lib/referencias/buscar-externo'
-import { selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
+import { selecionarFontesRelevantes } from '@/lib/referencias/dossie'
+import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import type { SecaoTrabalho, Referencia, FormatoCitacao, Trabalho } from '@/types'
 
@@ -88,13 +89,19 @@ export async function POST(request: Request) {
 
   const alvo = secoes.filter(s => (s.conteudo ?? '').trim() && ehSecaoReescrevivel(s.chave_secao, s.conteudo ?? ''))
 
+  // Conta citações (anos 19xx/20xx + marcadores [N]) para impedir que a reescrita
+  // COLAPSE as referências — a lista de Referências mostra só o que é citado.
+  const contarCitacoes = (t: string) => (t.match(/(?:19|20)\d{2}/g) ?? []).length + (t.match(/\[\s*\d+/g) ?? []).length
+
   let erroConfig: string | null = null
   // Processa as seções em PARALELO (cada uma é uma chamada independente ao revisor).
   const resultados = await Promise.all(alvo.map(async (secao) => {
     const conteudo = secao.conteudo ?? ''
     const termos = `${secao.nome_secao} ${tema} ${conteudo.slice(0, 400)}`
-    const fontes = selecionarFontesRelevantes(referencias, termos, 16)
-    const fontesResumo = montarFontesParaRevisao(fontes, formato, 16)
+    // Lista COMPLETA de referências (com resumo nas mais relevantes) — para a
+    // reescrita poder citar AMPLAMENTE as fontes reais, não só as poucas com resumo.
+    const idsComResumo = new Set(selecionarFontesRelevantes(referencias, termos, 18).map(r => r.id))
+    const fontesResumo = formatarRefsParaPrompt(referencias, formato, idsComResumo)
 
     const out = await reviewService.revisarSecaoProfunda({
       nomeSecao: secao.nome_secao, secaoTexto: conteudo, problemas, fontesResumo, tipo, tema,
@@ -106,6 +113,9 @@ export async function POST(request: Request) {
     // Trava anti-fabricação (fonte única de verdade) + segurança da reescrita.
     const limpo = posProcessarTextoGerado(out.data, referencias, formato)
     if (!revisaoProfundaSegura(conteudo, limpo).ok) return null
+    // Anti-colapso de citações: a reescrita não pode perder mais de 40% das citações.
+    const citAntes = contarCitacoes(conteudo)
+    if (citAntes >= 5 && contarCitacoes(limpo) < citAntes * 0.6) return null
     return { chave: secao.chave_secao, nome: secao.nome_secao, status: secao.status, antigo: conteudo, novo: limpo }
   }))
 
