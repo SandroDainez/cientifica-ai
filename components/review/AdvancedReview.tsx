@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 // import type → NÃO bundla o código server (openai/process.env) no cliente.
 import type { ReviewResult, ReviewProblema } from '@/lib/ai/reviewService'
+import { filtrarApontamentos } from '@/lib/revisao/filtrar-apontamentos'
 
 interface Props {
   /** ID do trabalho — necessário para aplicar as correções nas seções. */
@@ -76,7 +77,9 @@ function normalizarResultado(data: unknown): ReviewResult {
       referencias_verificadas: !!c.referencias_verificadas,
       sem_contradicoes: !!c.sem_contradicoes,
     },
-    problemas_encontrados: Array.isArray(r.problemas_encontrados) ? r.problemas_encontrados : [],
+    // Trava determinística: descarta falsos-positivos de formatação da lista de
+    // referências (negrito do periódico = destaque obrigatório da norma, NÃO é erro).
+    problemas_encontrados: filtrarApontamentos(Array.isArray(r.problemas_encontrados) ? r.problemas_encontrados : []),
     referencias_suspeitas: Array.isArray(r.referencias_suspeitas) ? r.referencias_suspeitas : [],
     precisa_nova_iteracao: !!r.precisa_nova_iteracao,
     motivo_nova_iteracao: typeof r.motivo_nova_iteracao === 'string' ? r.motivo_nova_iteracao : '',

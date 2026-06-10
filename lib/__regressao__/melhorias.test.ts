@@ -26,6 +26,7 @@ import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
+import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia } from '@/lib/revisao/filtrar-apontamentos'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
@@ -133,6 +134,20 @@ test('separarReferenciasCitadas (ABNT): remove órfã, mantém citada', () => {
   assert.equal(citadas.length, 1)
   assert.equal((citadas[0] as { id: string }).id, '1')
   assert.equal((naoCitadas[0] as { id: string }).id, '2')
+})
+test('CONTRATO apontamentos: descarta falso-positivo de negrito na lista de referências', () => {
+  // O título do periódico em negrito é destaque OBRIGATÓRIO da ABNT — não é erro.
+  const refFmt = { categoria: 'formatacao', problema: 'Formatação inconsistente do título da revista (negrito desnecessário)', trecho: '**Critical Care**, v. 16, n. S3, 2012.', sugestao: 'Remover negrito do título da revista' }
+  assert.equal(ehFalsoPositivoFormatacaoReferencia(refFmt), true)
+  // Reclamação textual de negrito em revista, mesmo sem o trecho com **.
+  assert.equal(ehFalsoPositivoFormatacaoReferencia({ categoria: 'formatacao', problema: 'negrito desnecessário no título da revista', trecho: 'IJID Regions, 2025.' }), true)
+  // NÃO descarta erro de formatação real fora de referência.
+  assert.equal(ehFalsoPositivoFormatacaoReferencia({ categoria: 'formatacao', problema: 'Espaço duplo antes do ponto', trecho: 'A sepse  é grave .' }), false)
+  // NÃO mexe em problemas de outras categorias (citação/coerência continuam).
+  assert.equal(ehFalsoPositivoFormatacaoReferencia({ categoria: 'citacao', problema: 'Afirmação sem suporte', trecho: 'A taxa é de 90%.' }), false)
+  const lista = [refFmt, { categoria: 'citacao', problema: 'X', trecho: 'Y' }]
+  assert.equal(filtrarApontamentos(lista).length, 1)
+  assert.equal(filtrarApontamentos(lista)[0].categoria, 'citacao')
 })
 test('CONTRATO bibliografia: compilarSecaoReferencias com corpo lista SÓ as citadas (sem órfã "não citada no texto")', () => {
   const refs = [

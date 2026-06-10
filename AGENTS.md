@@ -94,6 +94,12 @@ Objetivo: TUDO que a revisão detecta de errado deve ser corrigido. A revisão
 ACHA (analyze) e a Revisão Profunda CORRIGE (reescreve). Regras travadas por
 teste (`CONTRATO revisão*`):
 
+- `lib/revisao/filtrar-apontamentos.ts` (`filtrarApontamentos`, travado por
+  `CONTRATO apontamentos`): trava DETERMINÍSTICA que descarta falso-positivo de
+  formatação da LISTA DE REFERÊNCIAS — o NEGRITO do título do periódico é destaque
+  OBRIGATÓRIO da norma (ABNT/Vancouver), NÃO é "negrito desnecessário". A lista é
+  gerada pelo app; o usuário não a edita. Aplicado em `normalizarResultado` (toda
+  renderização da revisão). NÃO regredir.
 - `lib/ai/reviewService.ts` → `callReview` (analyze): roda a `temperature: 0`. A
   NOTA e os apontamentos têm de ser REPRODUTÍVEIS — o MESMO texto não pode dar 85
   numa execução e 78 noutra (isso fazia o usuário "corrigir" de novo achando que

@@ -19,6 +19,14 @@ CALIBRAÇÃO DA SEVERIDADE (importante — evita "lista infinita"):
 - Se o trabalho está bom, DIGA que está bom: é normal e CORRETO retornar poucos ou ZERO
   problemas. Não invente apontamentos para parecer rigoroso. Não reaponte o que já foi
   corrigido. Qualidade alta = lista curta.
+- NUNCA aponte a FORMATAÇÃO das entradas da lista de REFERÊNCIAS. Essa lista é GERADA
+  AUTOMATICAMENTE pelo app no padrão correto da norma (o usuário não a edita à mão).
+  Em ABNT/Vancouver, o NEGRITO no título do periódico/revista (e o destaque do título
+  do livro) é OBRIGATÓRIO — é o destaque tipográfico da norma, NÃO é "negrito
+  desnecessário". Os marcadores **...** são instrução de destaque, não erro. É
+  PROIBIDO gerar problema de categoria "formatacao" sobre negrito/itálico/pontuação
+  das referências. Só aponte uma referência se ela for off-topic, inexistente, ou tiver
+  uma citação no texto que a fonte não sustenta — nunca pela aparência da entrada.
 
 REGRAS ABSOLUTAS:
 - Nunca invente autores, datas, DOIs ou referências
