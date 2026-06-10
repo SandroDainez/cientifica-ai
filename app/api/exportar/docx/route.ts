@@ -437,7 +437,8 @@ export async function GET(request: Request) {
     })
     secoesCorpo.forEach((secao, i) => children.push(entradaSumario(tituloSecaoTexto(i + 1, secao.nome_secao))))
     if (referencias.length > 0) children.push(entradaSumario(fmt.refsTitle))
-    children.push(new Paragraph({ children: [new PageBreak()] }))
+    // NÃO quebrar página aqui: cada seção já inicia com a sua própria quebra (abaixo).
+    // Uma quebra extra deixaria uma PÁGINA EM BRANCO entre o sumário e a 1ª seção.
   }
 
   secoesCorpo.forEach((secao, i) => {
