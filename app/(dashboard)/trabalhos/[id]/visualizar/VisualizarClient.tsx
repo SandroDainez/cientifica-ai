@@ -209,7 +209,7 @@ export function VisualizarClient({ trabalho, tituloTrabalho, secaoResumo, secoes
           <div className="px-4 py-4 w-full space-y-3">
             <AdvancedReview
               trabalhoId={trabalho.id}
-              trabalho={secoesComConteudo.map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`).join('\n\n')}
+              trabalho={secoesComConteudo.filter(s => s.chave_secao !== 'resumo').map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`).join('\n\n')}
               tipo={getTipoLabel(trabalho.tipo_trabalho)}
               tema={titulo}
               area={trabalho.area_conhecimento ?? ''}

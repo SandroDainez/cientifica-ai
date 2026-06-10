@@ -158,6 +158,7 @@ COMO RESOLVER CADA TIPO:
 - Citação no contexto errado / fonte que não sustenta a afirmação → remova ESSA citação e ajuste a frase para ficar coerente e completa (ex.: "(CALENTE, 2025; AZZONI; CASTRO, 2025)" vira "(AZZONI; CASTRO, 2025)"; se ficar sem citação, mantenha a frase lendo bem).
 - Repetição → remova a frase/trecho repetido; garanta que o texto ao redor continue fluido.
 - Afirmação vaga / sem suporte → reescreva SÓ aquela frase de forma específica, OU remova-a se não agregar. Não invente citação para sustentá-la.
+- Dado/estatística/percentual ESPECÍFICO que a fonte NÃO sustenta (ex.: "35%", "55%", "três vezes maior", números regionais sem fonte) → REMOVA o número e deixe a afirmação GERAL (ex.: "há disparidades regionais expressivas"), OU remova a frase. NUNCA mantenha um número inventado nem invente uma fonte para ele.
 - Termo em inglês / erro de língua / pontuação → corrija pontualmente.
 MANTER A LÓGICA (essencial): ao remover algo, NUNCA deixe buraco, pontuação solta, conector órfão ou afirmação que ficou sem sentido — ajuste a frase para continuar correta e natural.
 NUNCA invente dados, números, autores, anos, DOIs ou citações. PRESERVE todos os dados reais (números, nomes, achados, datas) e as citações corretas. NÃO cite nada fora das fontes reais já existentes.

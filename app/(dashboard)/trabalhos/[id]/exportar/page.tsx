@@ -44,9 +44,11 @@ export default async function ExportarPage({ params }: Props) {
   const totalFases = fluxo?.fases.length ?? 1
   const secoesComConteudo = secoes.filter(s => !!s.conteudo?.trim()).length
 
-  // Texto completo do trabalho (seções com conteúdo) para a Revisão Avançada.
+  // Texto do trabalho para a Revisão Avançada. Exclui o "resumo" (abstract): é
+  // editado à parte (editor do Resumo) e protegido — a revisão não consegue
+  // corrigi-lo, então não deve apontá-lo (geraria problema "que nunca sai").
   const corpoTrabalho = secoes
-    .filter(s => !!s.conteudo?.trim())
+    .filter(s => !!s.conteudo?.trim() && s.chave_secao !== 'resumo')
     .map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`)
     .join('\n\n')
 
