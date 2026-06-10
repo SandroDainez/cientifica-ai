@@ -102,11 +102,16 @@ ACHA (analyze) e a Revisão Profunda CORRIGE (reescreve). Regras travadas por
 teste (`CONTRATO revisão*`):
 
 - `lib/revisao/filtrar-apontamentos.ts` (`filtrarApontamentos`, travado por
-  `CONTRATO apontamentos`): trava DETERMINÍSTICA que descarta falso-positivo de
-  formatação da LISTA DE REFERÊNCIAS — o NEGRITO do título do periódico é destaque
-  OBRIGATÓRIO da norma (ABNT/Vancouver), NÃO é "negrito desnecessário". A lista é
-  gerada pelo app; o usuário não a edita. Aplicado em `normalizarResultado` (toda
-  renderização da revisão). NÃO regredir.
+  `CONTRATO apontamentos`): trava DETERMINÍSTICA que descarta DOIS falsos-positivos
+  recorrentes, aplicada em `normalizarResultado` (toda renderização da revisão):
+  (1) FORMATAÇÃO da LISTA DE REFERÊNCIAS — o NEGRITO do título do periódico é destaque
+  OBRIGATÓRIO da norma (ABNT/Vancouver), não é "negrito desnecessário"; a lista é
+  gerada pelo app, o usuário não edita. (2) DATA ATUAL marcada como "inconsistência
+  temporal" (`ehFalsoPositivoDataAtual`) — o trabalho citar a data atual da busca/estudo
+  (ex.: "busca em junho de 2026" estando em 2026) é CORRETO; o revisor às vezes reclama
+  "mas estamos em 2026". A trava só dispara quando o trecho cita o ano atual e nenhum
+  ano futuro E o problema diz "estamos em <ano atual>" — NÃO suprime mismatch real entre
+  seções nem data futura. NÃO regredir. (Reforço no prompt: regra "DATA DA PRÓPRIA PESQUISA".)
 - `lib/ai/reviewService.ts` → `callReview` (analyze): roda a `temperature: 0`. A
   NOTA e os apontamentos têm de ser REPRODUTÍVEIS — o MESMO texto não pode dar 85
   numa execução e 78 noutra (isso fazia o usuário "corrigir" de novo achando que

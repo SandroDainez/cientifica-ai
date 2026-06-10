@@ -26,7 +26,7 @@ import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
-import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia } from '@/lib/revisao/filtrar-apontamentos'
+import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
 import { existsSync } from 'node:fs'
@@ -157,6 +157,19 @@ test('CONTRATO resumo: trava anti-fabricação e anti-colapso', () => {
   const orig = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40%.'
   const cand = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40% nacional.'
   assert.equal(alinhamentoResumoSeguro(orig, cand, `${orig}\n${corpo}`).aceitar, true)
+})
+test('CONTRATO apontamentos: descarta "data atual marcada como inconsistência" mas mantém mismatch real', () => {
+  // FALSO-POSITIVO: trabalho cita a data atual e o revisor reclama "mas estamos em 2026".
+  const fp = { categoria: 'coerencia', problema: 'Inconsistência temporal: o trabalho menciona busca em junho de 2026, mas estamos em 2026', trecho: 'A busca foi realizada em junho de 2026 nas bases PubMed.' }
+  assert.equal(ehFalsoPositivoDataAtual(fp, 2026), true)
+  // REAL: duas seções com datas diferentes — NÃO suprime (problema não diz "estamos em 2026").
+  const real = { categoria: 'coerencia', problema: 'Inconsistência temporal: na metodologia afirma busca em 2026, no resumo em março de 2024', trecho: 'A busca foi realizada em março de 2024 nas bases PubMed.' }
+  assert.equal(ehFalsoPositivoDataAtual(real, 2026), false)
+  // REAL: data futura (posterior ao ano atual) — NÃO suprime.
+  const futuro = { categoria: 'coerencia', problema: 'Inconsistência temporal: estudo conduzido em 2027, mas estamos em 2026', trecho: 'O estudo foi conduzido em 2027.' }
+  assert.equal(ehFalsoPositivoDataAtual(futuro, 2026), false)
+  // O filtro geral remove o falso-positivo e mantém o real.
+  assert.equal(filtrarApontamentos([fp, real]).length, 1)
 })
 test('CONTRATO apontamentos: descarta falso-positivo de negrito na lista de referências', () => {
   // O título do periódico em negrito é destaque OBRIGATÓRIO da ABNT — não é erro.

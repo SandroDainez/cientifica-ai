@@ -32,7 +32,24 @@ export function ehFalsoPositivoFormatacaoReferencia(p: ApontamentoMinimo): boole
   return /negrito|bold/.test(txt) && /(revista|peri[oó]dico|t[ií]tulo da revista|refer[eê]ncia)/.test(txt)
 }
 
-/** Remove os falsos-positivos de formatação de referência da lista de problemas. */
+/**
+ * Verdadeiro quando o apontamento reclama que o trabalho cita a DATA ATUAL "mas
+ * estamos em <ano atual>" — falso-positivo ilógico: a busca/estudo na data atual é
+ * CORRETA, não inconsistência. Só dispara quando o trecho cita o ANO ATUAL e nenhum
+ * ano futuro — NÃO suprime inconsistência REAL entre seções (ex.: "no resumo em 2024"),
+ * porque nesses casos o problema não diz "estamos em <ano atual>".
+ */
+export function ehFalsoPositivoDataAtual(p: ApontamentoMinimo, anoAtual: number = new Date().getFullYear()): boolean {
+  const txt = `${p.problema ?? ''} ${p.sugestao ?? ''}`.toLowerCase()
+  if (!/inconsist[êe]ncia temporal|data (futura|atual)|temporal/.test(txt)) return false
+  if (!new RegExp(`estamos em ${anoAtual}|data atual|ano atual`).test(txt)) return false
+  const anos = (p.trecho?.match(/\b20\d{2}\b/g) ?? []).map(Number)
+  if (anos.length === 0) return false
+  // Trecho cita o ano atual e NENHUM ano futuro → a data está coerente: falso-positivo.
+  return anos.includes(anoAtual) && anos.every(a => a <= anoAtual)
+}
+
+/** Remove os falsos-positivos (formatação de referência + data atual) da lista. */
 export function filtrarApontamentos<T extends ApontamentoMinimo>(problemas: T[]): T[] {
-  return problemas.filter(p => !ehFalsoPositivoFormatacaoReferencia(p))
+  return problemas.filter(p => !ehFalsoPositivoFormatacaoReferencia(p) && !ehFalsoPositivoDataAtual(p))
 }
