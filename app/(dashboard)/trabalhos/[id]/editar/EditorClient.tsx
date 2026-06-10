@@ -13,6 +13,7 @@ import { EditorArea, type StatusIA } from '@/components/editor/EditorArea'
 import { PainelIA } from '@/components/editor/PainelIA'
 import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
+import OutlineApprovalModal, { type SubtopicoOutline } from '@/components/editor/OutlineApprovalModal'
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
 import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
 import { HistoricoVersoes } from '@/components/editor/HistoricoVersoes'
@@ -200,6 +201,8 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
   const [tituloOpcoes, setTituloOpcoes] = useState<string[]>([])
   // Questionário pré-geração
   const [questionarioAberto, setQuestionarioAberto] = useState(false)
+  // Fase 2 (método-professor): esqueleto aprovável antes da prosa.
+  const [esqueleto, setEsqueleto] = useState<{ aberto: boolean; gerando: boolean; subtopicos: SubtopicoOutline[]; respostas?: RespostasQuestionario; instrucoes?: string } | null>(null)
   // Painel de dados autênticos do pesquisador
   const [dadosAutenticosAberto, setDadosAutenticosAberto] = useState(false)
 
@@ -396,8 +399,31 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
     setQuestionarioAberto(true)
   }
 
-  async function executarGeracao(respostas?: RespostasQuestionario, instrucoes?: string) {
+  // Fase 2: gera o ESQUELETO e abre o modal de aprovação. Se falhar, cai no fluxo
+  // direto (gera a prosa sem esqueleto) — nunca trava o usuário.
+  async function gerarEsqueleto(respostas?: RespostasQuestionario, instrucoes?: string) {
     setQuestionarioAberto(false)
+    setEsqueleto({ aberto: true, gerando: true, subtopicos: [], respostas, instrucoes })
+    try {
+      const res = await fetch('/api/ia/gerar-outline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trabalhoId: trabalho.id, chaveSecao: faseAtualConfig.chave_secao, instrucoes_usuario: instrucoes }),
+      })
+      const data = await res.json() as { ok?: boolean; subtopicos?: SubtopicoOutline[]; error?: string }
+      if (!res.ok || !data.ok || !data.subtopicos?.length) throw new Error(data.error ?? 'falha')
+      setEsqueleto({ aberto: true, gerando: false, subtopicos: data.subtopicos, respostas, instrucoes })
+    } catch {
+      // Fallback silencioso: segue direto para a prosa, como antes.
+      setEsqueleto(null)
+      toast.message('Não consegui montar o esqueleto agora — escrevendo direto.')
+      executarGeracao(respostas, instrucoes)
+    }
+  }
+
+  async function executarGeracao(respostas?: RespostasQuestionario, instrucoes?: string, outlineAprovado?: string) {
+    setQuestionarioAberto(false)
+    setEsqueleto(null)
     setTituloOpcoes([])
     setStatusIA('gerando')
     setConteudoAtual('')
@@ -410,6 +436,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
           chaveSecao: faseAtualConfig.chave_secao,
           respostas_usuario: respostas,
           instrucoes_usuario: instrucoes,
+          outlineAprovado,
         }),
       })
       if (!res.ok) throw new Error(`Erro na geração: ${res.status}`)
@@ -858,9 +885,22 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
             faseAtualConfig.chave_secao,
             (trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined
           )}
-          onConfirmar={(respostas) => executarGeracao(respostas)}
-          onPular={() => executarGeracao()}
+          onConfirmar={(respostas) => gerarEsqueleto(respostas)}
+          onPular={() => gerarEsqueleto()}
           onCancelar={() => setQuestionarioAberto(false)}
+        />
+      )}
+
+      {/* ── Modal de aprovação do esqueleto (Fase 2) ─────────────── */}
+      {esqueleto?.aberto && (
+        <OutlineApprovalModal
+          nomeSecao={faseAtualConfig.nome}
+          gerando={esqueleto.gerando}
+          subtopicos={esqueleto.subtopicos}
+          onAprovar={(texto) => executarGeracao(esqueleto.respostas, esqueleto.instrucoes, texto)}
+          onPular={() => executarGeracao(esqueleto.respostas, esqueleto.instrucoes)}
+          onRegenerar={() => gerarEsqueleto(esqueleto.respostas, esqueleto.instrucoes)}
+          onCancelar={() => setEsqueleto(null)}
         />
       )}
 
