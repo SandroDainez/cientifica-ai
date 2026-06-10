@@ -6,7 +6,10 @@
 // com match tolerante a espaços e trava anti-piora). Nada de reescrever o
 // trabalho inteiro nem dividir um "blob" de volta em seções.
 
-import { aplicarEdicoes, reescritaSegura, type Edicao } from '@/lib/ai/aplicar-edicoes'
+import { aplicarEdicoes, edicaoSeguraCirurgica, type Edicao } from '@/lib/ai/aplicar-edicoes'
+
+const contaPalavras = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
+const contaCitacoes = (s: string) => (s.match(/(?:19|20)\d{2}/g) ?? []).length + (s.match(/\[\s*\d+/g) ?? []).length
 
 export interface CorrecaoTrecho { trecho: string; correcao: string }
 
@@ -56,11 +59,29 @@ export function aplicarCorrecoesNasSecoes(
     if (!original.trim()) continue
     // Nunca mexe em seção estruturada (JSON), ex.: resumo/abstract — corromperia.
     if (secao.chave_secao === 'resumo' || ehConteudoEstruturado(original)) continue
-    const { texto, aplicadas } = aplicarEdicoes(original, edicoes)
-    if (aplicadas > 0 && texto !== original && reescritaSegura(original, texto).ok) {
-      atualizacoes.push({ chave_secao: secao.chave_secao, conteudo: texto })
-      totalAplicadas += aplicadas
+
+    // Aplica edição por edição com a trava CIRÚRGICA: remover uma citação errada/
+    // repetida é legítimo (a trava só bloqueia INVENTAR citação ou inflar demais).
+    // Antes, a trava de seção (reescritaSegura) revertia a seção INTEIRA quando uma
+    // remoção baixava a contagem de citações — por isso as correções não aplicavam.
+    let conteudoAtual = original
+    let aplicadasNaSecao = 0
+    for (const e of edicoes) {
+      if (!edicaoSeguraCirurgica(e.buscar, e.substituir).ok) continue
+      const { texto, aplicadas } = aplicarEdicoes(conteudoAtual, [e])
+      if (aplicadas > 0 && texto !== conteudoAtual) { conteudoAtual = texto; aplicadasNaSecao += aplicadas }
     }
+    if (aplicadasNaSecao === 0 || conteudoAtual === original) continue
+
+    // Sanidade da seção: não pode inchar demais (invenção) nem colapsar as
+    // citações (>40% a menos, com ≥5 originais → algo deu muito errado).
+    const citAntes = contaCitacoes(original)
+    const inchou = contaPalavras(conteudoAtual) > contaPalavras(original) * 1.6
+    const colapsou = citAntes >= 5 && contaCitacoes(conteudoAtual) < citAntes * 0.6
+    if (inchou || colapsou) continue
+
+    atualizacoes.push({ chave_secao: secao.chave_secao, conteudo: conteudoAtual })
+    totalAplicadas += aplicadasNaSecao
   }
 
   return { atualizacoes, totalAplicadas, secoesAfetadas: atualizacoes.length }

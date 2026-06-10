@@ -323,11 +323,21 @@ test('aplicarCorrecoesNasSecoes: aplica trecho→correcao na seção certa e sal
   assert.equal(r.atualizacoes[0].chave_secao, 'introducao')
   assert.ok(r.atualizacoes[0].conteudo.includes('A mortalidade é elevada.'))
 })
-test('aplicarCorrecoesNasSecoes: NÃO aplica correção que perderia citação (anti-piora)', () => {
-  const secoes = [{ chave_secao: 'm', conteudo: 'A taxa subiu (SILVA, 2020).' }]
-  const edicoes = correcoesParaEdicoes([{ trecho: 'A taxa subiu (SILVA, 2020).', correcao: 'A taxa variou.' }]) // perde citação
+test('aplicarCorrecoesNasSecoes: APLICA remoção de citação errada/repetida (correção legítima)', () => {
+  // A revisão manda tirar CALENTE da citação. Remover é legítimo → DEVE aplicar.
+  // (Antes a trava de seção revertia tudo por "perder citação" — era o bug.)
+  const secoes = [{ chave_secao: 'm', conteudo: 'A sepse evolui para disfunção orgânica (CALENTE, 2025; HEDJAL, 2023). Segue o texto.' }]
+  const edicoes = correcoesParaEdicoes([{ trecho: '(CALENTE, 2025; HEDJAL, 2023)', correcao: '(HEDJAL, 2023)' }])
   const r = aplicarCorrecoesNasSecoes(secoes, edicoes)
-  assert.equal(r.secoesAfetadas, 0)
+  assert.equal(r.secoesAfetadas, 1)
+  assert.ok(r.atualizacoes[0].conteudo.includes('(HEDJAL, 2023)'))
+  assert.ok(!r.atualizacoes[0].conteudo.includes('CALENTE'))
+})
+test('aplicarCorrecoesNasSecoes: BLOQUEIA correção que INVENTA citação (anti-fabricação)', () => {
+  const secoes = [{ chave_secao: 'm', conteudo: 'A taxa variou bastante no período estudado.' }]
+  const edicoes = correcoesParaEdicoes([{ trecho: 'A taxa variou bastante no período estudado.', correcao: 'A taxa variou bastante no período estudado (SILVA, 2021).' }])
+  const r = aplicarCorrecoesNasSecoes(secoes, edicoes)
+  assert.equal(r.secoesAfetadas, 0)   // introduzir citação inexistente é bloqueado
 })
 test('aplicarCorrecoesNasSecoes: NUNCA mexe na seção resumo (JSON) — abstract não some', () => {
   const resumoJson = JSON.stringify({ resumo: 'O estudo analisou a mortalidade.', abstract: 'The study analyzed mortality.', palavras_chave: [], keywords: [] })
