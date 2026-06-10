@@ -26,7 +26,7 @@ import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renumerarVancouverRemovendo } from '@/lib/revisao/sanear-refs'
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
-import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual } from '@/lib/revisao/filtrar-apontamentos'
+import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
 import { existsSync } from 'node:fs'
@@ -157,6 +157,21 @@ test('CONTRATO resumo: trava anti-fabricação e anti-colapso', () => {
   const orig = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40%.'
   const cand = 'Estudo sobre mortalidade por sepse no Brasil, com média de 40% nacional.'
   assert.equal(alinhamentoResumoSeguro(orig, cand, `${orig}\n${corpo}`).aceitar, true)
+})
+test('CONTRATO apontamentos: descarta trecho que NÃO existe no texto (citação errada/alucinada do revisor)', () => {
+  const texto = 'A mortalidade por sepse no Brasil mantém-se estagnada há décadas em patamares elevados. As regiões Norte e Nordeste concentram os piores indicadores.'
+  // Revisor citou "as desigualdades... mantém-se estagnada" — NÃO existe (o texto diz "a mortalidade"): incorrigível.
+  const fantasma = { categoria: 'linguagem', problema: 'Concordância verbal incorreta', trecho: 'as desigualdades na mortalidade por sepse no Brasil mantém-se estagnada', sugestao: 'corrigir' }
+  assert.equal(trechoExisteNoTexto(fantasma.trecho, texto), false)
+  // Trecho que EXISTE (tolerante a caixa/aspas) — mantém.
+  const real = { categoria: 'linguagem', problema: 'Repetição', trecho: 'As regiões Norte e Nordeste concentram os piores indicadores', sugestao: 'variar' }
+  assert.equal(trechoExisteNoTexto(real.trecho, texto), true)
+  // O filtro com o texto descarta o fantasma e mantém o real.
+  const filtrados = filtrarApontamentos([fantasma, real], texto)
+  assert.equal(filtrados.length, 1)
+  assert.equal(filtrados[0].problema, 'Repetição')
+  // SEM o texto (compat.), não valida trecho — mantém os dois.
+  assert.equal(filtrarApontamentos([fantasma, real]).length, 2)
 })
 test('CONTRATO apontamentos: descarta "data atual marcada como inconsistência" mas mantém mismatch real', () => {
   // FALSO-POSITIVO: trabalho cita a data atual e o revisor reclama "mas estamos em 2026".

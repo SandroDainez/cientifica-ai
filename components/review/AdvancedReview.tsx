@@ -62,7 +62,7 @@ function listaRemover(a: ReviewResult): string[] {
 }
 
 /** Normaliza a resposta da revisão: garante TODOS os campos para o render nunca quebrar. */
-function normalizarResultado(data: unknown): ReviewResult {
+function normalizarResultado(data: unknown, textoAnalisado?: string): ReviewResult {
   const r = (data ?? {}) as Partial<ReviewResult>
   const c = (r.checklist ?? {}) as Partial<ReviewResult['checklist']>
   return {
@@ -77,9 +77,10 @@ function normalizarResultado(data: unknown): ReviewResult {
       referencias_verificadas: !!c.referencias_verificadas,
       sem_contradicoes: !!c.sem_contradicoes,
     },
-    // Trava determinística: descarta falsos-positivos de formatação da lista de
-    // referências (negrito do periódico = destaque obrigatório da norma, NÃO é erro).
-    problemas_encontrados: filtrarApontamentos(Array.isArray(r.problemas_encontrados) ? r.problemas_encontrados : []),
+    // Trava determinística: descarta falsos-positivos (formatação de referência, data
+    // atual) e apontamentos cujo TRECHO não existe no texto (citação errada/alucinada
+    // pelo revisor → incorrigível). Por isso passamos o texto analisado.
+    problemas_encontrados: filtrarApontamentos(Array.isArray(r.problemas_encontrados) ? r.problemas_encontrados : [], textoAnalisado),
     referencias_suspeitas: Array.isArray(r.referencias_suspeitas) ? r.referencias_suspeitas : [],
     precisa_nova_iteracao: !!r.precisa_nova_iteracao,
     motivo_nova_iteracao: typeof r.motivo_nova_iteracao === 'string' ? r.motivo_nova_iteracao : '',
@@ -243,7 +244,7 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Falha na revisão.')
-      const safe = normalizarResultado(data)   // nunca deixa campo faltando → não quebra a tela
+      const safe = normalizarResultado(data, texto)   // valida trechos contra o texto analisado + nunca deixa campo faltando
       setAnalise(safe)
       setEstado('resultado')
       return safe

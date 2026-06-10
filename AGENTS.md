@@ -112,6 +112,11 @@ teste (`CONTRATO revisão*`):
   "mas estamos em 2026". A trava só dispara quando o trecho cita o ano atual e nenhum
   ano futuro E o problema diz "estamos em <ano atual>" — NÃO suprime mismatch real entre
   seções nem data futura. NÃO regredir. (Reforço no prompt: regra "DATA DA PRÓPRIA PESQUISA".)
+  (3) TRECHO INEXISTENTE (`trechoExisteNoTexto`): apontamento cujo `trecho` NÃO aparece
+  (casamento tolerante) no texto analisado é DESCARTADO — o revisor citou errado/alucinou,
+  e o corretor nunca acharia para corrigir (é a raiz do "acha e não corrige"). Por isso
+  `normalizarResultado(data, textoAnalisado)` recebe o texto. Trechos < 15 chars não são
+  validados (evita descarte indevido). Só vale quando o texto é passado. NÃO regredir.
 - `lib/ai/reviewService.ts` → `callReview` (analyze): roda a `temperature: 0`. A
   NOTA e os apontamentos têm de ser REPRODUTÍVEIS — o MESMO texto não pode dar 85
   numa execução e 78 noutra (isso fazia o usuário "corrigir" de novo achando que

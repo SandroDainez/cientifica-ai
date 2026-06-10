@@ -49,7 +49,37 @@ export function ehFalsoPositivoDataAtual(p: ApontamentoMinimo, anoAtual: number 
   return anos.includes(anoAtual) && anos.every(a => a <= anoAtual)
 }
 
-/** Remove os falsos-positivos (formatação de referência + data atual) da lista. */
-export function filtrarApontamentos<T extends ApontamentoMinimo>(problemas: T[]): T[] {
-  return problemas.filter(p => !ehFalsoPositivoFormatacaoReferencia(p) && !ehFalsoPositivoDataAtual(p))
+/** Normaliza para casamento tolerante (caixa, aspas curvas/retas, travessões, espaços). */
+function normalizarMatch(s: string): string {
+  return s.toLowerCase()
+    .replace(/[‘’“”'"]/g, '"')
+    .replace(/[-–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Verdadeiro se o `trecho` aparece (tolerante) no `texto` do trabalho. Trechos curtos
+ * (< 15 chars normalizados) não são validados — retorna true para não descartar à toa.
+ * Trecho substancial AUSENTE = o revisor citou errado/alucinou → o corretor não acha
+ * para corrigir e o apontamento é provável falso-positivo: deve ser descartado.
+ */
+export function trechoExisteNoTexto(trecho: string, texto: string): boolean {
+  const t = normalizarMatch(trecho)
+  if (t.length < 15) return true
+  return normalizarMatch(texto).includes(t)
+}
+
+/**
+ * Remove falsos-positivos da lista: (1) formatação de referência, (2) data atual
+ * marcada como inconsistência, e — quando `textoTrabalho` é dado — (3) apontamentos
+ * cujo TRECHO não existe no texto (citação errada/alucinada → incorrigível).
+ */
+export function filtrarApontamentos<T extends ApontamentoMinimo>(problemas: T[], textoTrabalho?: string): T[] {
+  return problemas.filter(p => {
+    if (ehFalsoPositivoFormatacaoReferencia(p)) return false
+    if (ehFalsoPositivoDataAtual(p)) return false
+    if (textoTrabalho && (p.trecho?.trim().length ?? 0) >= 15 && !trechoExisteNoTexto(p.trecho ?? '', textoTrabalho)) return false
+    return true
+  })
 }
