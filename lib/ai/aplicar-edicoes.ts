@@ -137,10 +137,16 @@ export function aplicarEdicoes(texto: string, edicoes: Edicao[]): { texto: strin
       continue
     }
 
-    // 2) match tolerante a espaços/quebras de linha
+    // 2) match tolerante a espaços/quebras de linha E a aspas/travessões
+    // (o revisor costuma devolver o trecho com aspas curvas "…" e o texto tem
+    // aspas retas, ou vice-versa — sem isso o casamento falhava e nada aplicava).
     const alvo = e.buscar.trim()
     if (alvo.length < 1) continue
-    const padrao = escapeRegex(alvo).replace(/\s+/g, '\\s+')
+    const padrao = escapeRegex(alvo)
+      .replace(/\s+/g, '\\s+')
+      .replace(/["“”]/g, '["“”]')      // qualquer aspa dupla
+      .replace(/['‘’]/g, "['‘’]")      // qualquer aspa simples/apóstrofo
+      .replace(/[-–—]/g, '[-–—]')      // qualquer hífen/travessão
     let m: RegExpExecArray | null = null
     try { m = new RegExp(padrao).exec(resultado) } catch { m = null }
     if (m) {

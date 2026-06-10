@@ -250,20 +250,30 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     }
   }
 
-  // Corrige os problemas reescrevendo CADA seção em modo "mudança mínima" (o
-  // revisor recebe a seção + os problemas dela e devolve a seção com SÓ aqueles
-  // problemas resolvidos, preservando o resto — sem casar trechos, sem esteira,
-  // mantendo a lógica nas remoções). É a forma mais confiável.
+  // Corrige os problemas. PRIMÁRIO: aplica a correção EXATA que o revisor entrega
+  // (trecho→correcao) de forma determinística — agora com casamento robusto (aspas/
+  // espaços), e a trava permite REMOVER citação errada. FALLBACK: para problemas
+  // sem correção pronta, manda reescrever a seção em modo "mudança mínima".
   async function aplicarCorrecoesExatas(probs: ReviewProblema[]): Promise<{ totalAplicadas: number; corpo?: string }> {
-    const problemas = probs.map(descreverProblema)
-    const remover = analise ? listaRemover(analise) : []
-    const res = await fetch('/api/review/revisar', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trabalhoId, problemas, remover }),
-    })
-    const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; corpoAtualizado?: string }
-    if (!res.ok || !data.ok) return { totalAplicadas: 0 }
-    return { totalAplicadas: data.secoesRevisadas ?? 0, corpo: data.corpoAtualizado }
+    const comCorrecao = probs.filter(p => (p.trecho?.trim().length ?? 0) >= 3 && typeof p.correcao === 'string')
+    const semCorrecao = probs.filter(p => p.categoria !== 'estrutura' && !((p.trecho?.trim().length ?? 0) >= 3 && typeof p.correcao === 'string'))
+    let totalAplicadas = 0
+    let corpo: string | undefined
+
+    if (comCorrecao.length > 0) {
+      const correcoes = comCorrecao.map(p => ({ trecho: p.trecho, correcao: p.correcao ?? '' }))
+      const res = await fetch('/api/review/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trabalhoId, correcoes }) })
+      const data = await res.json() as { ok?: boolean; totalAplicadas?: number; corpoAtualizado?: string }
+      if (res.ok && data.ok) { totalAplicadas += data.totalAplicadas ?? 0; corpo = data.corpoAtualizado ?? corpo }
+    }
+    // Fallback (reescrita mínima) só p/ o que não veio com correção pronta.
+    if (semCorrecao.length > 0) {
+      const remover = analise ? listaRemover(analise) : []
+      const res = await fetch('/api/review/revisar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trabalhoId, problemas: semCorrecao.map(descreverProblema), remover }) })
+      const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; corpoAtualizado?: string }
+      if (res.ok && data.ok) { totalAplicadas += data.secoesRevisadas ?? 0; corpo = data.corpoAtualizado ?? corpo }
+    }
+    return { totalAplicadas, corpo }
   }
 
   // LIMPEZA DETERMINÍSTICA: remove por código as referências marcadas "remover"

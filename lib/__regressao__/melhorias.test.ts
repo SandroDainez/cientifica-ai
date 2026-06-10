@@ -797,6 +797,20 @@ test('renumerarVancouverRemovendo: sem posições não muda nada', () => {
   assert.equal(renumerarVancouverRemovendo(t, []).texto, t)
 })
 
+// ── 13p. Casamento de trecho tolerante a aspas curvas/retas (correção aplica) ─
+test('aplicarEdicoes: casa trecho mesmo com aspas curvas vs retas', () => {
+  // texto com aspas CURVAS; correção busca com aspas RETAS → deve casar e aplicar
+  const texto = 'Como dito por “Crawford” (2012), houve avanço.'
+  const { texto: out, aplicadas } = aplicarEdicoes(texto, [{ buscar: 'Como dito por "Crawford" (2012), houve avanço.', substituir: 'Houve avanço.' }])
+  assert.equal(aplicadas, 1)
+  assert.ok(out.includes('Houve avanço.'))
+})
+test('aplicarEdicoes: casa trecho com travessão diferente', () => {
+  const texto = 'A sepse — grave — exige atenção.'
+  const { aplicadas } = aplicarEdicoes(texto, [{ buscar: 'A sepse - grave - exige atenção.', substituir: 'A sepse exige atenção.' }])
+  assert.equal(aplicadas, 1)
+})
+
 // ── 14. Integração: pós-processamento completo ───────────────────────────────
 test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   const refs = [] as never[]
