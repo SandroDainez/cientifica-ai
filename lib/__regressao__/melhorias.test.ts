@@ -21,6 +21,8 @@ import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
+import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes } from '@/lib/referencias/dossie'
+import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
 import { formatarReferencia } from '@/lib/referencias/formatar'
@@ -468,6 +470,58 @@ test('edicaoSeguraCirurgica: BLOQUEIA trecho curto e troca nula', () => {
 })
 test('edicaoSeguraCirurgica: PERMITE correção gramatical preservando o ano', () => {
   assert.ok(edicaoSeguraCirurgica('Segundo Silva (2020) o estudo', 'Segundo Silva (2020), o estudo demonstrou').ok)
+})
+
+// ── 13d. Geração ancorada na fonte: dossiê de fontes (lê → escreve → cita) ────
+const fakeRef = (id: string, titulo: string, abstract?: string) =>
+  ({ id, trabalho_id: 't', tipo: 'artigo', titulo, abstract, autores: [{ nome: 'A', sobrenome: 'Autor' }],
+     ano: 2020, dados_extras: {}, confiabilidade: 'alta', created_at: '' }) as unknown as import('@/types').Referencia
+
+test('normalizarTermos: tira acento, stopword e palavra curta', () => {
+  const t = normalizarTermos('A avaliação do café NÃO médico em pacientes')
+  assert.ok(t.includes('avaliacao'))
+  assert.ok(t.includes('medico'))
+  assert.ok(t.includes('pacientes'))
+  assert.ok(!t.includes('nao'))   // stopword
+  assert.ok(t.includes('cafe'))   // "cafe" tem 4 letras, entra
+})
+test('resumirAbstract: mantém curto e corta longo em fronteira de frase', () => {
+  assert.equal(resumirAbstract('Resumo curto.', 480), 'Resumo curto.')
+  const longo = 'Primeira frase com conteúdo relevante. ' + 'x'.repeat(600)
+  const out = resumirAbstract(longo, 480)
+  assert.ok(out.length <= 481)
+  assert.ok(out.endsWith('.') || out.endsWith('…'))
+})
+test('pontuarRelevancia: título pesa mais que abstract', () => {
+  const termos = new Set(normalizarTermos('burnout enfermagem'))
+  const noTitulo = pontuarRelevancia({ titulo: 'Burnout em enfermagem hospitalar', abstract: '' }, termos)
+  const noAbstract = pontuarRelevancia({ titulo: 'Estudo clínico', abstract: 'sobre burnout e enfermagem' }, termos)
+  assert.ok(noTitulo > noAbstract)
+})
+test('selecionarFontesRelevantes: só fontes COM abstract, ordenadas por relevância', () => {
+  const refs = [
+    fakeRef('1', 'Inteligência artificial em radiologia', 'Aplicações de IA e deep learning no diagnóstico por imagem em radiologia clínica.'),
+    fakeRef('2', 'Culinária italiana', 'Receitas tradicionais de massas e molhos da Itália.'),
+    fakeRef('3', 'Sem abstract sobre radiologia', undefined),  // sem abstract → fora
+  ]
+  const out = selecionarFontesRelevantes(refs, 'Inteligência artificial em radiologia diagnóstico', 16)
+  assert.equal(out[0].id, '1')                 // o mais relevante
+  assert.ok(!out.some(r => r.id === '3'))      // sem abstract não entra
+  assert.ok(!out.some(r => r.id === '2'))      // fora do tema (score 0) não entra
+})
+test('selecionarFontesRelevantes: sem nenhum abstract → vazio (degrada p/ título)', () => {
+  const refs = [fakeRef('1', 'Tema X', undefined), fakeRef('2', 'Tema Y', '')]
+  assert.deepEqual(selecionarFontesRelevantes(refs, 'tema', 16), [])
+})
+test('formatarRefsParaPrompt: injeta "Resumo da fonte" só nas selecionadas', () => {
+  const refs = [
+    fakeRef('1', 'Fonte com resumo', 'Este estudo mostra que o tratamento reduz a mortalidade em 30%.'),
+    fakeRef('2', 'Fonte sem resumo', undefined),
+  ]
+  const out = formatarRefsParaPrompt(refs, 'abnt', new Set(['1']))
+  assert.ok(out.includes('Resumo da fonte: Este estudo mostra'))   // a selecionada expõe o resumo
+  const linhasFonte2 = out.split('\n').filter(l => l.includes('Fonte sem resumo'))
+  assert.ok(linhasFonte2.every(l => !l.includes('Resumo da fonte')))  // a não-selecionada não
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

@@ -3,6 +3,7 @@ import { citacaoInTexto } from '@/lib/referencias/formatar'
 import { detectarCampo, getRegrasCampoAcademico } from '@/lib/ai/campos-academicos'
 import { getNormasSecao } from '@/lib/ai/normas-cientificas'
 import { compararGruposDeDados } from '@/lib/estatistica/comparar-grupos'
+import { selecionarFontesRelevantes, resumirAbstract } from '@/lib/referencias/dossie'
 
 // ============================================================
 // Sistema base — personaliza o tom conforme nível do usuário
@@ -147,11 +148,21 @@ COMO ESCREVER COM TEXTURA HUMANA:
 // Helper — formata referências para contexto do prompt
 // ============================================================
 
-export function formatarRefsParaPrompt(refs: Referencia[], formato: FormatoCitacao = 'abnt'): string {
+export function formatarRefsParaPrompt(
+  refs: Referencia[],
+  formato: FormatoCitacao = 'abnt',
+  idsComResumo?: Set<string>,
+): string {
   if (!refs.length) return ''
   return refs.map((ref, i) => {
     // Usa o helper centralizado de citação inline
     const citacao = citacaoInTexto(ref, formato, i + 1)
+
+    // Fontes selecionadas como relevantes mostram o RESUMO da fonte: a IA passa
+    // a saber o que ela DIZ (não só o título) e pode citá-la com suporte real.
+    if (idsComResumo?.has(ref.id) && (ref.abstract ?? '').trim()) {
+      return `  ${citacao} → "${ref.titulo}"\n      Resumo da fonte: ${resumirAbstract(ref.abstract ?? '', 480)}`
+    }
 
     const refFormatada = formato === 'abnt'
       ? ref.referencia_formatada_abnt
@@ -210,7 +221,7 @@ Você tem ${referencias.length} referências reais disponíveis. O texto é uma 
 
 2. VARIE AS REFERÊNCIAS — distribua bem: use o MAIOR número possível de referências DIFERENTES da lista. Um bom texto cita muitas fontes distintas, não as mesmas 2-3 repetidamente. Como regra prática, evite citar a mesma referência mais de 3-4 vezes no texto inteiro. Reutilizar é permitido quando uma referência é realmente a melhor para a frase, mas SEMPRE prefira trazer uma referência ainda não usada se ela também embasar a afirmação. Antes de repetir uma referência, pergunte-se: "há outra na lista que sirva e que eu ainda não citei?"
 
-3. ESCOLHA POR PROXIMIDADE: para cada sentença, escolha da lista a referência cujo TÍTULO seja mais próximo do tema da frase. Percorra TODA a lista — há ${referencias.length} referências, use a diversidade delas.
+3. CITE ANCORADO NO QUE A FONTE DIZ (regra central de qualidade): várias referências da lista trazem uma linha "Resumo da fonte:" — você SABE o que elas afirmam. Para cada sentença factual, prefira citar a fonte cujo RESUMO realmente sustenta aquela afirmação, e escreva a frase coerente com o que o resumo diz. NUNCA atribua a uma fonte um achado que o resumo dela não apoia. Para as referências SEM resumo, use o título apenas quando ele for inequívoco sobre o ponto — e na dúvida, prefira uma fonte com resumo que cubra a ideia. É PROIBIDO citar uma fonte só porque o título parece próximo, sem saber o que ela contém. Percorra a lista inteira e use a diversidade dela.
 
 4. FORMATO ${fmt}: ${exemplo}
    Copie a citação EXATAMENTE como aparece na lista (mesmo sobrenome, mesmo ano).
@@ -449,9 +460,25 @@ export function buildGerarSecaoPrompt(
   }
 
   if (dadosTrabalho.referencias && dadosTrabalho.referencias.length > 0) {
-    const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt')
-    partes.push(`\n## ${dadosTrabalho.referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO SEU TEXTO\nCada linha mostra a citação no texto → o título do estudo. Use o TÍTULO para saber sobre o que cada referência fala e citá-la no ponto certo.\n${refsFormatadas}`)
-    partes.push(buildInstrucaoCitacaoReferencias(dadosTrabalho.referencias, dadosTrabalho.formato_citacao ?? 'abnt'))
+    const formato = dadosTrabalho.formato_citacao ?? 'abnt'
+    // Seleciona as fontes mais relevantes para ESTA seção e expõe o resumo delas
+    // — a IA escreve ancorada no conteúdo real, não só no título (lê → escreve → cita).
+    const termosSecao = [
+      fase.nome,
+      dadosTrabalho.dados_projeto?.objetivo_geral,
+      dadosTrabalho.dados_projeto?.pergunta_pesquisa,
+      dadosTrabalho.dados_projeto?.contexto_geral,
+      dadosTrabalho.titulo,
+      dadosTrabalho.instrucoes_usuario,
+    ].filter(Boolean).join(' ')
+    const fontesComResumo = selecionarFontesRelevantes(dadosTrabalho.referencias, termosSecao, 16)
+    const idsComResumo = new Set(fontesComResumo.map(r => r.id))
+    const refsFormatadas = formatarRefsParaPrompt(dadosTrabalho.referencias, formato, idsComResumo)
+    const notaResumos = idsComResumo.size > 0
+      ? `\n${idsComResumo.size} das fontes trazem "Resumo da fonte:" — você LEU o que elas dizem. Escreva ancorado nesses resumos e cite cada fonte só onde o resumo dela sustenta a afirmação.`
+      : ''
+    partes.push(`\n## ${dadosTrabalho.referencias.length} REFERÊNCIAS REAIS DISPONÍVEIS — A BASE DO SEU TEXTO\nCada linha mostra a citação no texto → o título do estudo.${notaResumos}\n${refsFormatadas}`)
+    partes.push(buildInstrucaoCitacaoReferencias(dadosTrabalho.referencias, formato))
   } else {
     partes.push(`
 INSTRUÇÃO DE CITAÇÃO — SEM REFERÊNCIAS AINDA:
