@@ -23,6 +23,7 @@ import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica } 
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
+import { protegerConteudoResumo } from '@/lib/resumo/proteger'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
 import { formatarReferencia } from '@/lib/referencias/formatar'
@@ -537,6 +538,38 @@ test('montarFontesParaRevisao: lista citação + título + resumo só das fontes
 })
 test('montarFontesParaRevisao: vazio quando nenhuma fonte tem abstract', () => {
   assert.equal(montarFontesParaRevisao([fakeRef('1', 'X', undefined)], 'abnt'), '')
+})
+
+// ── 13f. Trava anti-sumiço do resumo (abstract/keywords não somem) ────────────
+const resumoJson = (extra?: Partial<{ resumo: string; abstract: string; palavras_chave: string[]; keywords: string[] }>) =>
+  JSON.stringify({ resumo: 'Resumo PT.', abstract: 'English abstract.', palavras_chave: ['saúde'], keywords: ['health'], ...extra })
+
+test('protegerConteudoResumo: BLOQUEIA texto puro sobre resumo estruturado (não some)', () => {
+  const r = protegerConteudoResumo('O método foi reescrito como prosa pela IA.', resumoJson())
+  assert.equal(r.bloqueado, true)
+  assert.equal(r.conteudo, resumoJson())          // preserva o JSON existente
+  const o = JSON.parse(r.conteudo)
+  assert.equal(o.abstract, 'English abstract.')   // abstract intacto
+  assert.deepEqual(o.keywords, ['health'])
+})
+test('protegerConteudoResumo: save parcial NÃO zera campos preenchidos (merge)', () => {
+  const recebido = resumoJson({ abstract: '', keywords: [], palavras_chave: [] }) // editor mandou só o resumo
+  const r = protegerConteudoResumo(recebido, resumoJson())
+  assert.equal(r.bloqueado, false)
+  const o = JSON.parse(r.conteudo)
+  assert.equal(o.abstract, 'English abstract.')   // preservado do existente
+  assert.deepEqual(o.keywords, ['health'])
+  assert.deepEqual(o.palavras_chave, ['saúde'])
+})
+test('protegerConteudoResumo: edição legítima do abstract é aplicada', () => {
+  const recebido = resumoJson({ abstract: 'New improved abstract.' })
+  const r = protegerConteudoResumo(recebido, resumoJson())
+  assert.equal(JSON.parse(r.conteudo).abstract, 'New improved abstract.')
+})
+test('protegerConteudoResumo: sem resumo estruturado anterior, texto puro passa', () => {
+  const r = protegerConteudoResumo('texto inicial', null)
+  assert.equal(r.bloqueado, false)
+  assert.equal(r.conteudo, 'texto inicial')
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

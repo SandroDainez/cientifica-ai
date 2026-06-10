@@ -37,12 +37,15 @@ export async function POST(
 
   // Remove as citações solo dessa referência do corpo de cada seção
   const { data: secoes } = await supabase
-    .from('secoes_trabalho').select('id, conteudo').eq('trabalho_id', id)
+    .from('secoes_trabalho').select('id, chave_secao, conteudo').eq('trabalho_id', id)
 
   let restaramManuais = false
   let secoesAtualizadas = 0
-  for (const s of (secoes ?? []) as Pick<SecaoTrabalho, 'id' | 'conteudo'>[]) {
+  for (const s of (secoes ?? []) as Pick<SecaoTrabalho, 'id' | 'chave_secao' | 'conteudo'>[]) {
     if (!s.conteudo?.trim()) continue
+    // NUNCA mexe no JSON do resumo (resumo/abstract/keywords): editar o texto por
+    // dentro corromperia a estrutura e faria os campos sumirem.
+    if (s.chave_secao === 'resumo' || s.conteudo.trim().startsWith('{')) continue
     const { texto, restaramManuais: restou } = removerCitacoesDaRef(s.conteudo, ref, formato)
     if (restou) restaramManuais = true
     if (texto !== s.conteudo) {
