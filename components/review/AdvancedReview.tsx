@@ -306,6 +306,39 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     return { secoesRevisadas: data.secoesRevisadas ?? 0, corpoAtualizado: data.corpoAtualizado }
   }
 
+  // LIMPEZA DETERMINÍSTICA: remove por código as referências marcadas "remover"
+  // (off-topic) e suas citações — inclusive em grupo. Não depende do modelo.
+  async function passadaLimpeza(remover: string[]): Promise<{ refsRemovidas: number; corpoAtualizado?: string } | null> {
+    if (remover.length === 0) return { refsRemovidas: 0 }
+    const res = await fetch('/api/review/limpar-suspeitas', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trabalhoId, remover }),
+    })
+    const data = await res.json() as { ok?: boolean; refsRemovidas?: number; corpoAtualizado?: string; error?: string }
+    if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha ao remover referências.'); return null }
+    return { refsRemovidas: data.refsRemovidas ?? 0, corpoAtualizado: data.corpoAtualizado }
+  }
+
+  // Botão standalone: remover referências que não servem.
+  async function removerNaoServem() {
+    const remover = analise ? listaRemover(analise) : []
+    if (remover.length === 0) { toast.message('Nenhuma referência marcada como "remover" nesta análise.'); return }
+    setEstado('revisando')
+    try {
+      const antes = analise
+      const out = await passadaLimpeza(remover)
+      if (!out) { setEstado('resultado'); return }
+      if (out.refsRemovidas === 0) { toast.message('Não localizei essas referências na lista (talvez já tenham saído).'); setEstado('resultado'); return }
+      toast.success(`${out.refsRemovidas} referência(s) off-topic removida(s) do texto e da lista. Re-avaliando…`)
+      router.refresh()
+      const depois = await analisar(out.corpoAtualizado ?? trabalho)
+      if (antes && depois) setDelta({ notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada, qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao remover referências.')
+      setEstado('resultado')
+    }
+  }
+
   // COERÊNCIA GLOBAL: alinha intro↔objetivos↔resultados↔conclusão (só ajusta o
   // enquadramento p/ casar com os fatos). Retorna o resultado ou null em erro.
   async function passadaCoerencia(): Promise<{ ajustesAplicados: number; corpoAtualizado?: string } | null> {
@@ -354,6 +387,19 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       if (!atual) { setEstado(analise ? 'resultado' : 'inicial'); return }
       const notaInicial = atual.nota_estimada
       const qtdInicial = atual.problemas_encontrados.length
+
+      // Passo 0: remove DETERMINISTICAMENTE as referências off-topic ("remover").
+      const removerLista = listaRemover(atual)
+      if (removerLista.length > 0) {
+        setEstado('revisando')
+        toast.message(`Removendo ${removerLista.length} referência(s) que não pertencem ao trabalho…`)
+        const limpo = await passadaLimpeza(removerLista)
+        if (limpo && limpo.refsRemovidas > 0) {
+          router.refresh()
+          const nova = await analisar(limpo.corpoAtualizado ?? trabalho)
+          if (nova) atual = nova
+        }
+      }
 
       let passada = 0
       while (passada < MAX_PASSADAS) {
@@ -472,6 +518,11 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               <Button onClick={coerenciaGlobal} variant="outline" className="gap-2">
                 <Wand2 className="h-4 w-4" /> Coerência global
               </Button>
+              {analise && listaRemover(analise).length > 0 && (
+                <Button onClick={removerNaoServem} variant="outline" className="gap-2 text-red-600 dark:text-red-400 border-red-300 dark:border-red-800">
+                  <FileWarning className="h-4 w-4" /> Remover {listaRemover(analise).length} ref(s) que não servem
+                </Button>
+              )}
               {corrigiveis.length > 0 && (
                 <Button onClick={aplicarCorrecoes} variant="ghost" className="gap-2 text-muted-foreground">
                   Correção cirúrgica

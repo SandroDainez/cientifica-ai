@@ -24,6 +24,7 @@ import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProf
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
 import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
+import { acharRefPorCitacao, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
@@ -674,6 +675,36 @@ test('CONTRATO coerência: parseAjustesCoerencia valida (chave+buscar≥3+substi
   assert.equal(ok.length, 1)
   const bad = parseAjustesCoerencia('{"ajustes":[{"chave_secao":"","buscar":"x","substituir":"y"},{"chave_secao":"intro","buscar":"ab","substituir":"cd"},{"chave_secao":"intro","buscar":"igual","substituir":"igual"}]}')
   assert.equal(bad.length, 0)
+})
+
+// ── 13k. Saneamento DETERMINÍSTICO de referências off-topic ───────────────────
+const refSanear = (id: string, sobrenome: string, ano: number) =>
+  ({ id, trabalho_id: 't', tipo: 'artigo', titulo: 'x', autores: [{ nome: 'A', sobrenome }], ano,
+     dados_extras: {}, confiabilidade: 'alta', created_at: '' }) as unknown as import('@/types').Referencia
+
+test('acharRefPorCitacao: casa citação textual com a referência (sobrenome+ano)', () => {
+  const refs = [refSanear('1', 'Galvão', 2022), refSanear('2', 'Santos', 2022), refSanear('3', 'Silva', 2020)]
+  assert.equal(acharRefPorCitacao(refs, 'GALVÃO; SILVA, 2022')?.id, '1')   // 1º autor = Galvão
+  assert.equal(acharRefPorCitacao(refs, 'SANTOS et al., 2022')?.id, '2')
+  assert.equal(acharRefPorCitacao(refs, 'INEXISTENTE, 1999'), null)
+})
+test('removerEntradaDeCitacoes: remove de DENTRO de grupo, preservando as outras', () => {
+  const txt = 'piores indicadores (GALVÃO; SILVA, 2022; SANTOS et al., 2022) no Brasil.'
+  const r = removerEntradaDeCitacoes(txt, 'Galvão', 2022)
+  assert.equal(r.removidas, 1)
+  assert.ok(!r.texto.includes('GALVÃO'))
+  assert.ok(r.texto.includes('SANTOS et al., 2022'))   // a outra fica
+})
+test('removerEntradaDeCitacoes: remove citação SOLO e limpa pontuação', () => {
+  const r = removerEntradaDeCitacoes('estudo isolado (SANTOS et al., 2022). Fim.', 'Santos', 2022)
+  assert.equal(r.removidas, 1)
+  assert.ok(r.texto.includes('estudo isolado.'))
+  assert.ok(!r.texto.includes('SANTOS'))
+})
+test('removerEntradaDeCitacoes: NÃO remove ref de outro ano/sobrenome', () => {
+  const r = removerEntradaDeCitacoes('texto (SILVA, 2020; COSTA, 2021) fim.', 'Galvão', 2022)
+  assert.equal(r.removidas, 0)
+  assert.equal(r.texto, 'texto (SILVA, 2020; COSTA, 2021) fim.')
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

@@ -68,6 +68,17 @@ teste (`CONTRATO revisão*`):
   meta/parar de melhorar/3 passadas, e FECHA com a coerência global. Mostra delta.
   Vale p/ QUALQUER tipo de trabalho.
 
+## Saneamento DETERMINÍSTICO de refs off-topic — REGRA DO APP
+
+`app/api/review/limpar-suspeitas` + `lib/revisao/sanear-refs.ts` (travado por teste).
+Quando a revisão marca uma ref como `remover` (off-topic), ela é eliminada POR
+CÓDIGO — não depende do modelo: `acharRefPorCitacao` casa a citação textual com a
+ref real (sobrenome+ano); `removerEntradaDeCitacoes` apaga as citações do corpo
+INCLUSIVE dentro de grupos "(A; B, 2022; C, 2023)" (split por ';' que segue um ano),
+limpa pontuação, faz backup e exclui a ref da lista. Roda como passo 0 da "Revisão
+final completa" e como botão "Remover N ref(s) que não servem". Vancouver é pulado
+(numérico). NÃO regredir para remoção dependente de LLM.
+
 ## Coerência global (cross-seção) — REGRA DO APP
 
 `app/api/review/coerencia` + `buildCoerenciaGlobalPrompt` + `lib/revisao/coerencia.ts`
