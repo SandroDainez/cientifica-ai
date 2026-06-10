@@ -25,6 +25,7 @@ import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewProm
 import { buildCoerenciaGlobalPrompt } from '@/lib/ai/reviewService'
 import { ehSecaoEnquadramento, parseAjustesCoerencia } from '@/lib/revisao/coerencia'
 import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno } from '@/lib/revisao/sanear-refs'
+import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
@@ -737,6 +738,18 @@ test('MANIFESTO revisão de excelência: todas as peças do pipeline existem', (
   for (const p of obrigatorios) {
     assert.ok(existsSync(join(process.cwd(), p)), `peça do pipeline ausente: ${p}`)
   }
+})
+
+// ── 13m. Bibliografia derivada da TABELA (remove entrada órfã da seção) ───────
+test('compilarSecaoReferencias: bibliografia vem da tabela; ref ausente não aparece', () => {
+  const refPresente = { id: '1', trabalho_id: 't', tipo: 'artigo', titulo: 'Sepse no Brasil',
+    autores: [{ nome: 'João', sobrenome: 'Silva' }], ano: 2021, dados_extras: {}, confiabilidade: 'alta',
+    created_at: '', referencia_formatada_abnt: 'SILVA, João. Sepse no Brasil. 2021.' } as unknown as import('@/types').Referencia
+  const out = compilarSecaoReferencias([refPresente], 'abnt')
+  assert.match(out, /REFER[ÊE]NCIAS/i)
+  assert.ok(out.includes('SILVA'))
+  assert.ok(!out.includes('GALVÃO'))   // uma ref que NÃO está na tabela não entra na bibliografia
+  assert.equal(compilarSecaoReferencias([], 'abnt'), '')   // sem refs → seção vazia
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

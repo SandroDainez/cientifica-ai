@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { acharRefPorCitacao, extrairSobrenomeAno, removerEntradaDeCitacoes } from '@/lib/revisao/sanear-refs'
+import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import type { SecaoTrabalho, Referencia, FormatoCitacao, Trabalho } from '@/types'
 
@@ -53,21 +54,22 @@ export async function POST(request: Request) {
     const sa = extrairSobrenomeAno(cit)
     if (sa) orfas.push(sa)
   }
-  if (alvos.size === 0 && orfas.length === 0) {
-    return NextResponse.json({ ok: true, refsRemovidas: 0, mensagem: 'Nada a remover (referências não localizadas).' })
-  }
-
   const { data: secoesData } = await supabase
     .from('secoes_trabalho').select('nome_secao, chave_secao, conteudo, status, ordem')
     .eq('trabalho_id', trabalhoId).order('ordem')
   const secoes = (secoesData ?? []) as Pick<SecaoTrabalho, 'nome_secao' | 'chave_secao' | 'conteudo' | 'status'>[]
 
-  // Apaga as citações das refs-alvo de cada seção (pula resumo/JSON).
+  // 1) Exclui as referências off-topic da TABELA (as órfãs não têm linha no banco).
+  const ids = [...alvos.keys()]
+  if (ids.length > 0) await supabase.from('referencias').delete().in('id', ids).eq('trabalho_id', trabalhoId)
+  const refsRestantes = referencias.filter(r => !alvos.has(r.id))
+
+  // 2) Apaga as citações no corpo (pula resumo/JSON e a própria seção Referências).
   const novoPorChave = new Map<string, string>()
   let citacoesRemovidas = 0
   for (const secao of secoes) {
     const conteudo = secao.conteudo ?? ''
-    if (!conteudo.trim() || secao.chave_secao === 'resumo' || conteudo.trim().startsWith('{')) continue
+    if (!conteudo.trim() || secao.chave_secao === 'resumo' || secao.chave_secao === 'referencias' || conteudo.trim().startsWith('{')) continue
     let texto = conteudo
     let mexeu = false
     for (const ref of alvos.values()) {
@@ -83,16 +85,21 @@ export async function POST(request: Request) {
     if (mexeu && texto !== conteudo) novoPorChave.set(secao.chave_secao, texto)
   }
 
+  // 3) RECOMPILA a seção "Referências" a partir da TABELA (fonte da verdade) —
+  // remove entradas órfãs/desatualizadas da bibliografia (ex.: ref já apagada da
+  // tabela que tinha ficado na seção). É a correção do "removi mas continua lá".
+  const secaoRefs = secoes.find(s => s.chave_secao === 'referencias')
+  const bibliografiaNova = compilarSecaoReferencias(refsRestantes, formato)
+  if (secaoRefs && bibliografiaNova && bibliografiaNova !== (secaoRefs.conteudo ?? '')) {
+    novoPorChave.set('referencias', bibliografiaNova)
+  }
+
   // Backup + grava as seções alteradas.
   for (const [chave, texto] of novoPorChave) {
     const secao = secoes.find(s => s.chave_secao === chave)
     await supabase.from('secao_versoes').insert({ trabalho_id: trabalhoId, chave_secao: chave, conteudo: secao?.conteudo ?? '', status: secao?.status ?? 'editado' })
     await supabase.from('secoes_trabalho').update({ conteudo: texto, status: 'editado' }).eq('trabalho_id', trabalhoId).eq('chave_secao', chave)
   }
-
-  // Exclui as referências off-topic da lista (as órfãs não têm linha no banco).
-  const ids = [...alvos.keys()]
-  if (ids.length > 0) await supabase.from('referencias').delete().in('id', ids).eq('trabalho_id', trabalhoId)
 
   const corpoAtualizado = secoes
     .filter(s => (novoPorChave.get(s.chave_secao) ?? s.conteudo)?.trim())
