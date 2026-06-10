@@ -700,6 +700,9 @@ test('CONTRATO geração: injeta a DATA ATUAL (âncora temporal) p/ a busca não
   assert.ok(prompt.includes(String(anoAtual)), 'injeta o ano atual no prompt')
   assert.match(prompt, /NUNCA uma data passada/i)
   assert.match(prompt, /per[ií]odo real/i)   // exceção: respeita período real informado
+  // Esqueleto ancorado antes da prosa (planejar subtópicos + fontes → depois escrever).
+  assert.match(prompt, /esqueleto ancorado|MÉTODO DE REDAÇÃO/i)
+  assert.match(prompt, /subt[óo]picos/i)
 })
 
 test('formatarRefsParaPrompt: injeta "Resumo da fonte" só nas selecionadas', () => {

@@ -385,6 +385,15 @@ export function buildGerarSecaoPrompt(
   const anoAtual = agora.getFullYear()
   partes.push(`\n**Data atual: ${mesAtual} de ${anoAtual}.** Ao mencionar QUANDO algo foi feito por este trabalho (busca/levantamento bibliográfico, coleta de dados, condução do estudo, experimento, análise) ou QUALQUER recorte temporal de anos, use a data atual (${mesAtual}/${anoAtual}) e termine os intervalos de anos em ${anoAtual} — NUNCA uma data passada por hábito (não escreva "em março de 2024" se o ano é ${anoAtual}). Exceção: se o pesquisador informou data ou PERÍODO REAL do estudo (campo Período/notas), use SEMPRE os reais. Vale para qualquer tipo de trabalho e qualquer área.`)
 
+  // ESQUELETO ANCORADO ANTES DA PROSA (como um orientador escreve): planejar a
+  // estrutura e as fontes de cada ponto ANTES de redigir evita o texto virar ensaio
+  // plausível sem rumo. O plano é interno; entregue só a prosa já estruturada.
+  partes.push(`\n**MÉTODO DE REDAÇÃO — esqueleto ancorado antes da prosa (siga internamente, NÃO imprima o plano):**
+1. PLANEJE: liste mentalmente os 3-6 subtópicos que esta seção deve cobrir, na ordem lógica do argumento.
+2. ANCORE: para CADA subtópico, identifique quais referências REAIS da lista o sustentam (e o que cada uma diz, quando há "Resumo da fonte").
+3. ESCREVA: redija a prosa cobrindo os subtópicos nessa ordem, com CADA afirmação factual ancorada na referência que você associou — e cada número vindo de uma fonte (regra 8). Não escreva parágrafo sem um subtópico e fontes por trás.
+Resultado: texto estruturado e baseado em evidência, não retórica. Entregue APENAS a prosa final (sem mostrar a lista de subtópicos).`)
+
   if (dadosTrabalho.titulo) {
     partes.push(`\n**Título do trabalho:** ${dadosTrabalho.titulo}`)
   }

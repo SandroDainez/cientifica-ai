@@ -105,6 +105,10 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
 Regras travadas por teste (`CONTRATO citações`/`CONTRATO geração`). Aplicam-se a
 QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
 
+- ESQUELETO ANCORADO ANTES DA PROSA (`buildGerarSecaoPrompt`, travado por `CONTRATO
+  geração`): a geração PLANEJA internamente os subtópicos da seção + as referências que
+  ancoram cada um, e SÓ ENTÃO escreve a prosa em cima — como um orientador. Entrega só a
+  prosa (não imprime o plano). Mata o texto ensaístico na origem. NÃO remover.
 - ÂNCORA TEMPORAL (`buildGerarSecaoPrompt`, travado por `CONTRATO geração`): o prompt
   de geração injeta a DATA ATUAL (mês/ano). O modelo gerador tende a escrever datas
   perto do treinamento dele (ex.: "busca conduzida em março de 2024") mesmo num
