@@ -60,6 +60,30 @@ function listaRemover(a: ReviewResult): string[] {
     .map(r => `${r.referencia}${r.problema ? ` — ${r.problema}` : ''}`)
 }
 
+/** Normaliza a resposta da revisão: garante TODOS os campos para o render nunca quebrar. */
+function normalizarResultado(data: unknown): ReviewResult {
+  const r = (data ?? {}) as Partial<ReviewResult>
+  const c = (r.checklist ?? {}) as Partial<ReviewResult['checklist']>
+  return {
+    nota_estimada: typeof r.nota_estimada === 'number' ? r.nota_estimada : 0,
+    status: r.status ?? 'precisa_corrigir',
+    resumo_geral: typeof r.resumo_geral === 'string' ? r.resumo_geral : '',
+    checklist: {
+      coerencia_objetivos: !!c.coerencia_objetivos,
+      linguagem_adequada: !!c.linguagem_adequada,
+      estrutura_completa: !!c.estrutura_completa,
+      citacoes_com_suporte: !!c.citacoes_com_suporte,
+      referencias_verificadas: !!c.referencias_verificadas,
+      sem_contradicoes: !!c.sem_contradicoes,
+    },
+    problemas_encontrados: Array.isArray(r.problemas_encontrados) ? r.problemas_encontrados : [],
+    referencias_suspeitas: Array.isArray(r.referencias_suspeitas) ? r.referencias_suspeitas : [],
+    precisa_nova_iteracao: !!r.precisa_nova_iteracao,
+    motivo_nova_iteracao: typeof r.motivo_nova_iteracao === 'string' ? r.motivo_nova_iteracao : '',
+    versao_corrigida: typeof r.versao_corrigida === 'string' ? r.versao_corrigida : '',
+  }
+}
+
 /** Descreve um problema (com trecho/sugestão) para o revisor localizar e corrigir. */
 function descreverProblema(p: ReviewProblema): string {
   const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
@@ -215,9 +239,10 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Falha na revisão.')
-      setAnalise(data as ReviewResult)
+      const safe = normalizarResultado(data)   // nunca deixa campo faltando → não quebra a tela
+      setAnalise(safe)
       setEstado('resultado')
-      return data as ReviewResult
+      return safe
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao revisar.')
       setEstado(analise ? 'resultado' : 'inicial')
