@@ -668,6 +668,8 @@ test('CONTRATO integridade: geração PROÍBE número sem fonte e uso de ref de 
   assert.match(instr, /FABRICA[ÇC][ÃA]O/i)
   // Fonte tem que ser do assunto (não usar câncer p/ sustentar outro tema).
   assert.match(instr, /ASSUNTO|outra doen[çc]a|c[âa]ncer/i)
+  // Densidade: proíbe afirmação causal/promissória sem fonte (evidência, não ensaio).
+  assert.match(instr, /EVID[ÊE]NCIA, N[ÃA]O ENSAIO|causal|promiss[óo]ria/i)
 })
 test('CONTRATO integridade: revisor caça número sem fonte e ref off-topic pelo ASSUNTO real', () => {
   assert.match(REVIEW_SYSTEM_PROMPT, /N[ÚU]MERO SEM FONTE/i)

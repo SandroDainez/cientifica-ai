@@ -236,7 +236,9 @@ Você tem ${referencias.length} referências reais disponíveis. O texto é uma 
 
 9. FONTE TEM QUE SER DO ASSUNTO: só cite uma referência para sustentar uma afirmação se o ASSUNTO dela (o que o título/resumo realmente tratam) for o tema da frase. NÃO use uma fonte de OUTRA doença/área (ex.: um estudo de câncer, ou de projeção demográfica) para embasar uma afirmação sobre o tema deste trabalho só porque ela menciona "mortalidade" ou "países" — isso é uso indevido de referência.
 
-10. NÃO alegue uso de uma BASE DE DADOS (ex.: DATASUS/SIM, registros nacionais) na metodologia se você não vai APRESENTAR dados concretos dela no desenvolvimento. Coerência entre o que se diz que usou e o que se mostra.`
+10. NÃO alegue uso de uma BASE DE DADOS (ex.: DATASUS/SIM, registros nacionais) na metodologia se você não vai APRESENTAR dados concretos dela no desenvolvimento. Coerência entre o que se diz que usou e o que se mostra.
+
+11. EVIDÊNCIA, NÃO ENSAIO (densidade): prefira afirmações CONCRETAS e ANCORADAS (achado + fonte) a generalidades plausíveis. É PROIBIDA afirmação CAUSAL ou PROMISSÓRIA sem fonte — ex.: "reduz a mortalidade", "cada hora de atraso aumenta a mortalidade", "a telemedicina pode conectar regiões remotas". Para CADA uma dessas: ou ANCORE numa referência da lista, ou reformule como possibilidade EXPLÍCITA e cautelosa ("estratégias como X TÊM SIDO PROPOSTAS", "PODE, em tese,..."). Evite frase de efeito sem conteúdo verificável. Um bom trecho traz dado + fonte; não retórica.`
 }
 
 // ============================================================

@@ -77,7 +77,9 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
   dado numérico — só afirmar número específico (%, taxa, n, magnitude, recorte
   regional) se constar no "Resumo da fonte"; senão, descrever QUALITATIVAMENTE.
   Fonte tem que ser do ASSUNTO (não usar câncer/projeção p/ sustentar outro tema).
-  Não alegar base de dados (DATASUS) que não será apresentada.
+  Não alegar base de dados (DATASUS) que não será apresentada. EVIDÊNCIA, NÃO ENSAIO
+  (regra 11): proibida afirmação causal/promissória sem fonte ("reduz a mortalidade",
+  "telemedicina pode conectar") — ancorar numa ref ou reformular como possibilidade.
 - OFF-TOPIC DETERMINÍSTICO (`lib/referencias/off-topic.ts` → `detectarRefsOutroAssunto`,
   travado por `CONTRATO off-topic`): complementa o LLM. Sinaliza (acao "verificar",
   NUNCA remove sozinho) ref cujo TÍTULO é dominado por uma doença/campo (lista bilíngue
