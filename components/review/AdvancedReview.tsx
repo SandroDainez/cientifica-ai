@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  Sparkles, Loader2, CheckCircle2, XCircle, FileWarning, Wand2, PencilLine,
+  Sparkles, Loader2, CheckCircle2, XCircle, FileWarning, Wand2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -25,7 +25,7 @@ interface Props {
   idioma?: string
 }
 
-type Estado = 'inicial' | 'analisando' | 'resultado' | 'aplicando'
+type Estado = 'inicial' | 'analisando' | 'resultado' | 'aplicando' | 'revisando'
 
 const CHECKLIST_ROTULOS: Record<keyof ReviewResult['checklist'], string> = {
   coerencia_objetivos: 'Coerência objetivos ↔ metodologia ↔ conclusão',
@@ -250,6 +250,44 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     }
   }
 
+  // REVISÃO PROFUNDA: reescreve seção a seção (remove/reescreve/ajusta/aprofunda)
+  // ancorado nas fontes reais, com trava anti-fabricação e backup de versão.
+  async function revisarProfundo() {
+    const problemas = (analise?.problemas_encontrados ?? []).map(p => {
+      const partes = [`${CATEGORIA_ROTULO[p.categoria] ?? p.categoria} [${p.gravidade}]: ${p.problema}`]
+      if (p.trecho?.trim()) partes.push(`Trecho: "${p.trecho.trim()}"`)
+      if (p.sugestao?.trim()) partes.push(`Sugestão: ${p.sugestao.trim()}`)
+      return partes.join(' — ')
+    })
+    setEstado('revisando')
+    try {
+      const res = await fetch('/api/review/revisar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trabalhoId, problemas }),
+      })
+      const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; secoesAvaliadas?: number; corpoAtualizado?: string; error?: string }
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha na revisão profunda.')
+      if (!data.secoesRevisadas) {
+        toast.warning('Nenhuma seção pôde ser reescrita com segurança nesta passada (a trava anti-invenção barrou as mudanças).')
+        setEstado('resultado')
+        return
+      }
+      const antes = analise
+      toast.success(`Reescrevi ${data.secoesRevisadas} de ${data.secoesAvaliadas} seção(ões) com base nas fontes reais. Re-avaliando…`)
+      router.refresh()
+      const depois = await analisar(data.corpoAtualizado ?? trabalho)
+      if (antes && depois) {
+        setDelta({
+          notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada,
+          qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length,
+        })
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro na revisão profunda.')
+      setEstado('resultado')
+    }
+  }
+
   return (
     <Card className="no-print">
       <CardHeader>
@@ -270,11 +308,15 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
           </Button>
         )}
 
-        {/* 2/4. ANALISANDO / APLICANDO */}
-        {(estado === 'analisando' || estado === 'aplicando') && (
+        {/* 2/4. ANALISANDO / APLICANDO / REVISANDO */}
+        {(estado === 'analisando' || estado === 'aplicando' || estado === 'revisando') && (
           <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span>{estado === 'analisando' ? 'Analisando o trabalho…' : 'Aplicando as correções nas seções…'}</span>
+            <span>
+              {estado === 'analisando' ? 'Analisando o trabalho…'
+                : estado === 'aplicando' ? 'Aplicando as correções nas seções…'
+                : 'Reescrevendo e aprofundando as seções com base nas fontes reais… (pode levar 1–2 min)'}
+            </span>
           </div>
         )}
 
@@ -312,23 +354,22 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
 
             {/* Ações */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {corrigiveis.length > 0 ? (
-                <Button onClick={aplicarCorrecoes} className="gap-2">
-                  <Wand2 className="h-4 w-4" /> Corrigir {corrigiveis.length} problema{corrigiveis.length === 1 ? '' : 's'} no trabalho
+              {corrigiveis.length > 0 && (
+                <Button onClick={aplicarCorrecoes} variant="outline" className="gap-2">
+                  <Wand2 className="h-4 w-4" /> Corrigir {corrigiveis.length} ponto{corrigiveis.length === 1 ? '' : 's'} (cirúrgico)
                 </Button>
-              ) : (
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <PencilLine className="h-4 w-4" /> Os problemas apontados são estruturais — ajuste manual no Editor.
-                </p>
               )}
-              <Button variant="outline" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
+              <Button onClick={revisarProfundo} className="gap-2">
+                <Sparkles className="h-4 w-4" /> Revisão profunda — reescrever e aprofundar
+              </Button>
+              <Button variant="ghost" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
             </div>
-            {corrigiveis.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                A IA gera correções cirúrgicas seção por seção, com trava anti-piora (não inventa dados, não reescreve do zero),
-                salva direto nas seções e re-avalia. Itens estruturais ficam na lista acima para ajuste no Editor.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              <strong>Correção cirúrgica</strong>: troca trechos pontuais, conservadora. <strong>Revisão profunda</strong>: o
+              revisor reescreve cada seção — remove o que sobra, reescreve o que está fraco, ajusta erros e aprofunda usando as
+              referências reais do trabalho. Nunca inventa dados/citações (trava anti-fabricação) e guarda a versão anterior, que
+              você pode restaurar no Editor pelo histórico. Vale revisar o resultado.
+            </p>
           </div>
         )}
       </CardContent>

@@ -90,6 +90,29 @@ export function edicaoSeguraCirurgica(buscar: string, substituir: string): { ok:
   return { ok: true, motivo: '' }
 }
 
+/**
+ * Segurança de uma REVISÃO PROFUNDA (seção inteira reescrita). Diferente de
+ * `reescritaSegura`: aqui CRESCER é desejável (aprofundar com fontes) e PERDER
+ * citação ruim é legítimo. Bloqueamos só os extremos que indicam dano:
+ *  - resultado vazio ou idêntico (nada a salvar);
+ *  - encolheu demais (< 40% das palavras → risco de ter perdido conteúdo real);
+ *  - inchou demais (> 3x as palavras → risco de enrolação/invenção).
+ * A trava anti-fabricação de citações é o posProcessarTextoGerado (aplicado fora).
+ */
+export function revisaoProfundaSegura(original: string, novo: string): { ok: boolean; motivo: string } {
+  const norm = (s: string) => (s ?? '').replace(/\s+/g, ' ').trim()
+  const o = norm(original)
+  const n = norm(novo)
+  if (!n) return { ok: false, motivo: 'resposta vazia' }
+  if (n === o) return { ok: false, motivo: 'sem mudança' }
+  const palavras = (s: string) => (s ? s.split(' ').length : 0)
+  const wO = palavras(o)
+  const wN = palavras(n)
+  if (wO >= 40 && wN < wO * 0.4) return { ok: false, motivo: 'a reescrita encolheu demais (risco de perder conteúdo)' }
+  if (wO > 0 && wN > wO * 3) return { ok: false, motivo: 'a reescrita inchou demais (risco de enrolação/invenção)' }
+  return { ok: true, motivo: '' }
+}
+
 const ehLinhaTabela = (s: string) => /^\s*\|/m.test(s)
 
 /**

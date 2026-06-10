@@ -181,6 +181,62 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
     }
   }
 
+  /**
+   * REVISÃO PROFUNDA de uma seção: o editor REESCREVE a seção inteira para
+   * corrigir TODOS os problemas que se aplicam a ela — remove o que sobra,
+   * reescreve o que está fraco, ajusta erros e, onde faltar profundidade,
+   * aprofunda USANDO SOMENTE as fontes fornecidas (com resumo). NUNCA inventa
+   * dados/números/autores/anos. Devolve o texto final da seção (string).
+   * A trava anti-fabricação real é aplicada DEPOIS, na rota, via posProcessar.
+   */
+  async revisarSecaoProfunda(params: {
+    nomeSecao: string
+    secaoTexto: string
+    problemas: string[]
+    fontesResumo: string
+    tipo: string
+    tema: string
+  }): Promise<ReviewOutcome<string>> {
+    if (!params.secaoTexto.trim()) return { ok: true, data: params.secaoTexto }
+    const clienteOut = this.getClient()
+    if (!clienteOut.ok) return clienteOut
+    const client = clienteOut.data
+
+    const sys = `Você é um editor acadêmico sênior reescrevendo UMA seção de um trabalho científico para deixá-la de ALTO NÍVEL (padrão de banca de pós-graduação).
+SUA TAREFA: entregar a versão FINAL e corrigida desta seção — avalie tudo, REMOVA o que não deveria estar, REESCREVA o que está fraco/confuso, AJUSTE erros de língua, citação e coerência, e onde faltar profundidade, APROFUNDE.
+REGRAS ABSOLUTAS (invioláveis):
+- NUNCA invente dados, números, resultados, autores, anos, DOIs ou referências.
+- PRESERVE EXATAMENTE todos os dados reais já presentes (números, percentuais, nomes próprios, achados, nomes de instituições, datas).
+- Só CITE fontes da lista "FONTES DISPONÍVEIS" abaixo, e só onde o RESUMO da fonte sustentar a afirmação. Para aprofundar, use apenas o que essas fontes dizem — não acrescente "fatos" sem fonte.
+- Mantenha as citações reais que já existem no texto; pode remover uma citação que estiver no contexto errado.
+- Não invente seções novas nem conteúdo que pertença a outra seção; foque NESTA seção.
+- Mantenha o idioma, o formato de citação e o tom acadêmico do texto.
+- Escreva como um humano (ritmo variado), sem clichês de IA ("Diante do exposto", "Cabe ressaltar", "Neste sentido", etc.).
+SAÍDA: devolva APENAS o texto final da seção, em prosa/estrutura adequada — sem título da seção, sem comentários, sem JSON, sem marcações de "antes/depois".`
+
+    const partesFontes = params.fontesResumo?.trim()
+      ? `FONTES DISPONÍVEIS (cite só estas, e só onde o resumo sustentar):\n${params.fontesResumo}\n\n`
+      : 'Não há resumos de fontes disponíveis: NÃO acrescente afirmações que precisem de nova citação; limite-se a corrigir e melhorar o que já existe.\n\n'
+    const partesProblemas = params.problemas.length
+      ? `PROBLEMAS APONTADOS NA REVISÃO (resolva os que se aplicam a esta seção):\n${params.problemas.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n`
+      : ''
+    const user = `Trabalho: ${params.tipo} sobre "${params.tema}".\nSeção a revisar: ${params.nomeSecao}\n\n${partesProblemas}${partesFontes}TEXTO ATUAL DA SEÇÃO:\n${params.secaoTexto}`
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: REVIEW_AI_MODEL,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        temperature: 0.3,
+        max_tokens: 16000,
+      })
+      const txt = (completion.choices[0]?.message?.content ?? '').trim()
+      if (!txt) return { ok: false, codigo: 'PARSE_ERROR', error: 'A revisão profunda voltou vazia.' }
+      return { ok: true, data: txt }
+    } catch (err) {
+      return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha na revisão profunda da seção.' }
+    }
+  }
+
   /** Chamada única à IA de revisão (analyze ou analyzeAndCorrect). */
   private async callReview(params: ReviewParams, solicitarCorrecao: boolean): Promise<ReviewOutcome<ReviewResult>> {
     // Req. 7: valida o tamanho ANTES de enviar (estimativa grosseira ~4 chars/token).

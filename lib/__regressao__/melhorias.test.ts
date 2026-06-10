@@ -19,7 +19,7 @@ import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
-import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica } from '@/lib/ai/aplicar-edicoes'
+import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica, revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt } from '@/lib/ai/prompts'
@@ -570,6 +570,25 @@ test('protegerConteudoResumo: sem resumo estruturado anterior, texto puro passa'
   const r = protegerConteudoResumo('texto inicial', null)
   assert.equal(r.bloqueado, false)
   assert.equal(r.conteudo, 'texto inicial')
+})
+
+// ── 13g. Revisão profunda: trava de segurança da reescrita de seção ───────────
+test('revisaoProfundaSegura: PERMITE crescer (aprofundar com fontes)', () => {
+  const orig = Array.from({ length: 60 }, (_, i) => `palavra${i}`).join(' ')
+  const novo = orig + ' ' + Array.from({ length: 80 }, (_, i) => `nova${i}`).join(' ') // ~2.3x
+  assert.ok(revisaoProfundaSegura(orig, novo).ok)
+})
+test('revisaoProfundaSegura: BLOQUEIA encolher demais (perda de conteúdo)', () => {
+  const orig = Array.from({ length: 100 }, (_, i) => `p${i}`).join(' ')
+  const novo = Array.from({ length: 20 }, (_, i) => `p${i}`).join(' ') // 20% → barra
+  assert.ok(!revisaoProfundaSegura(orig, novo).ok)
+})
+test('revisaoProfundaSegura: BLOQUEIA inchar demais (>3x) e vazio/idêntico', () => {
+  const orig = Array.from({ length: 50 }, (_, i) => `p${i}`).join(' ')
+  const inflado = Array.from({ length: 200 }, (_, i) => `q${i}`).join(' ') // 4x
+  assert.ok(!revisaoProfundaSegura(orig, inflado).ok)
+  assert.ok(!revisaoProfundaSegura(orig, '').ok)
+  assert.ok(!revisaoProfundaSegura(orig, orig).ok)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────
