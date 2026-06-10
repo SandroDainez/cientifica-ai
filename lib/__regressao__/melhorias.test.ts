@@ -20,8 +20,8 @@ import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
 import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-referencias'
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica, revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
-import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
-import { buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
+import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao, buildRevisaoProfundaPrompt } from '@/lib/ai/reviewService'
+import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
@@ -619,6 +619,31 @@ test('CONTRATO revisão: prompt informa o ano atual e a regra de data futura', (
   const p = buildReviewUserPrompt({ trabalho: 'x', tipo: 't', tema: 't', area: 'a', normas: 'abnt', idioma: 'pt-BR', solicitarCorrecao: false })
   assert.ok(p.includes(String(ano)))           // sabe o ano atual
   assert.match(p, /data futura/i)               // tem a regra de não falso-flagar
+})
+
+// ── 13i. CONTRATO da Revisão Profunda (regras travadas p/ todo trabalho) ──────
+const RP_BASE = { nomeSecao: 'Introdução', secaoTexto: 'Texto da seção com (SILVA, 2020).', problemas: [], fontesResumo: '', tipo: 'tcc', tema: 'Sepse no Brasil' }
+test('CONTRATO revisão profunda: regras invioláveis (anti-fabricação, amplitude, preservar dados)', () => {
+  const { sys } = buildRevisaoProfundaPrompt(RP_BASE)
+  assert.match(sys, /NUNCA invente/i)
+  assert.match(sys, /PRESERVE EXATAMENTE/i)
+  assert.match(sys, /AMPLITUDE DE CITAÇÕES/i)
+  assert.match(sys, /REMOVA decisivamente toda citação cujo conteúdo da fonte NÃO sustente/i)
+})
+test('CONTRATO revisão profunda: lista "REFERÊNCIAS A ELIMINAR" entra quando há remover', () => {
+  const { user } = buildRevisaoProfundaPrompt({ ...RP_BASE, remover: ['GALVÃO; SILVA, 2022 — sobre suicídio'] })
+  assert.match(user, /REFERÊNCIAS A ELIMINAR/)
+  assert.match(user, /citações em grupo/i)
+  assert.ok(user.includes('GALVÃO; SILVA, 2022'))
+})
+test('CONTRATO revisão profunda: sem remover, NÃO injeta o bloco de eliminação', () => {
+  const { user } = buildRevisaoProfundaPrompt(RP_BASE)
+  assert.ok(!/REFERÊNCIAS A ELIMINAR/.test(user))
+})
+test('CONTRATO revisão: system prompt classifica remover (off-topic) vs corrigir_contexto', () => {
+  assert.match(REVIEW_SYSTEM_PROMPT, /"remover"/)
+  assert.match(REVIEW_SYSTEM_PROMPT, /NÃO pertence ao tema|outro assunto/i)
+  assert.match(REVIEW_SYSTEM_PROMPT, /"corrigir_contexto"/)
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

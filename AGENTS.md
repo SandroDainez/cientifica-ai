@@ -42,12 +42,30 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
 
 ## Revisão final / correção (travas anti-piora e anti-fabricação)
 
-- `app/api/review/revisar` + `reviewService.revisarSecaoProfunda`: reescreve por
-  seção (remove/reescreve/ajusta/aprofunda) ancorado na lista COMPLETA de fontes;
-  antes faz gap-filling (`garantirReferenciasReais`, meta 48/limiar 40) e backfill.
-  Cada seção passa por `posProcessarTextoGerado` + `revisaoProfundaSegura`
-  (não esvazia <40% / não incha >3x) + anti-colapso de citações (não perde >40%).
-  FAZ BACKUP em `secao_versoes` antes de sobrescrever. Pula resumo/título/objetivos/refs.
+Objetivo: TUDO que a revisão detecta de errado deve ser corrigido. A revisão
+ACHA (analyze) e a Revisão Profunda CORRIGE (reescreve). Regras travadas por
+teste (`CONTRATO revisão*`):
+
+- `lib/ai/reviewPrompt.ts` (`REVIEW_SYSTEM_PROMPT` + `buildReviewUserPrompt`):
+  • Injeta o ANO ATUAL — só é "data futura" ano POSTERIOR ao atual; não
+    falso-flagar publicações recentes (ano corrente/anteriores). NUNCA remover.
+  • `acao_recomendada`: "remover" = fonte de OUTRO assunto que não pertence ao
+    tema (ex.: suicídio/aneurisma num trabalho de sepse); "corrigir_contexto" =
+    fonte pertinente citada no ponto errado; "verificar" = dúvida real (não pelo ano).
+- `lib/ai/reviewService.ts` → `buildRevisaoProfundaPrompt` (PURO, travado):
+  reescreve a seção — anti-fabricação, PRESERVA dados reais, AMPLITUDE de
+  citações (não reduzir o nº), REMOVE decisivamente citação que a fonte não
+  sustenta, e ELIMINA as refs da lista `remover` (todas as citações, inclusive
+  em grupo "(A; B, 2022; C, 2023)", reescrevendo a frase). NÃO regredir essas regras.
+- `app/api/review/revisar`: gap-filling (`garantirReferenciasReais`, meta 48/
+  limiar 40) + backfill; cada seção passa por `posProcessarTextoGerado` +
+  `revisaoProfundaSegura` (não esvazia <40% / não incha >3x) + anti-colapso de
+  citações (não perde >40%). FAZ BACKUP em `secao_versoes` antes de sobrescrever.
+  Pula resumo/título/objetivos/refs. O componente envia `problemas` + `remover`
+  (suspeitas com ação "remover") em TODA passada.
+- `components/review/AdvancedReview.tsx`: "Revisão final completa" orquestra
+  analyze → revisar (gap-fill+reescreve+elimina) → re-analyze, em loop até a
+  meta/parar de melhorar/3 passadas. Mostra delta. Vale p/ QUALQUER tipo de trabalho.
 - `app/api/ia/salvar-secao` → `lib/resumo/proteger.ts` (`protegerConteudoResumo`):
   a seção `resumo` é JSON — texto puro NUNCA a sobrescreve; save parcial não zera
   abstract/keywords. Qualquer rota que escreva em `secoes_trabalho` deve pular
