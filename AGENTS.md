@@ -45,7 +45,11 @@ resolver por CÓDIGO é feito por código e NUNCA depende do modelo —
 - remover refs off-topic + citações órfãs: `/api/review/limpar-suspeitas`
   (`lib/revisao/sanear-refs.ts`);
 - a bibliografia (seção `referencias`) é SEMPRE derivada da TABELA via
-  `compilarSecaoReferencias` — entrada órfã na seção nunca sobrevive.
+  `compilarSecaoReferencias` — entrada órfã na seção nunca sobrevive. Na revisão é
+  recompilada com o CORPO atual (`compilarSecaoReferencias(refs, formato, corpo)`) e
+  lista APENAS as refs CITADAS no texto: citação removida do corpo faz a ref SUMIR
+  da lista sozinha — quebra a cascata "não citada no texto" que piorava a cada
+  correção. Travado por `CONTRATO bibliografia`. NÃO regredir para listar todas.
 Só o que exige julgamento (linguagem, profundidade, coerência) usa o LLM, com travas.
 
 # Contrato de consistência (NÃO regredir as melhorias)

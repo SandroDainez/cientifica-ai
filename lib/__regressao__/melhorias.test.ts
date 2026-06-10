@@ -134,6 +134,19 @@ test('separarReferenciasCitadas (ABNT): remove órfã, mantém citada', () => {
   assert.equal((citadas[0] as { id: string }).id, '1')
   assert.equal((naoCitadas[0] as { id: string }).id, '2')
 })
+test('CONTRATO bibliografia: compilarSecaoReferencias com corpo lista SÓ as citadas (sem órfã "não citada no texto")', () => {
+  const refs = [
+    { id: '1', titulo: 'A', ano: 2020, autores: [{ nome: 'J', sobrenome: 'Linares' }] },  // citada
+    { id: '2', titulo: 'B', ano: 2019, autores: [{ nome: 'M', sobrenome: 'Castro' }] },    // citação foi removida do corpo → órfã
+  ] as never[]
+  const corpo = 'Segundo Linares (2020), a taxa subiu.'   // só Linares é citado
+  const bib = compilarSecaoReferencias(refs, 'abnt', corpo)
+  assert.ok(bib.includes('LINARES') || bib.includes('Linares'), 'mantém a ref citada')
+  assert.ok(!bib.toUpperCase().includes('CASTRO'), `NÃO lista a ref não citada: ${bib}`)
+  // Rede de segurança: sem corpo, comporta-se como antes (lista todas as citáveis).
+  const semCorpo = compilarSecaoReferencias(refs, 'abnt')
+  assert.ok(semCorpo.toUpperCase().includes('CASTRO'), 'sem corpo, não filtra por citação')
+})
 test('separarReferenciasCitadas: exclui referência sem autor real da lista', () => {
   const refs = [{ id: '1', titulo: 'X', ano: 2012, autores: [{ nome: '', sobrenome: '&NA;' }] }] as never[]
   const { citadas } = separarReferenciasCitadas(refs, '(&NA;, 2012)', 'abnt')

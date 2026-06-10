@@ -99,11 +99,15 @@ export async function POST(request: Request) {
     if (mexeu && texto !== conteudo) novoPorChave.set(secao.chave_secao, texto)
   }
 
-  // 3) RECOMPILA a seção "Referências" a partir da TABELA (fonte da verdade) —
-  // remove entradas órfãs/desatualizadas da bibliografia (ex.: ref já apagada da
-  // tabela que tinha ficado na seção). É a correção do "removi mas continua lá".
+  // 3) RECOMPILA a seção "Referências" a partir da TABELA, listando SÓ as refs
+  // CITADAS no corpo (já com as citações removidas aplicadas). Assim, citação que
+  // saiu do texto → a referência some da lista (sem órfã "não citada no texto").
   const secaoRefs = secoes.find(s => s.chave_secao === 'referencias')
-  const bibliografiaNova = compilarSecaoReferencias(refsRestantes, formato)
+  const corpoCitado = secoes
+    .filter(s => s.chave_secao !== 'resumo' && s.chave_secao !== 'referencias' && (s.conteudo ?? '').trim())
+    .map(s => extrairTextoSecao(novoPorChave.get(s.chave_secao) ?? s.conteudo ?? ''))
+    .join('\n\n')
+  const bibliografiaNova = compilarSecaoReferencias(refsRestantes, formato, corpoCitado)
   if (secaoRefs && bibliografiaNova && bibliografiaNova !== (secaoRefs.conteudo ?? '')) {
     novoPorChave.set('referencias', bibliografiaNova)
   }
