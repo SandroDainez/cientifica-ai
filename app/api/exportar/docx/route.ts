@@ -414,9 +414,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // ── Sumário (apenas ABNT — obrigatório para TCC, monografia, dissertação) ──
-  const tiposComSumario = ['tcc', 'monografia', 'dissertacao_mestrado', 'tese_doutorado', 'relatorio_ic']
-  if (tiposComSumario.includes(trabalho.tipo_trabalho)) {
+  // ── Sumário ── Incluído sempre que há seções de corpo, IGUAL à visualização/PDF.
+  // Antes era restrito a TCC/monografia/etc.; com isso o sumário SUMIA no Word para
+  // artigo_revisao e outros tipos, divergindo do PDF (que mostra para todos). Universal:
+  // o Word bate com o que o app exibe na tela e na impressão. NÃO voltar à lista restrita.
+  if (secoesCorpo.length > 0) {
     children.push(new Paragraph({ children: [new PageBreak()] }))
     children.push(
       new Paragraph({
@@ -547,6 +549,9 @@ export async function GET(request: Request) {
 
   // ── Gerar arquivo ───────────────────────────────────────────
   const doc = new Document({
+    // Faz o Word ATUALIZAR os campos ao abrir → o Sumário (TOC) já vem preenchido,
+    // sem o usuário precisar clicar "atualizar campo" (senão a página fica vazia).
+    features: { updateFields: true },
     styles: {
       paragraphStyles: [
         {
