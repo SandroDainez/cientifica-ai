@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  Sparkles, Loader2, CheckCircle2, XCircle, FileWarning, Wand2,
+  Sparkles, Loader2, CheckCircle2, XCircle, FileWarning,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -248,69 +248,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     return { totalAplicadas, corpo }
   }
 
-  async function aplicarCorrecoes() {
-    if (corrigiveis.length === 0) {
-      toast.warning('Os problemas apontados são estruturais — exigem ajuste manual no Editor.')
-      return
-    }
-    setEstado('aplicando')
-    try {
-      const antes = analise
-      const { totalAplicadas, corpo } = await aplicarCorrecoesExatas(corrigiveis)
-      if (totalAplicadas === 0) {
-        toast.warning('Nada pôde ser aplicado com segurança — reanalise (Executar Revisão) para o revisor gerar as correções, ou ajuste no Editor.')
-        setEstado('resultado')
-        return
-      }
-      toast.success(`Apliquei ${totalAplicadas} correção(ões) exata(s). Re-avaliando…`)
-      router.refresh()
-      const depois = await analisar(corpo ?? trabalho)
-      if (antes && depois) {
-        setDelta({
-          notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada,
-          qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length,
-        })
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao aplicar correções.')
-      setEstado('resultado')
-    }
-  }
-
-  // REVISÃO PROFUNDA: reescreve seção a seção (remove/reescreve/ajusta/aprofunda)
-  // ancorado nas fontes reais, com trava anti-fabricação e backup de versão.
-  async function revisarProfundo() {
-    const problemas = (analise?.problemas_encontrados ?? []).map(descreverProblema)
-    const remover = analise ? listaRemover(analise) : []
-    setEstado('revisando')
-    try {
-      const res = await fetch('/api/review/revisar', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trabalhoId, problemas, remover }),
-      })
-      const data = await res.json() as { ok?: boolean; secoesRevisadas?: number; secoesAvaliadas?: number; corpoAtualizado?: string; error?: string }
-      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Falha na revisão profunda.')
-      if (!data.secoesRevisadas) {
-        toast.warning('Nenhuma seção pôde ser reescrita com segurança nesta passada (a trava anti-invenção barrou as mudanças).')
-        setEstado('resultado')
-        return
-      }
-      const antes = analise
-      toast.success(`Reescrevi ${data.secoesRevisadas} de ${data.secoesAvaliadas} seção(ões) com base nas fontes reais. Re-avaliando…`)
-      router.refresh()
-      const depois = await analisar(data.corpoAtualizado ?? trabalho)
-      if (antes && depois) {
-        setDelta({
-          notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada,
-          qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length,
-        })
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro na revisão profunda.')
-      setEstado('resultado')
-    }
-  }
-
   // LIMPEZA DETERMINÍSTICA: remove por código as referências marcadas "remover"
   // (off-topic) e suas citações — inclusive em grupo. Não depende do modelo.
   async function passadaLimpeza(remover: string[]): Promise<{ refsRemovidas: number; corpoAtualizado?: string } | null> {
@@ -324,26 +261,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     return { refsRemovidas: data.itensRemovidos ?? 0, corpoAtualizado: data.corpoAtualizado }
   }
 
-  // Botão standalone: remover referências que não servem.
-  async function removerNaoServem() {
-    const remover = analise ? listaRemover(analise) : []
-    if (remover.length === 0) { toast.message('Nenhuma referência marcada como "remover" nesta análise.'); return }
-    setEstado('revisando')
-    try {
-      const antes = analise
-      const out = await passadaLimpeza(remover)
-      if (!out) { setEstado('resultado'); return }
-      if (out.refsRemovidas === 0) { toast.message('Nada a remover (já saíram ou não localizadas).'); setEstado('resultado'); return }
-      toast.success(`${out.refsRemovidas} item(ns) suspeito(s) removido(s) do texto/lista. Re-avaliando…`)
-      router.refresh()
-      const depois = await analisar(out.corpoAtualizado ?? trabalho)
-      if (antes && depois) setDelta({ notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada, qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length })
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao remover referências.')
-      setEstado('resultado')
-    }
-  }
-
   // COERÊNCIA GLOBAL: alinha intro↔objetivos↔resultados↔conclusão (só ajusta o
   // enquadramento p/ casar com os fatos). Retorna o resultado ou null em erro.
   async function passadaCoerencia(): Promise<{ ajustesAplicados: number; corpoAtualizado?: string } | null> {
@@ -354,30 +271,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
     const data = await res.json() as { ok?: boolean; ajustesAplicados?: number; corpoAtualizado?: string; error?: string }
     if (!res.ok || !data.ok) { toast.error(data.error ?? 'Falha na coerência global.'); return null }
     return { ajustesAplicados: data.ajustesAplicados ?? 0, corpoAtualizado: data.corpoAtualizado }
-  }
-
-  // Botão standalone de coerência global.
-  async function coerenciaGlobal() {
-    setEstado('revisando')
-    try {
-      const antes = analise
-      toast.message('Alinhando a coerência global do trabalho…')
-      const out = await passadaCoerencia()
-      if (!out) { setEstado('resultado'); return }
-      if (out.ajustesAplicados === 0) {
-        toast.success('Trabalho já coerente — nenhum ajuste necessário.')
-        setEstado('resultado'); return
-      }
-      toast.success(`${out.ajustesAplicados} ajuste(s) de coerência aplicado(s). Re-avaliando…`)
-      router.refresh()
-      const depois = await analisar(out.corpoAtualizado ?? trabalho)
-      if (antes && depois) {
-        setDelta({ notaAntes: antes.nota_estimada, notaDepois: depois.nota_estimada, qtdAntes: antes.problemas_encontrados.length, qtdDepois: depois.problemas_encontrados.length })
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro na coerência global.')
-      setEstado('resultado')
-    }
   }
 
   // REVISÃO FINAL COMPLETA (orquestrada): vê tudo → pesquisa/acrescenta fontes →
@@ -512,34 +405,18 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               <ListaProblemas problemas={analise.problemas_encontrados} />
             </div>
 
-            {/* Ações */}
+            {/* Ação única — faz tudo */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button onClick={revisaoFinalCompleta} className="gap-2">
-                <Sparkles className="h-4 w-4" /> Revisão final completa
+                <Sparkles className="h-4 w-4" /> Corrigir o trabalho
               </Button>
-              <Button onClick={revisarProfundo} variant="outline" className="gap-2">
-                <Wand2 className="h-4 w-4" /> Só reescrever (1 passada)
-              </Button>
-              <Button onClick={coerenciaGlobal} variant="outline" className="gap-2">
-                <Wand2 className="h-4 w-4" /> Coerência global
-              </Button>
-              {analise && listaRemover(analise).length > 0 && (
-                <Button onClick={removerNaoServem} variant="outline" className="gap-2 text-red-600 dark:text-red-400 border-red-300 dark:border-red-800">
-                  <FileWarning className="h-4 w-4" /> Remover {listaRemover(analise).length} item(ns) suspeito(s)
-                </Button>
-              )}
-              {corrigiveis.length > 0 && (
-                <Button onClick={aplicarCorrecoes} variant="ghost" className="gap-2 text-muted-foreground">
-                  Correção cirúrgica
-                </Button>
-              )}
               <Button variant="ghost" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              <strong>Revisão final completa</strong>: remove o que não serve, aplica a <strong>correção exata</strong> de cada
-              problema (trecho→correção, cirúrgico — não regenera a seção, então não reintroduz os mesmos erros), alinha a coerência
-              e repete (até 3 passadas). <strong>Nunca inventa</strong> dados/citações e guarda a versão anterior de cada seção
-              (restaurável no histórico do Editor). “Só reescrever” faz uma reescrita mais profunda; “Coerência global” só alinha.
+              <strong>Corrigir o trabalho</strong> faz tudo de uma vez: <strong>remove</strong> o que não serve (refs off-topic,
+              citações órfãs), aplica a <strong>correção exata</strong> de cada problema reescrevendo a frase para manter o sentido
+              (não deixa buraco nem afirmação sem apoio), <strong>alinha a coerência</strong> entre as seções e repete até estabilizar.
+              <strong> Nunca inventa</strong> dados/citações e guarda a versão anterior de cada seção (restaurável no histórico do Editor).
             </p>
           </div>
         )}

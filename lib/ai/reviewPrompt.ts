@@ -93,7 +93,7 @@ Retorne APENAS este JSON:
       "trecho": "trecho EXATO copiado do texto (letra por letra, igualzinho, sem reticências) com o problema. Deixe \"\" SOMENTE se a correção não puder ser feita trocando um trecho (ex.: mover para outra seção, completar conteúdo ausente).",
       "problema": "descrição do problema",
       "sugestao": "como corrigir",
-      "correcao": "OBRIGATÓRIO sempre que 'trecho' estiver preenchido: o texto EXATO, JÁ CORRIGIDO, que substitui o 'trecho'. É a sua correção pronta para aplicar — não uma instrução. Use \"\" para REMOVER o trecho (ex.: repetição, citação no contexto errado, frase irrelevante, dado sem fonte). Ex.: trecho \"...múltipla (CALENTE, 2025; HEDJAL, 2023).\" → correcao \"...múltipla (HEDJAL, 2023).\". NUNCA invente dados/autores/anos/citações — preserve os reais. Só deixe \"\" quando o 'trecho' também estiver \"\".",
+      "correcao": "OBRIGATÓRIO sempre que 'trecho' estiver preenchido: o texto EXATO, JÁ CORRIGIDO, que substitui o 'trecho'. É a sua correção pronta para aplicar — não uma instrução. MANTENHA A LÓGICA E A FLUIDEZ: se remover uma citação, expressão ou frase deixar o texto incompleto, sem apoio, com pontuação solta ou um conector órfão, REESCREVA a frase inteira para ficar correta e natural (e ponha a frase inteira no 'trecho'). NUNCA deixe um buraco, vírgula/ponto solto, nem uma afirmação que ficou sem fundamento. Use \"\" só para apagar uma frase/parágrafo INTEIRO que pode sair sem quebrar o texto (ex.: repetição literal, menção irrelevante). Ex. de troca: trecho \"...múltipla (CALENTE, 2025; HEDJAL, 2023).\" → correcao \"...múltipla (HEDJAL, 2023).\". NUNCA invente dados/autores/anos/citações — preserve os reais.",
       "impacto_estimado": número de -20 a 0
     }
   ],
