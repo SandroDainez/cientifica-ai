@@ -321,7 +321,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
         toast.message(`Removendo ${removerLista.length} referência(s) que não pertencem ao trabalho…`)
         const limpo = await passadaLimpeza(removerLista)
         if (limpo && limpo.refsRemovidas > 0) {
-          router.refresh()
           const nova = await analisar(limpo.corpoAtualizado ?? trabalho)
           if (nova) atual = nova
         }
@@ -339,7 +338,6 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
           toast.message('Sem novas correções pontuais a aplicar — encerrando os ajustes.')
           break
         }
-        router.refresh()
         const nova = await analisar(corpo ?? trabalho)
         if (!nova) break
         passada++
@@ -353,11 +351,11 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
       toast.message('Alinhando a coerência global do trabalho…')
       const coOut = await passadaCoerencia()
       if (coOut && coOut.ajustesAplicados > 0) {
-        router.refresh()
         const nova = await analisar(coOut.corpoAtualizado ?? trabalho)
         if (nova) atual = nova
       }
 
+      router.refresh() // UMA recarga só, no fim — evita o "sumir e voltar" das seções
       setDelta({
         notaAntes: notaInicial, notaDepois: atual.nota_estimada,
         qtdAntes: qtdInicial, qtdDepois: atual.problemas_encontrados.length,
