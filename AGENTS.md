@@ -34,6 +34,20 @@ Invariantes invioláveis em CADA passo: anti-fabricação (`posProcessarTextoGer
 preservar dados reais, AMPLITUDE de citações, BACKUP em `secao_versoes` antes de
 sobrescrever, e NUNCA tocar na seção `resumo` (JSON) com texto puro.
 
+ISOLAMENTO POR TRABALHO (travado por `ISOLAMENTO:` no teste): TODA rota de revisão
+age SÓ no trabalho do dono — sempre `eq('id', trabalhoId).eq('usuario_id', user.id)`
+e sub-queries por `eq('trabalho_id', trabalhoId)`. NUNCA misturar dados de trabalhos
+diferentes. Não há estado mutável a nível de módulo com conteúdo de trabalho — os
+singletons (`aiClient`, `reviewService._client`) guardam só a conexão da API.
+
+DETERMINÍSTICO ANTES DO LLM (ordem fixa, igual para todo trabalho): o que dá para
+resolver por CÓDIGO é feito por código e NUNCA depende do modelo —
+- remover refs off-topic + citações órfãs: `/api/review/limpar-suspeitas`
+  (`lib/revisao/sanear-refs.ts`);
+- a bibliografia (seção `referencias`) é SEMPRE derivada da TABELA via
+  `compilarSecaoReferencias` — entrada órfã na seção nunca sobrevive.
+Só o que exige julgamento (linguagem, profundidade, coerência) usa o LLM, com travas.
+
 # Contrato de consistência (NÃO regredir as melhorias)
 
 As melhorias de qualidade são CENTRALIZADAS em fontes únicas de verdade. Ao

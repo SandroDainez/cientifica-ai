@@ -752,6 +752,20 @@ test('compilarSecaoReferencias: bibliografia vem da tabela; ref ausente não apa
   assert.equal(compilarSecaoReferencias([], 'abnt'), '')   // sem refs → seção vazia
 })
 
+// ── 13n. ISOLAMENTO por trabalho: nenhuma revisão pode misturar trabalhos ──────
+test('ISOLAMENTO: toda rota de revisão exige posse (usuario_id) + escopo (trabalho_id)', () => {
+  // Garante que cada operação age SÓ no trabalho do dono — nunca mistura trabalhos.
+  const rotas = ['analyze', 'revisar', 'coerencia', 'limpar-suspeitas', 'corrigir', 'aplicar', 'iterate']
+  const { readFileSync, existsSync } = require('node:fs') as typeof import('node:fs')
+  for (const r of rotas) {
+    const p = join(process.cwd(), `app/api/review/${r}/route.ts`)
+    if (!existsSync(p)) continue
+    const src = readFileSync(p, 'utf8') as string
+    assert.ok(/usuario_id['"]\s*,\s*user\.id/.test(src), `rota ${r}: falta checagem de posse (usuario_id)`)
+    assert.ok(/trabalho_?[iI]d/.test(src), `rota ${r}: falta escopo por trabalho`)
+  }
+})
+
 // ── 14. Integração: pós-processamento completo ───────────────────────────────
 test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   const refs = [] as never[]
