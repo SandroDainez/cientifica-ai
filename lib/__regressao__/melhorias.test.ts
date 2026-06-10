@@ -633,6 +633,23 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
 })
+test('CONTRATO integridade: geração PROÍBE número sem fonte e uso de ref de outro assunto', () => {
+  const refs = [fakeRef('1', 'A', 'resumo com conteúdo suficiente para passar do limiar de oitenta caracteres exigido aqui pelo dossiê.')]
+  const instr = buildInstrucaoCitacaoReferencias(refs, 'abnt')
+  // Número específico só com fonte; senão, qualitativo.
+  assert.match(instr, /N[ÚU]MEROS E ESTAT[ÍI]STICAS/i)
+  assert.match(instr, /QUALITATIVAMENTE|qualitativa/i)
+  assert.match(instr, /FABRICA[ÇC][ÃA]O/i)
+  // Fonte tem que ser do assunto (não usar câncer p/ sustentar outro tema).
+  assert.match(instr, /ASSUNTO|outra doen[çc]a|c[âa]ncer/i)
+})
+test('CONTRATO integridade: revisor caça número sem fonte e ref off-topic pelo ASSUNTO real', () => {
+  assert.match(REVIEW_SYSTEM_PROMPT, /N[ÚU]MERO SEM FONTE/i)
+  assert.match(REVIEW_SYSTEM_PROMPT, /ASSUNTO REAL/i)
+  assert.match(REVIEW_SYSTEM_PROMPT, /c[âa]ncer|proje[çc][ãa]o demogr[áa]fica/i)   // exemplo de off-topic disfarçado
+  assert.match(REVIEW_SYSTEM_PROMPT, /N[ÃA]O-PRIMÁRIA|newsletter|congresso/i)        // fonte fraca
+  assert.match(REVIEW_SYSTEM_PROMPT, /NARRATIVA|SISTEM[ÁA]TICA/)                      // gênero metodológico
+})
 test('CONTRATO citações: instrução SEM refs ainda força marcador (SOBRENOME, ANO) e proíbe inventar', () => {
   const instr = buildInstrucaoCitacaoReferencias([], 'abnt')
   assert.match(instr, /\(SOBRENOME, ANO\)/)

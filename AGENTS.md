@@ -69,6 +69,22 @@ mexer em geração/formatação, altere AQUI — nunca duplique a lógica em out
 - `lib/referencias/qualidade.ts`: rejeita ref sem autor real / não-original.
 - `lib/referencias/citadas.ts`: remove da lista refs não citadas no corpo.
 
+## ⭐ INTEGRIDADE CIENTÍFICA (regra séria do editor — travado por `CONTRATO integridade`)
+
+O app é um EDITOR de excelência: não entrega número inventado nem fonte de outro
+assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVISÃO:
+- GERAÇÃO (`buildInstrucaoCitacaoReferencias`, regras 8-10): NUNCA inventar/estimar
+  dado numérico — só afirmar número específico (%, taxa, n, magnitude, recorte
+  regional) se constar no "Resumo da fonte"; senão, descrever QUALITATIVAMENTE.
+  Fonte tem que ser do ASSUNTO (não usar câncer/projeção p/ sustentar outro tema).
+  Não alegar base de dados (DATASUS) que não será apresentada.
+- REVISÃO (`REVIEW_SYSTEM_PROMPT`, bloco INTEGRIDADE A-E): caça (A) número sem fonte
+  → "alta", correcao generaliza o número; (B) ref off-topic pelo ASSUNTO REAL (câncer
+  num trabalho de sepse) → "remover"; (C) fonte fraca/não-primária (newsletter,
+  congresso 1-2 pág, preprint) → "verificar"; (D) gênero metodológico incoerente
+  (linguagem de sistemática em revisão narrativa); (E) base de dados alegada e não
+  usada. NÃO regredir nem enfraquecer.
+
 ## Citações: AMPLITUDE + ancoragem (vale para TODO tipo de trabalho)
 
 Regras travadas por teste (`CONTRATO citações`/`CONTRATO geração`). Aplicam-se a

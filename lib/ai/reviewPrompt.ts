@@ -46,6 +46,13 @@ CRITÉRIOS DE REVISÃO (avalie todos):
 7. Afirmações sem suporte: frases vagas sem fundamentação
 8. Consistência interna: o texto contradiz a si mesmo em algum ponto?
 
+INTEGRIDADE CIENTÍFICA — PRIORIDADE MÁXIMA (estes são os erros que reprovam um trabalho; procure-os ativamente):
+A. NÚMERO SEM FONTE: toda afirmação com dado ESPECÍFICO (percentual, taxa, prevalência, incidência, n, magnitude, "caiu para X%", recorte regional como "55% no Norte") precisa de uma citação que o sustente. Se um número específico — ainda mais se for central e repetido — NÃO tem citação ao lado, ou a fonte citada claramente não trata daquilo, marque categoria "citacao", gravidade "alta": trecho = a frase com o número; correcao = a frase com o número REMOVIDO/generalizado ("taxas substancialmente mais altas"), nunca inventando outra fonte. Número inventado é o erro mais grave de uma revisão.
+B. REFERÊNCIA DE OUTRO ASSUNTO (off-topic real): avalie a referência pelo ASSUNTO REAL dela (o que o título/resumo de fato tratam), não pela aparência. Uma fonte de OUTRA doença/área (ex.: um estudo de CÂNCER, ou de PROJEÇÃO DEMOGRÁFICA) usada para sustentar afirmação sobre o tema deste trabalho — só porque menciona "mortalidade" ou "países" — é uso INDEVIDO: registre em "referencias_suspeitas" com acao "remover".
+C. FONTE FRACA/NÃO-PRIMÁRIA: sinalize (acao "verificar") fonte que claramente não é literatura revisada por pares quando usada como evidência central (newsletter, nota de jornal, resumo de congresso de 1-2 páginas, preprint tratado como publicado).
+D. GÊNERO METODOLÓGICO INCOERENTE: se o trabalho é revisão NARRATIVA mas a metodologia usa linguagem de revisão SISTEMÁTICA (critérios de inclusão/exclusão, triagem, seleção) sem entregar fluxograma/contagem/PRISMA, marque (categoria "coerencia") para suavizar a linguagem ao gênero real.
+E. BASE DE DADOS ALEGADA E NÃO USADA: se a metodologia diz ter usado uma base (ex.: DATASUS/SIM, registro nacional) mas nenhum dado dela aparece no desenvolvimento, marque (categoria "coerencia"): ou os dados entram, ou a alegação sai.
+
 SOBRE REFERÊNCIAS — atenção especial:
 - AS REFERÊNCIAS SÃO VALIDADAS: a lista de referências do trabalho foi importada e
   verificada pelo app a partir de bases reais (PubMed/CrossRef, com DOI). NÃO duvide da

@@ -230,7 +230,13 @@ Você tem ${referencias.length} referências reais disponíveis. O texto é uma 
 
 6. NUNCA misture nome de autor na frase + placeholder: é PROIBIDO escrever algo como "Mulik Devika (SOBRENOME, ANO)" ou "Silva (SOBRENOME, ANO)". Se você sabe o autor real, cite-o completo da lista: "Silva (2020)". Se NÃO há referência, use SÓ o marcador "(SOBRENOME, ANO)" — sem nome de autor antes dele.
 
-7. PROIBIDO: inventar sobrenome/ano fora da lista; escrever "(verificar referência)", "(referência)", "(citar fonte)"; citar pelo título do documento; deixar afirmação factual sem citação.`
+7. PROIBIDO: inventar sobrenome/ano fora da lista; escrever "(verificar referência)", "(referência)", "(citar fonte)"; citar pelo título do documento; deixar afirmação factual sem citação.
+
+8. NÚMEROS E ESTATÍSTICAS — REGRA INVIOLÁVEL (o erro mais grave de uma revisão): NUNCA invente nem estime um dado numérico. Só afirme um número ESPECÍFICO — percentual, taxa, prevalência, incidência, n de pacientes, magnitude de efeito, "caiu para X%", "Y vezes maior", recorte regional como "55% no Norte" — se ele constar EXPLICITAMENTE no "Resumo da fonte" de uma das referências, e cite essa referência JUNTO ao número. Se você NÃO tem a fonte exata daquele número, é PROIBIDO escrevê-lo: descreva QUALITATIVAMENTE ("taxas substancialmente mais altas no Norte e Nordeste", "letalidade marcadamente menor em países de alta renda", "atraso associado a pior desfecho"). Um número específico sem fonte que o sustente é FABRICAÇÃO de dado — pior do que não ter número. Na dúvida entre um número plausível e uma descrição qualitativa, ESCOLHA SEMPRE a qualitativa.
+
+9. FONTE TEM QUE SER DO ASSUNTO: só cite uma referência para sustentar uma afirmação se o ASSUNTO dela (o que o título/resumo realmente tratam) for o tema da frase. NÃO use uma fonte de OUTRA doença/área (ex.: um estudo de câncer, ou de projeção demográfica) para embasar uma afirmação sobre o tema deste trabalho só porque ela menciona "mortalidade" ou "países" — isso é uso indevido de referência.
+
+10. NÃO alegue uso de uma BASE DE DADOS (ex.: DATASUS/SIM, registros nacionais) na metodologia se você não vai APRESENTAR dados concretos dela no desenvolvimento. Coerência entre o que se diz que usou e o que se mostra.`
 }
 
 // ============================================================
