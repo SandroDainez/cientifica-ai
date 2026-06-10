@@ -12,7 +12,7 @@ import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   PageBreak, convertInchesToTwip, LineRuleType,
   Table, TableRow, TableCell, WidthType, BorderStyle,
-  TableOfContents, HeadingLevel,
+  HeadingLevel, TabStopType, LeaderType,
 } from 'docx'
 import type { Trabalho, SecaoTrabalho, Referencia, FormatoCitacao } from '@/types'
 
@@ -151,17 +151,16 @@ export async function GET(request: Request) {
   }
 
   /** Título de seção adaptado ao formato (ABNT, APA, Vancouver) */
+  // Texto do título de seção conforme o formato (usado no heading E no sumário, p/ baterem).
+  function tituloSecaoTexto(numero: number, nome: string): string {
+    if (fmt.headingNumbered && fmt.headingUppercase) return `${numero} ${nome.toUpperCase()}`  // ABNT: 1 INTRODUÇÃO
+    if (fmt.headingNumbered) return `${numero} ${toTitleCase(nome)}`                            // (reservado)
+    if (fmt.headingUppercase) return nome.toUpperCase()
+    return toTitleCase(nome)                                                                    // APA/Vancouver: Introduction
+  }
+
   function secaoHeading(numero: number, nome: string): Paragraph {
-    let textoTitulo: string
-    if (fmt.headingNumbered && fmt.headingUppercase) {
-      textoTitulo = `${numero} ${nome.toUpperCase()}`               // ABNT: 1 INTRODUÇÃO
-    } else if (fmt.headingNumbered) {
-      textoTitulo = `${numero} ${toTitleCase(nome)}`                // (reservado)
-    } else if (fmt.headingUppercase) {
-      textoTitulo = nome.toUpperCase()
-    } else {
-      textoTitulo = toTitleCase(nome)                               // APA/Vancouver: Introduction
-    }
+    const textoTitulo = tituloSecaoTexto(numero, nome)
 
     return new Paragraph({
       heading: HeadingLevel.HEADING_1,   // permite o sumário (TOC) reconhecer o título
@@ -427,12 +426,17 @@ export async function GET(request: Request) {
         children: [new TextRun({ text: 'SUMÁRIO', font: FONT, size: SIZE, bold: true })],
       })
     )
-    children.push(
-      new TableOfContents('Sumário', {
-        hyperlink: true,
-        headingStyleRange: '1-1',
-      })
-    )
+    // Lista ESTÁTICA das seções (não o campo TOC dinâmico do Word, que abria VAZIO
+    // até "atualizar campo"). Mostra cada título + pontilhado até a margem, igual ao
+    // PDF/visualização. Entrada de "Referências" se houver fontes citadas.
+    const tabPontilhado = convertInchesToTwip(8.5) - convertInchesToTwip(fmt.margins.left) - convertInchesToTwip(fmt.margins.right)
+    const entradaSumario = (texto: string) => new Paragraph({
+      tabStops: [{ type: TabStopType.RIGHT, position: tabPontilhado, leader: LeaderType.DOT }],
+      spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO, after: 120 },
+      children: [new TextRun({ text: texto, font: FONT, size: SIZE }), new TextRun({ text: '\t', font: FONT, size: SIZE })],
+    })
+    secoesCorpo.forEach((secao, i) => children.push(entradaSumario(tituloSecaoTexto(i + 1, secao.nome_secao))))
+    if (referencias.length > 0) children.push(entradaSumario(fmt.refsTitle))
     children.push(new Paragraph({ children: [new PageBreak()] }))
   }
 
