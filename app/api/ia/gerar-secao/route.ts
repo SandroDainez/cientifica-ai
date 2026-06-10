@@ -52,11 +52,12 @@ export async function POST(request: Request) {
     )
   }
 
-  const { trabalhoId, chaveSecao, instrucoes_usuario, respostas_usuario } = await request.json() as {
+  const { trabalhoId, chaveSecao, instrucoes_usuario, respostas_usuario, outlineAprovado } = await request.json() as {
     trabalhoId: string
     chaveSecao: string
     instrucoes_usuario?: string
     respostas_usuario?: Record<string, string>
+    outlineAprovado?: string   // esqueleto aprovado pelo usuário (Fase 2) — a prosa o respeita
   }
 
   // Carrega trabalho e valida ownership
@@ -252,6 +253,7 @@ export async function POST(request: Request) {
     referencias: refsCitaveis.length > 0 ? refsCitaveis : undefined,
     formato_citacao: trabalho.formato_citacao,
     dados_projeto: dados_projeto ?? undefined,
+    outlineAprovado,
   })
 
   // Garante que a seção existe na tabela (upsert)

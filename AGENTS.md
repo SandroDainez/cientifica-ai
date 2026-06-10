@@ -109,6 +109,12 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   geração`): a geração PLANEJA internamente os subtópicos da seção + as referências que
   ancoram cada um, e SÓ ENTÃO escreve a prosa em cima — como um orientador. Entrega só a
   prosa (não imprime o plano). Mata o texto ensaístico na origem. NÃO remover.
+- ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
+  `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
+  em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da
+  prosa (best-effort salvo em `secoes_trabalho.metadados.outline` via UPDATE — nunca toca
+  conteudo). Quando `gerar-secao` recebe `outlineAprovado`, `buildGerarSecaoPrompt` injeta
+  "ESQUELETO APROVADO PELO USUÁRIO — OBRIGATÓRIO seguir". Falta a UI de aprovação (fatia 2).
 - ÂNCORA TEMPORAL (`buildGerarSecaoPrompt`, travado por `CONTRATO geração`): o prompt
   de geração injeta a DATA ATUAL (mês/ano). O modelo gerador tende a escrever datas
   perto do treinamento dele (ex.: "busca conduzida em março de 2024") mesmo num

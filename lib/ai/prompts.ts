@@ -368,6 +368,8 @@ export function buildGerarSecaoPrompt(
     referencias?: Referencia[]
     formato_citacao?: FormatoCitacao
     dados_projeto?: import('@/types').DadosProjeto | null
+    /** Esqueleto APROVADO pelo usuário (subtópicos + fontes) — a prosa DEVE respeitá-lo. */
+    outlineAprovado?: string
   }
 ): string {
   const partes: string[] = []
@@ -393,6 +395,14 @@ export function buildGerarSecaoPrompt(
 2. ANCORE: para CADA subtópico, identifique quais referências REAIS da lista o sustentam (e o que cada uma diz, quando há "Resumo da fonte").
 3. ESCREVA: redija a prosa cobrindo os subtópicos nessa ordem, com CADA afirmação factual ancorada na referência que você associou — e cada número vindo de uma fonte (regra 8). Não escreva parágrafo sem um subtópico e fontes por trás.
 Resultado: texto estruturado e baseado em evidência, não retórica. Entregue APENAS a prosa final (sem mostrar a lista de subtópicos).`)
+
+  // Se o usuário JÁ APROVOU um esqueleto, ele MANDA — a prosa segue exatamente essa
+  // estrutura (em vez de o modelo planejar do zero). É a Fase 2 do método-professor.
+  if (dadosTrabalho.outlineAprovado?.trim()) {
+    partes.push(`\n**ESQUELETO APROVADO PELO USUÁRIO — OBRIGATÓRIO seguir esta estrutura (não invente outra):**
+Escreva a prosa cobrindo EXATAMENTE estes subtópicos, NESTA ordem, cada um ancorado nas referências indicadas. Não pule, não acrescente subtópico fora desta lista, não troque as fontes por outras.
+${dadosTrabalho.outlineAprovado.trim()}`)
+  }
 
   if (dadosTrabalho.titulo) {
     partes.push(`\n**Título do trabalho:** ${dadosTrabalho.titulo}`)
@@ -585,6 +595,38 @@ EXEMPLOS DE ERROS FATAIS QUE VOCÊ DEVE EVITAR:
   ✓ CORRETO: (SOBRENOME, ANO) — marcador genérico quando não há referência disponível
 Se não houver referência disponível para embasar um argumento, escreva o argumento SEM citação. Jamais invente sobrenomes de autores.`)
 
+  return partes.join('\n')
+}
+
+/**
+ * Prompt do ESQUELETO (outline) de uma seção — Fase 2 do método-professor. Pede ao
+ * modelo o PLANO da seção (subtópicos + fontes que ancoram cada um) em JSON, para o
+ * usuário APROVAR/EDITAR antes da prosa. Reaproveita a lista de refs reais com resumo.
+ */
+export function buildOutlineSecaoPrompt(
+  fase: FaseConfig,
+  dados: {
+    titulo?: string
+    area?: string
+    referencias?: Referencia[]
+    formato_citacao?: FormatoCitacao
+    instrucoes_usuario?: string
+  },
+): string {
+  const formato = dados.formato_citacao ?? 'abnt'
+  const partes: string[] = []
+  partes.push(`Planeje o ESQUELETO da seção "${fase.nome}" de um trabalho científico${dados.titulo ? ` sobre "${dados.titulo}"` : ''}.`)
+  partes.push(`\nO que a seção deve cobrir:\n${fase.instrucoes}`)
+  if (dados.instrucoes_usuario?.trim()) partes.push(`\nPedido do autor: ${dados.instrucoes_usuario.trim()}`)
+  if (dados.referencias?.length) {
+    const termos = [fase.nome, dados.titulo, dados.area, dados.instrucoes_usuario].filter(Boolean).join(' ')
+    const comResumo = selecionarFontesRelevantes(dados.referencias, termos, 16)
+    const ids = new Set(comResumo.map(r => r.id))
+    partes.push(`\n## REFERÊNCIAS REAIS DISPONÍVEIS (use SÓ estas; NÃO invente):\n${formatarRefsParaPrompt(dados.referencias, formato, ids)}`)
+  }
+  partes.push(`\nDevolva o PLANO da seção: 3 a 6 subtópicos, na ORDEM lógica do argumento. Para CADA subtópico: um título curto, uma frase do que ele defende, e as referências REAIS da lista que o sustentam (pela citação "SOBRENOME, ANO"; só fontes cujo tema realmente sustenta o ponto — NÃO force, NÃO use fonte de outro assunto). NÃO escreva a prosa ainda; só o plano.
+Retorne APENAS JSON válido:
+{"subtopicos":[{"titulo":"...","argumento":"...","referencias":["SOBRENOME, ANO"]}]}`)
   return partes.join('\n')
 }
 

@@ -34,7 +34,7 @@ import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinha
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
-import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
+import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt, buildOutlineSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -703,6 +703,17 @@ test('CONTRATO geração: injeta a DATA ATUAL (âncora temporal) p/ a busca não
   // Esqueleto ancorado antes da prosa (planejar subtópicos + fontes → depois escrever).
   assert.match(prompt, /esqueleto ancorado|MÉTODO DE REDAÇÃO/i)
   assert.match(prompt, /subt[óo]picos/i)
+})
+test('CONTRATO esqueleto: outline pede plano em JSON; prosa RESPEITA outline aprovado', () => {
+  const fase = { id: 'desenvolvimento', chave_secao: 'desenvolvimento', nome: 'Desenvolvimento', instrucoes: 'cobrir disparidades', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
+  const out = buildOutlineSecaoPrompt(fase, { titulo: 'Sepse no Brasil', formato_citacao: 'abnt' })
+  assert.match(out, /subtopicos/)               // pede JSON com subtópicos
+  assert.match(out, /N[ÃA]O escreva a prosa/i)              // só o plano, não a prosa
+  assert.match(out, /n[ãa]o use fonte de outro assunto/i)   // não forçar fonte off-topic
+  // A prosa, com outline aprovado, é obrigada a seguir a estrutura.
+  const prosa = buildGerarSecaoPrompt(fase, { titulo: 'Sepse no Brasil', formato_citacao: 'abnt', outlineAprovado: '1. Disparidades regionais (TANIGUCHI, 2014)' })
+  assert.match(prosa, /ESQUELETO APROVADO PELO USU[ÁA]RIO/i)
+  assert.ok(prosa.includes('TANIGUCHI, 2014'))
 })
 
 test('formatarRefsParaPrompt: injeta "Resumo da fonte" só nas selecionadas', () => {
