@@ -209,7 +209,7 @@ REGRAS ABSOLUTAS (invioláveis):
 - PRESERVE EXATAMENTE todos os dados reais já presentes (números, percentuais, nomes próprios, achados, nomes de instituições, datas).
 - AMPLITUDE DE CITAÇÕES (essencial): cite AMPLAMENTE as fontes reais da lista "FONTES DISPONÍVEIS" — todas são reais e curadas para o tema. Toda afirmação factual deve terminar com uma citação. Use MUITAS fontes distintas (a lista de Referências do trabalho mostra só o que é citado — citar pouco deixa o trabalho com poucas referências). NÃO reduza o número de citações em relação ao texto atual; idealmente AUMENTE, trazendo fontes ainda não citadas que embasem os pontos.
 - Só CITE fontes da lista (citar uma referência real pelo tema/título é correto, não é inventar — PROIBIDO é citar algo fora da lista). Onde a fonte traz "Resumo da fonte", ancore a afirmação no resumo e não a contradiga.
-- Mantenha as citações reais que já existem no texto; pode remover só uma citação claramente no contexto errado.
+- REMOVA decisivamente toda citação cujo conteúdo da fonte NÃO sustente a afirmação — sobretudo as que os PROBLEMAS apontam como "citação inadequada / fonte no contexto errado / fonte sobre outro tema". É MELHOR a frase SEM a citação errada do que com ela. Quando a fonte certa existir na lista, troque pela certa; se não existir, deixe a frase sem citação. Mantenha as citações corretas e acrescente outras fontes pertinentes da lista para manter a densidade.
 - Não invente seções novas nem conteúdo que pertença a outra seção; foque NESTA seção.
 - Mantenha o idioma, o formato de citação e o tom acadêmico do texto.
 - Escreva como um humano (ritmo variado), sem clichês de IA ("Diante do exposto", "Cabe ressaltar", "Neste sentido", etc.).

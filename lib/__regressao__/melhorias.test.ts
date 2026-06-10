@@ -21,6 +21,7 @@ import { auditarReferencias, removerCitacoesDaRef } from '@/lib/revisao/auditar-
 import { correcoesParaEdicoes, aplicarCorrecoesNasSecoes } from '@/lib/revisao/aplicar-correcoes'
 import { aplicarEdicoes, parseEdicoes, reescritaSegura, edicaoSeguraCirurgica, revisaoProfundaSegura } from '@/lib/ai/aplicar-edicoes'
 import { extrairJsonObjeto, ReviewService, parseEdicoesRevisao } from '@/lib/ai/reviewService'
+import { buildReviewUserPrompt } from '@/lib/ai/reviewPrompt'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
@@ -610,6 +611,14 @@ test('revisaoProfundaSegura: BLOQUEIA inchar demais (>3x) e vazio/idêntico', ()
   assert.ok(!revisaoProfundaSegura(orig, inflado).ok)
   assert.ok(!revisaoProfundaSegura(orig, '').ok)
   assert.ok(!revisaoProfundaSegura(orig, orig).ok)
+})
+
+// ── 13h. Revisão: prompt informa o ano atual (evita falso "data futura") ──────
+test('CONTRATO revisão: prompt informa o ano atual e a regra de data futura', () => {
+  const ano = new Date().getFullYear()
+  const p = buildReviewUserPrompt({ trabalho: 'x', tipo: 't', tema: 't', area: 'a', normas: 'abnt', idioma: 'pt-BR', solicitarCorrecao: false })
+  assert.ok(p.includes(String(ano)))           // sabe o ano atual
+  assert.match(p, /data futura/i)               // tem a regra de não falso-flagar
 })
 
 // ── 14. Integração: pós-processamento completo ───────────────────────────────

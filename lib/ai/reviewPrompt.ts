@@ -49,6 +49,9 @@ METADADOS:
 - Área: ${params.area}
 - Normas: ${params.normas}
 - Idioma: ${params.idioma}
+- Ano atual: ${new Date().getFullYear()}
+
+ATENÇÃO ÀS DATAS: o ano atual é ${new Date().getFullYear()}. Só considere "data futura/suspeita" um ano POSTERIOR a ${new Date().getFullYear()}. Publicações de ${new Date().getFullYear()} ou de anos anteriores (ex.: ${new Date().getFullYear() - 1}, ${new Date().getFullYear() - 2}) são RECENTES e NORMAIS — NÃO as sinalize como suspeitas só por causa do ano.
 ${params.fontesResumo ? `
 FONTES CITADAS — RESUMO REAL DE CADA UMA (use para checar SUPORTE):
 Abaixo está o que cada fonte realmente diz (resumo do artigo). Para CADA citação no texto, confira se a fonte citada de fato sustenta a afirmação. Se a afirmação atribui à fonte um achado que o resumo dela NÃO apoia, registre como problema (categoria "citacao", gravidade "alta") com "trecho" = a frase com a citação indevida e "correcao" = a frase sem essa citação (ou com ressalva), e/ou em "referencias_suspeitas" com acao "corrigir_contexto"/"remover". NÃO invente nada; baseie-se apenas nos resumos abaixo.
