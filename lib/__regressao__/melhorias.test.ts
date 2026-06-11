@@ -44,6 +44,7 @@ import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt, buildOutlineSecaoPrompt, buildGerarResumoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
+import { calcularProgresso, secaoTemConteudo } from '@/lib/trabalho/progresso'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
 import { formatarReferencia } from '@/lib/referencias/formatar'
@@ -1224,4 +1225,42 @@ test('CONTRATO isolamento: EditorArea é remontado por seção (key=chave_secao)
     /function trocarFase[\s\S]*?handleSalvarSilencioso\(/.test(src),
     'trocarFase deve persistir o pendente (flush) ao navegar, não apenas limpar o timer',
   )
+})
+
+// ── 17. Progresso unificado: editor e exportação NUNCA mais divergem ───────────
+// Regressão do "editor diz 100% e exportação diz 88%": cada tela contava de um jeito
+// (array fases_concluidas defasado × seções com conteúdo, e denominadores diferentes).
+// Agora ambas usam lib/trabalho/progresso (conteúdo real × fases do documento).
+test('CONTRATO progresso: conta só seções com conteúdo real; ignora array defasado', () => {
+  const fases = [
+    { chave_secao: 'titulo' }, { chave_secao: 'introducao' },
+    { chave_secao: 'metodologia' }, { chave_secao: 'referencias' },
+  ] as { chave_secao: string }[]
+  // introducao foi LIMPA (vazia) — não pode contar, mesmo que um array a marcasse.
+  const secoes = [
+    { chave_secao: 'titulo', conteudo: 'Mortalidade por sepse no Brasil' },
+    { chave_secao: 'introducao', conteudo: '   ' },              // só espaço → vazia
+    { chave_secao: 'metodologia', conteudo: 'Revisão narrativa nas bases...' },
+    { chave_secao: 'referencias', conteudo: 'SILVA, J. 2021.' },
+  ] as { chave_secao: string; conteudo: string }[]
+  const p = calcularProgresso(fases, secoes)
+  assert.equal(p.total, 4)
+  assert.equal(p.concluidas.length, 3)                  // titulo, metodologia, referencias
+  assert.ok(!p.concluidas.includes('introducao'))       // vazia NÃO conta
+  assert.equal(p.percent, 75)
+  assert.equal(p.completo, false)
+  // Vazio em tudo → 0%; tudo preenchido → 100% completo.
+  assert.equal(calcularProgresso(fases, []).percent, 0)
+  assert.ok(!secaoTemConteudo('') && !secaoTemConteudo('  ') && !secaoTemConteudo(null))
+  assert.ok(secaoTemConteudo('x'))
+})
+test('CONTRATO progresso: editor e exportação usam a MESMA fonte (lib/trabalho/progresso)', () => {
+  const { readFileSync } = require('node:fs') as typeof import('node:fs')
+  const editor = readFileSync(join(process.cwd(), 'app/(dashboard)/trabalhos/[id]/editar/EditorClient.tsx'), 'utf8') as string
+  const exportar = readFileSync(join(process.cwd(), 'app/(dashboard)/trabalhos/[id]/exportar/page.tsx'), 'utf8') as string
+  assert.ok(/@\/lib\/trabalho\/progresso/.test(editor), 'editor deve usar lib/trabalho/progresso')
+  assert.ok(/@\/lib\/trabalho\/progresso/.test(exportar), 'exportação deve usar lib/trabalho/progresso')
+  // Nenhuma das duas pode mais derivar o progresso do array defasado fases_concluidas.
+  assert.ok(!/fases_concluidas\.length\s*\/\s*fases\.length/.test(editor), 'editor não pode usar fases_concluidas para o %')
+  assert.ok(!/fluxo\?\.fases\.length\s*\?\?\s*1/.test(exportar), 'exportação não pode usar o total BRUTO do fluxo')
 })

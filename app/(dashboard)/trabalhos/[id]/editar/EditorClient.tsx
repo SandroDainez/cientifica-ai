@@ -28,6 +28,7 @@ import type { Trabalho, FaseConfig, SecaoTrabalho, ResultadoValidacao, DadosProj
 import { limparCitacoesInventadas } from '@/lib/ai/limpar-citacoes'
 import { tituloEfetivo, capitalizarTitulo } from '@/lib/trabalho/titulo'
 import { shouldShowEditorSection } from '@/lib/tipos/workTypeSchemas'
+import { secaoTemConteudo } from '@/lib/trabalho/progresso'
 
 // ── Extrai opções de título de respostas da IA ────────────────────────────────
 // Estratégia primária: bloco delimitado ===OPÇÕES DE TÍTULO=== … ===FIM===
@@ -218,7 +219,11 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
   const faseAtualConfig = fases.find(f => f.chave_secao === faseAtiva || f.id === faseAtiva) ?? fases[0]
   const faseIndex = fases.indexOf(faseAtualConfig)
   const isUltimaFase = faseIndex === fases.length - 1
-  const progresso = Math.round((fasesConcluidas.length / fases.length) * 100)
+  // Progresso AO VIVO por CONTEÚDO REAL (mesma fonte de verdade da Exportação).
+  // Antes usávamos o array fases_concluidas, que ficava defasado quando uma seção
+  // era limpa/regerada → o editor mostrava 100% enquanto a Exportação mostrava 88%.
+  const fasesComConteudo = fases.filter(f => secaoTemConteudo(conteudos[f.chave_secao])).map(f => f.chave_secao)
+  const progresso = fases.length > 0 ? Math.round((fasesComConteudo.length / fases.length) * 100) : 0
 
   const conteudoAtual = conteudos[faseAtualConfig.chave_secao] ?? conteudos[faseAtiva] ?? ''
 
@@ -680,7 +685,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
       <Sidebar
         fases={fases}
         faseAtual={faseAtiva}
-        fasesConcluidas={fasesConcluidas}
+        fasesConcluidas={fasesComConteudo}
         onSelectFase={trocarFase}
         progressoGeral={progresso}
         secoes={secoesIniciais.map(s => ({ ...s, conteudo: conteudos[s.chave_secao] ?? s.conteudo }))}
@@ -766,7 +771,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
           >
             {fases.map((f, i) => (
               <option key={f.chave_secao} value={f.chave_secao}>
-                {i + 1}. {f.nome}{fasesConcluidas.includes(f.chave_secao) ? ' ✓' : ''}
+                {i + 1}. {f.nome}{fasesComConteudo.includes(f.chave_secao) ? ' ✓' : ''}
               </option>
             ))}
           </select>

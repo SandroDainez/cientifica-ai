@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
+import { fasesDoDocumento, calcularProgresso } from '@/lib/trabalho/progresso'
+import { getDadosProjeto } from '@/lib/tipos/fases-efetivas'
 import { ExportarClient } from './ExportarClient'
 import { Paywall } from '@/components/pagamento/Paywall'
 import type { Trabalho, SecaoTrabalho, Referencia, DadosProjeto } from '@/types'
@@ -42,8 +44,11 @@ export default async function ExportarPage({ params }: Props) {
   const secoes = (sData ?? []) as Pick<SecaoTrabalho, 'nome_secao' | 'chave_secao' | 'status' | 'conteudo'>[]
   const fluxo = getFluxo(trabalho.tipo_trabalho)
 
-  const totalFases = fluxo?.fases.length ?? 1
-  const secoesComConteudo = secoes.filter(s => !!s.conteudo?.trim()).length
+  // Progresso pela MESMA fonte de verdade do editor (fases do documento × conteúdo
+  // real), para que as duas telas nunca mais divirjam (88% × 100%).
+  const fasesDoc = fluxo ? fasesDoDocumento(trabalho.tipo_trabalho, fluxo.fases, getDadosProjeto(trabalho)) : []
+  const { total: totalFases, concluidas } = calcularProgresso(fasesDoc, secoes)
+  const secoesComConteudo = concluidas.length
 
   // Texto do trabalho para a Revisão Avançada. Exclui o "resumo" (abstract): é
   // editado à parte (editor do Resumo) e protegido — a revisão não consegue
