@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { extrairTextoSecao } from '@/lib/ai/utils'
+import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
 import { ExportarClient } from './ExportarClient'
 import { Paywall } from '@/components/pagamento/Paywall'
-import type { Trabalho, SecaoTrabalho, Referencia } from '@/types'
+import type { Trabalho, SecaoTrabalho, Referencia, DadosProjeto } from '@/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -52,6 +53,13 @@ export default async function ExportarPage({ params }: Props) {
     .map(s => `${s.nome_secao}\n\n${extrairTextoSecao(s.conteudo ?? '')}`)
     .join('\n\n')
 
+  // Prontidão para a banca: pontos OBRIGATÓRIOS do autor ainda pendentes. Avisa na
+  // exportação (não bloqueia — o autor confirma) para não exportar a parte dele faltando.
+  const dadosProjeto = ((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null
+  const pontosAutorPendentes = prontidaoAutor(dadosProjeto).pontos
+    .filter(p => p.obrigatorio && !p.preenchido)
+    .map(p => ({ titulo: p.titulo, oQueEscrever: p.oQueEscrever }))
+
   return (
     <ExportarClient
       trabalho={trabalho}
@@ -59,6 +67,7 @@ export default async function ExportarPage({ params }: Props) {
       secoesComConteudo={secoesComConteudo}
       referencias={(rData ?? []) as Referencia[]}
       corpoTrabalho={corpoTrabalho}
+      pontosAutorPendentes={pontosAutorPendentes}
     />
   )
 }

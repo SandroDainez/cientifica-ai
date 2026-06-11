@@ -23,11 +23,13 @@ interface Props {
   referencias?: Referencia[]
   /** Texto completo do trabalho (seções concatenadas) para a Revisão Avançada. */
   corpoTrabalho?: string
+  /** Pontos OBRIGATÓRIOS do autor ainda pendentes (prontidão para a banca). */
+  pontosAutorPendentes?: { titulo: string; oQueEscrever: string }[]
 }
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error'
 
-export function ExportarClient({ trabalho, totalFases, secoesComConteudo, referencias, corpoTrabalho }: Props) {
+export function ExportarClient({ trabalho, totalFases, secoesComConteudo, referencias, corpoTrabalho, pontosAutorPendentes = [] }: Props) {
   const [statusDocx, setStatusDocx] = useState<ExportStatus>('idle')
   const [statusPptx, setStatusPptx] = useState<ExportStatus>('idle')
 
@@ -41,10 +43,16 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
 
   const progresso = Math.round((secoesComConteudo / totalFases) * 100)
   const incompleto = secoesComConteudo < totalFases
+  // Prontidão para a banca: avisa (não bloqueia) se faltam pontos OBRIGATÓRIOS do autor.
+  const [cienteDoPendente, setCienteDoPendente] = useState(false)
 
   async function baixar(formato: 'docx' | 'pptx') {
     if (strictMode && !canExport(referencias ?? [])) {
       toast.error('Corrija os erros críticos de referências antes de exportar.')
+      return
+    }
+    if (pontosAutorPendentes.length > 0 && !cienteDoPendente) {
+      toast.warning(`Faltam ${pontosAutorPendentes.length} ponto(s) OBRIGATÓRIO(S) seu(s). Marque o aviso "exportar mesmo assim" acima para confirmar.`)
       return
     }
     const setStatus = formato === 'docx' ? setStatusDocx : setStatusPptx
@@ -189,6 +197,32 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
           )
         })()}
       </div>
+
+      {/* Prontidão para a banca — pontos OBRIGATÓRIOS do autor ainda pendentes */}
+      {pontosAutorPendentes.length > 0 && (
+        <div className="rounded-xl border-2 border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 p-4 space-y-2">
+          <p className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="h-5 w-5" /> Sua parte ainda não está completa — a banca vai cobrar isto de você
+          </p>
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            Faltam <strong>{pontosAutorPendentes.length} ponto(s) OBRIGATÓRIO(S)</strong> que só você pode dar (o app não inventa). Sem eles, o trabalho fica genérico e não é real:
+          </p>
+          <ul className="space-y-1.5 pl-1">
+            {pontosAutorPendentes.map((p, i) => (
+              <li key={i} className="text-sm text-amber-900 dark:text-amber-200">
+                • <strong>{p.titulo}</strong> — <span className="text-amber-800 dark:text-amber-300">{p.oQueEscrever}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            Preencha-os no editor (painel “Pontos do Autor”) antes de exportar a versão final.
+          </p>
+          <label className="flex items-center gap-2 text-sm text-amber-900 dark:text-amber-200 cursor-pointer pt-1">
+            <input type="checkbox" checked={cienteDoPendente} onChange={e => setCienteDoPendente(e.target.checked)} className="h-4 w-4 accent-amber-600" />
+            Estou ciente de que minha parte está incompleta e quero exportar mesmo assim.
+          </label>
+        </div>
+      )}
 
       {/* Revisão Avançada por IA — portão de qualidade antes de baixar */}
       {corpoTrabalho?.trim() && (

@@ -159,7 +159,11 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   exige dados/método/interpretação; revisão só contribuição). ALERTAS bem visíveis de
   obrigatoriedade (o trabalho não é "real/aprovável" sem os obrigatórios). Salva nos
   campos de DadosProjeto que JÁ alimentam a geração (a IA integra, sem inventar). NÃO
-  regredir nem afrouxar a obrigatoriedade.
+  regredir nem afrouxar a obrigatoriedade. Botão "Integrar ao trabalho" (`POST
+  /api/ia/integrar-ponto`): salva a nota E tece na seção-alvo (`secaoAlvo`), sem inventar
+  (posProcessar + anti-colapso + backup). NA EXPORTAÇÃO: `exportar/page.tsx` calcula
+  `prontidaoAutor` e o `ExportarClient` AVISA (não bloqueia) os pontos obrigatórios
+  pendentes, exigindo um "ciente, exportar mesmo assim" antes de baixar.
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da
