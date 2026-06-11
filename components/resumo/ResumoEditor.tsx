@@ -81,8 +81,9 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         body: JSON.stringify({ trabalhoId: trabalho.id, modo: 'resumo_pt' }),
       })
       if (!res.ok) {
-        const err = await res.text()
-        throw new Error(err || `Erro ${res.status}`)
+        let msg = `Erro ${res.status}`
+        try { const j = await res.json() as { error?: string }; if (j?.error) msg = j.error } catch { /* não era JSON */ }
+        throw new Error(msg)
       }
       if (!res.body) return
       const reader = res.body.getReader()
@@ -95,7 +96,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         setDados(prev => ({ ...prev, resumo: acumulado }))
       }
     } catch (err) {
-      setErroGeracao('Erro ao gerar resumo. Tente novamente.')
+      setErroGeracao(err instanceof Error ? err.message : 'Erro ao gerar resumo. Tente novamente.')
       console.error(err)
     } finally {
       setGerandoResumo(false)
@@ -112,8 +113,9 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         body: JSON.stringify({ trabalhoId: trabalho.id, modo: 'abstract_en', resumo_pt: dados.resumo }),
       })
       if (!res.ok) {
-        const err = await res.text()
-        throw new Error(err || `Erro ${res.status}`)
+        let msg = `Erro ${res.status}`
+        try { const j = await res.json() as { error?: string }; if (j?.error) msg = j.error } catch { /* não era JSON */ }
+        throw new Error(msg)
       }
       if (!res.body) return
       const reader = res.body.getReader()
@@ -126,7 +128,7 @@ export function ResumoEditor({ trabalho, fase, conteudoInicial, onSalvar, isUlti
         setDados(prev => ({ ...prev, abstract: acumulado }))
       }
     } catch (err) {
-      setErroGeracao('Erro ao gerar abstract. Tente novamente.')
+      setErroGeracao(err instanceof Error ? err.message : 'Erro ao gerar abstract. Tente novamente.')
       console.error(err)
     } finally {
       setGerandoAbstract(false)
