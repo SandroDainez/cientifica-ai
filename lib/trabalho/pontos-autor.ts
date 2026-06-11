@@ -18,6 +18,8 @@ export interface PontoAutor {
   oQueEscrever: string
   /** O que a BANCA espera neste ponto (o porquê). */
   porQue: string
+  /** Chaves de seção candidatas onde a nota do autor é INTEGRADA (a 1ª que existir). */
+  secaoAlvo: string[]
 }
 
 export interface PontoAutorAvaliado extends PontoAutor {
@@ -36,6 +38,7 @@ const PONTOS: { ponto: PontoAutor; obrigatorio: (d: Partial<DadosProjeto>) => bo
       id: 'contexto', campo: 'notas_contexto', titulo: 'Contexto real e sua contribuição original',
       oQueEscrever: 'Descreva o contexto/motivação reais e, sobretudo, O QUE HÁ DE NOVO no seu trabalho — a lacuna que ele preenche.',
       porQue: 'A primeira pergunta da banca é "qual a contribuição original?". Isto precisa vir de você, não da literatura.',
+      secaoAlvo: ['introducao', 'justificativa'],
     },
     obrigatorio: () => true,
   },
@@ -44,6 +47,7 @@ const PONTOS: { ponto: PontoAutor; obrigatorio: (d: Partial<DadosProjeto>) => bo
       id: 'metodologia', campo: 'notas_metodologia', titulo: 'Como o estudo/coleta realmente aconteceu',
       oQueEscrever: 'Descreva o que VOCÊ fez de fato: delineamento, local, período, instrumentos e — se houver — o número e a data da aprovação do CEP/CONEP.',
       porQue: 'A banca examina o rigor e a reprodutibilidade do método REAL — não um método genérico gerado por IA.',
+      secaoAlvo: ['metodologia', 'metodos', 'metodos_delineamento', 'metodologia_busca'],
     },
     obrigatorio: ehEmpirico,
   },
@@ -52,6 +56,7 @@ const PONTOS: { ponto: PontoAutor; obrigatorio: (d: Partial<DadosProjeto>) => bo
       id: 'dados', campo: 'dados_coletados', titulo: 'Dados e resultados REAIS',
       oQueEscrever: 'Cole os dados/achados reais coletados (números, percentuais, tabelas). A IA NÃO inventa dados — usa SOMENTE o que você fornecer.',
       porQue: 'Resultados são o coração de um estudo empírico; a banca confere os dados originais e a coerência deles.',
+      secaoAlvo: ['resultados', 'resultados_discussao', 'desenvolvimento'],
     },
     obrigatorio: ehEmpirico,
   },
@@ -60,6 +65,7 @@ const PONTOS: { ponto: PontoAutor; obrigatorio: (d: Partial<DadosProjeto>) => bo
       id: 'interpretacao', campo: 'notas_interpretacao', titulo: 'Sua interpretação e limitações',
       oQueEscrever: 'Explique o que VOCÊ entende dos achados, como eles dialogam com a literatura, e as limitações reais que percebeu.',
       porQue: 'A banca valoriza o pensamento crítico do autor e a honestidade sobre os limites do trabalho.',
+      secaoAlvo: ['discussao', 'resultados_discussao', 'consideracoes_finais', 'conclusao'],
     },
     obrigatorio: ehEmpirico,
   },

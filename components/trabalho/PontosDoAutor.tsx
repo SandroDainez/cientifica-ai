@@ -68,21 +68,25 @@ function PontoCard({ ponto, trabalhoId, dadosProjeto, onSalvo }: {
 }) {
   const valorInicial = (dadosProjeto?.[ponto.campo] as string | undefined) ?? ''
   const [texto, setTexto] = useState(valorInicial)
-  const [salvando, setSalvando] = useState(false)
+  const [integrando, setIntegrando] = useState(false)
   const pendenteObrig = ponto.obrigatorio && !ponto.preenchido
 
-  async function salvar() {
-    setSalvando(true)
+  // Integra: salva a nota E tece na seção-alvo (se já existir), sem inventar.
+  async function integrar() {
+    setIntegrando(true)
     try {
-      const dp = { ...(dadosProjeto ?? {}), [ponto.campo]: texto.trim(), confirmado: dadosProjeto?.confirmado ?? false, criado_em: dadosProjeto?.criado_em ?? new Date().toISOString() }
-      const res = await fetch(`/api/trabalhos/${trabalhoId}/projeto`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dados_projeto: dp }),
+      const res = await fetch('/api/ia/integrar-ponto', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trabalhoId, campo: ponto.campo, secaoAlvo: ponto.secaoAlvo, texto: texto.trim() }),
       })
-      if (!res.ok) throw new Error('falha')
-      toast.success(`"${ponto.titulo}" salvo — a IA vai usar isto ao gerar/ajustar as seções.`)
+      const data = await res.json() as { ok?: boolean; integradoNaSecao?: string | null; mensagem?: string; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'falha')
+      toast.success(data.integradoNaSecao
+        ? `Integrado à seção "${data.integradoNaSecao}". A IA teceu sua nota no texto.`
+        : (data.mensagem ?? 'Nota salva — será usada ao gerar a seção.'))
       onSalvo()
-    } catch { toast.error('Falha ao salvar. Tente novamente.') }
-    finally { setSalvando(false) }
+    } catch { toast.error('Falha ao integrar. Tente novamente.') }
+    finally { setIntegrando(false) }
   }
 
   return (
@@ -106,10 +110,11 @@ function PontoCard({ ponto, trabalhoId, dadosProjeto, onSalvo }: {
         placeholder="Escreva aqui o que só você pode informar — a IA integra ao texto, sem inventar."
         className="mt-2 w-full rounded-lg border border-border bg-background p-2.5 text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
-      <div className="mt-2 flex justify-end">
-        <Button size="sm" onClick={salvar} disabled={salvando || texto.trim() === valorInicial.trim()} className="gap-1.5">
-          {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          Salvar este ponto
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] text-muted-foreground">A IA integra ao texto — sem inventar nada além do que você escreveu.</span>
+        <Button size="sm" onClick={integrar} disabled={integrando || !texto.trim() || texto.trim() === valorInicial.trim()} className="gap-1.5">
+          {integrando ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+          Integrar ao trabalho
         </Button>
       </div>
     </div>

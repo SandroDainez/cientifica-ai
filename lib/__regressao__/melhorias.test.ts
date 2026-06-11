@@ -652,8 +652,8 @@ test('CONTRATO pontos do autor: obrigatoriedade adapta ao tipo de estudo; pronti
   const comDados = prontidaoAutor({ tipo_coleta: 'primaria', notas_contexto: 'minha contribuição é X, lacuna Y', notas_metodologia: 'coorte em 2 hospitais', dados_coletados: 'mortalidade de 42% (n=80)', notas_interpretacao: 'os achados sugerem Z, limitação: amostra pequena' })
   assert.equal(comDados.obrigatoriosPendentes, 0)
   assert.equal(comDados.pronto, true)
-  // Cada ponto traz o "o que escrever" e o "por que" (a banca).
-  assert.ok(empiricoVazio.pontos.every(p => p.oQueEscrever.length > 10 && p.porQue.length > 10))
+  // Cada ponto traz o "o que escrever", o "por que" (a banca) e a SEÇÃO-ALVO p/ integrar.
+  assert.ok(empiricoVazio.pontos.every(p => p.oQueEscrever.length > 10 && p.porQue.length > 10 && p.secaoAlvo.length > 0))
 })
 test('CONTRATO coerência criação: avisa tipo×título incompatível e sugere o tipo certo', () => {
   // Tipo revisão, título de ensaio clínico → sugere Artigo Original.
