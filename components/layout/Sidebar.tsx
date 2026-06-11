@@ -58,11 +58,11 @@ export function Sidebar({ fases, faseAtual, fasesConcluidas, onSelectFase, progr
           {fases.map((fase, idx) => {
             const concluida = fasesConcluidas.includes(fase.chave_secao)
             const ativa = faseAtual === fase.chave_secao
-            // Fase acessível se: é a primeira, anterior concluída, é opcional, ou o próprio usuário já tocou nela
-            const anteriorConcluida = idx === 0 || fasesConcluidas.includes(fases[idx - 1]?.chave_secao)
-            const temConteudo = secoes?.some(s => s.chave_secao === fase.chave_secao && (s.conteudo ?? '').trim().length > 0)
-            const acessivel = anteriorConcluida || !fase.obrigatoria || concluida || !!temConteudo
-            const bloqueada = !acessivel && !concluida
+            // NAVEGAÇÃO LIVRE: o autor pode ir a QUALQUER seção. A ordem é guiada pelo
+            // Roteiro do Orientador e pelo destaque visual — NÃO travamos em sequência,
+            // para nunca prender o autor (ex.: Resumo, que só se gera depois do corpo).
+            const acessivel = true
+            const bloqueada = false
 
             return (
               <li key={fase.id}>
