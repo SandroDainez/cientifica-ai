@@ -151,6 +151,15 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   superior → autor → afiliação → curso → Instructor → data); Vancouver = title page
   simples. SUMÁRIO: no export PADRÃO (documento completo) para trabalhos com seções; no
   export para PERIÓDICO (`docx-periodico`) NÃO há sumário (revista não usa índice). NÃO regredir.
+- PONTOS DO AUTOR (`lib/trabalho/pontos-autor.ts` → `prontidaoAutor`, travado por
+  `CONTRATO pontos do autor`; UI `components/trabalho/PontosDoAutor.tsx` no editor): os
+  lugares onde SÓ o autor pode dar a substância (contexto/contribuição, método real,
+  DADOS reais, interpretação) — o que a BANCA cobra do autor, não do app. Cada ponto tem
+  "o que escrever" + "por que a banca cobra"; a obrigatoriedade ADAPTA ao tipo (empírico
+  exige dados/método/interpretação; revisão só contribuição). ALERTAS bem visíveis de
+  obrigatoriedade (o trabalho não é "real/aprovável" sem os obrigatórios). Salva nos
+  campos de DadosProjeto que JÁ alimentam a geração (a IA integra, sem inventar). NÃO
+  regredir nem afrouxar a obrigatoriedade.
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da

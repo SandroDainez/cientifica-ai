@@ -15,6 +15,7 @@ import { ResumoEditor } from '@/components/resumo/ResumoEditor'
 import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/components/editor/QuestionarioGeracaoModal'
 import OutlineApprovalModal, { type SubtopicoOutline } from '@/components/editor/OutlineApprovalModal'
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
+import { PontosDoAutor } from '@/components/trabalho/PontosDoAutor'
 import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
 import { HistoricoVersoes } from '@/components/editor/HistoricoVersoes'
 import { BlocoFinalizacao } from '@/components/editor/BlocoFinalizacao'
@@ -783,6 +784,16 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
             </div>
           )
         })()}
+
+        {/* Pontos do Autor — o que SÓ o autor pode dar (obrigatório p/ trabalho real) */}
+        {Boolean((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto) && (
+          <div className="mx-6 mt-3">
+            <PontosDoAutor
+              trabalhoId={trabalho.id}
+              dadosProjeto={(trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | null | undefined}
+            />
+          </div>
+        )}
 
         {/* Editor + painel IA — lado a lado no desktop, empilhado no mobile */}
         <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
