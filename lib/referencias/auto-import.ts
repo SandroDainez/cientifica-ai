@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Referencia } from '@/types'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas } from '@/lib/referencias/buscar-externo'
-import { ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
+import { ehReferenciaUtilizavel, ehFonteFraca } from '@/lib/referencias/qualidade'
 import { callAI } from '@/lib/ai/stream'
 import { buildReferenceGuardrail, type ReferenceValidationResult, type ValidationStatus } from './referenceValidator'
 
@@ -191,7 +191,11 @@ export async function garantirReferenciasReais({
       vistosTitulos.add(tk)
       if (ref.doi) { if (vistosDois.has(ref.doi)) return false; vistosDois.add(ref.doi) }
       return true
-    }).slice(0, meta - referencias.length)
+    })
+      // CURADORIA DE QUALIDADE: fonte fraca (newsletter, preprint, 1 página) vai para o
+      // FIM — a qualidade preenche a cota primeiro; as fracas só entram se sobrar espaço.
+      .sort((a, b) => Number(ehFonteFraca(a)) - Number(ehFonteFraca(b)))
+      .slice(0, meta - referencias.length)
 
     if (refsUnicas.length > 0) {
       const inserir = refsUnicas.map(ref => {

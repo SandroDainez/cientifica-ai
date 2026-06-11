@@ -12,7 +12,7 @@ export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas, enriquecerAbstractsFaltantes } from '@/lib/referencias/buscar-externo'
-import { ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
+import { ehReferenciaUtilizavel, ehFonteFraca } from '@/lib/referencias/qualidade'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import type { Trabalho, Referencia } from '@/types'
 
@@ -122,7 +122,10 @@ export async function POST(request: Request) {
             vistosTitulos.add(tk)
             if (ref.doi) { if (vistosDois.has(ref.doi)) return false; vistosDois.add(ref.doi) }
             return true
-          }).slice(0, 20)
+          })
+            // Curadoria: fonte fraca (newsletter/preprint/1 página) por último.
+            .sort((a, b) => Number(ehFonteFraca(a)) - Number(ehFonteFraca(b)))
+            .slice(0, 20)
           if (novas.length > 0) {
             const rows = novas.map(ref => {
               const parcial = { id: '', trabalho_id: trabalhoId, dados_extras: {}, confiabilidade: 'alta' as const, created_at: '', referencia_formatada_abnt: '', referencia_formatada_vancouver: '', referencia_formatada_apa: '', ...ref } as Referencia

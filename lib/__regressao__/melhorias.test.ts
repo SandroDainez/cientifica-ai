@@ -13,7 +13,7 @@ import { removerTravessoes, validarCitacoesReais, removerPlaceholdersCitacaoResi
 import { corrigirCodigoR, corrigirCodigoPython } from '@/lib/ai/utils'
 import { converterMathLatexParaTexto } from '@/lib/formatacao/latex'
 import { markdownAcademicoParaHtml } from '@/lib/formatacao/documento-html'
-import { ehSobrenomePlaceholder, ehTituloDescartavel, ehReferenciaUtilizavel } from '@/lib/referencias/qualidade'
+import { ehSobrenomePlaceholder, ehTituloDescartavel, ehReferenciaUtilizavel, ehFonteFraca } from '@/lib/referencias/qualidade'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { dedupDocumentosPorEtapa } from '@/lib/projeto/dedup-documentos'
@@ -635,6 +635,14 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO qualidade: detecta fonte fraca (newsletter/preprint/1 página) sem rejeitar fonte boa', () => {
+  assert.equal(ehFonteFraca({ journal: 'Hospitalist News' }), true)        // newsletter
+  assert.equal(ehFonteFraca({ journal: 'SSRN Electronic Journal' }), true) // preprint
+  assert.equal(ehFonteFraca({ journal: 'medRxiv' }), true)
+  assert.equal(ehFonteFraca({ journal: 'Critical Care', paginas: '18-18' }), true) // 1 página
+  assert.equal(ehFonteFraca({ journal: 'Critical Care Medicine', paginas: '76-84' }), false) // boa
+  assert.equal(ehFonteFraca({ journal: 'Revista Brasileira de Terapia Intensiva' }), false)
 })
 test('CONTRATO suporte: flagra percentual citado que NÃO consta no resumo da fonte; não acusa quando consta nem sem resumo', () => {
   const refComNumero = { id: '1', titulo: 'Sepsis mortality', ano: 2019, autores: [{ nome: 'O', sobrenome: 'Ranzani' }], abstract: 'In this cohort, sepsis lethality was reduced to 18% after the intervention across hospitals in the region.' } as never

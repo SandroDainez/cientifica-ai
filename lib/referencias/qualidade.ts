@@ -75,3 +75,19 @@ export function ehReferenciaUtilizavel(ref: { titulo?: string; autores?: AutorRe
   if (limparAutoresPlaceholder(ref.autores).length === 0) return false
   return true
 }
+
+// Veículos que indicam fonte FRACA / não revisada por pares — não devem ser a base
+// de um trabalho de excelência (newsletter, jornal de notícias, preprint).
+const VEICULO_FRACO = /\bnews\b|newsletter|hospitalist news|\bdaily\b|gazette|bulletin\b|\bmagazine\b|ssrn|bior[xX]iv|medr[xX]iv|\bpreprint|research square|preprints?\.org|\barxiv\b/i
+
+/**
+ * Fonte fraca (não-primária / não revisada por pares): newsletter, nota de jornal,
+ * preprint, ou item de 1 página (ex.: paginas "18-18"). Usado para DEPRIORIZAR no
+ * import (a qualidade entra primeiro) — NÃO remove o que já existe.
+ */
+export function ehFonteFraca(ref: { journal?: string; paginas?: string }): boolean {
+  if (VEICULO_FRACO.test(ref.journal ?? '')) return true
+  const pg = (ref.paginas ?? '').match(/(\d+)\s*[-–—]\s*(\d+)/)
+  if (pg && pg[1] === pg[2]) return true   // mesma página de início e fim = 1 página
+  return false
+}

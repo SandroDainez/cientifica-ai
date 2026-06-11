@@ -87,6 +87,12 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
   cobre. Conservador (só dispara se o tópico está no título e ausente do tema). A rota
   `analyze` mescla nas `referencias_suspeitas` sem duplicar. NÃO transformar em remoção
   automática (risco de falso-positivo) nem regredir.
+- CURADORIA DE QUALIDADE (`lib/referencias/qualidade.ts` → `ehFonteFraca`, travado por
+  `CONTRATO qualidade`): detecta fonte FRACA/não-primária (newsletter, nota de jornal,
+  preprint SSRN/bioRxiv/medRxiv, item de 1 página). No auto-import (`auto-import.ts` e
+  `gerar-secao`), as fracas são DEPRIORIZADAS (`.sort` por `ehFonteFraca` → vão para o fim,
+  antes do corte da cota): a qualidade preenche primeiro. NÃO remove o que já existe (a
+  revisão flagra as fracas existentes). NÃO regredir para hard-reject (removeria válidas).
 - VERIFICAÇÃO DE SUPORTE (`lib/revisao/verificar-suporte.ts` → `verificarNumerosSemSuporte`,
   travado por `CONTRATO suporte`): por CÓDIGO, flagra PERCENTUAL citado ao lado de uma
   referência cujo RESUMO (abstract) NÃO contém aquele número → problema categoria "citacao",
