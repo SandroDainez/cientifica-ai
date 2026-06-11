@@ -129,13 +129,16 @@ export function EditorArea({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conteudo])
 
-  // Auto-revisão silenciosa: 25s após o usuário parar de editar (mín. 100 palavras, não validado recentemente)
+  // Auto-revisão silenciosa: 25s após o usuário parar de editar (não validado
+  // recentemente). Limiar de 40 palavras: seções CURTAS mas legítimas (ex.: objetivos
+  // ~90 palavras, problema/pergunta) também são validadas — antes, com mín. de 100,
+  // "alguns campos não rodavam a validação depois de editar".
   const autoReviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ultimoConteudoValidado = useRef<string>('')
   useEffect(() => {
     if (autoReviewTimer.current) clearTimeout(autoReviewTimer.current)
     const palavrasAtual = conteudo.trim().split(/\s+/).length
-    if (!conteudo.trim() || statusIA !== 'idle' || palavrasAtual < 100) return
+    if (!conteudo.trim() || statusIA !== 'idle' || palavrasAtual < 40) return
     // Só roda se o conteúdo mudou desde a última validação
     if (conteudo === ultimoConteudoValidado.current) return
     // eslint-disable-next-line react-hooks/immutability

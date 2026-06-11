@@ -298,6 +298,47 @@ Retorne APENAS JSON válido: {"edicoes":[{"buscar":"...","substituir":"..."}]}. 
   }
 
   /**
+   * Redige um RASCUNHO pronto para um item da diretriz de relato (PRISMA/STROBE/
+   * CARE…) que está AUSENTE/incompleto — para o autor inserir e adaptar. Ancora no
+   * trabalho, NUNCA inventa dado real (usa [preencha: ...]) e escolhe a seção-alvo
+   * (chave_secao) entre as seções do trabalho. Usa o modelo DEDICADO da revisão.
+   */
+  async redigirItemDiretriz(p: {
+    sigla: string; rotulo: string; exige: string; comoResolver: string;
+    tema: string; corpo: string; secoes: { chave: string; nome: string }[];
+  }): Promise<ReviewOutcome<{ rascunho: string; exemplo: string; secaoChave: string }>> {
+    const clienteOut = this.getClient()
+    if (!clienteOut.ok) return clienteOut
+    const client = clienteOut.data
+
+    const listaSecoes = p.secoes.map(s => `- ${s.chave} (${s.nome})`).join('\n') || '- (o trabalho ainda não tem seções escritas)'
+    const sys = `Você é um revisor de periódico e editor acadêmico sênior. Um item da diretriz de relato ${p.sigla} está AUSENTE ou incompleto no trabalho. Redija um RASCUNHO pronto, em prosa acadêmica impessoal, que ATENDA esse item — curto e direto (2 a 5 frases), ancorado no que o trabalho já traz. REGRAS INVIOLÁVEIS: (1) NUNCA invente dado real que só o autor tem (números, N, datas, parecer/nº de CEP, bases efetivamente consultadas, registro de protocolo) — deixe um espaço claro entre colchetes, ex.: "[preencha: nº do parecer do CEP]". (2) Preserve a coerência com o resto do trabalho. (3) Escolha a SEÇÃO onde esse texto deve entrar, pela lista fornecida (devolva a chave_secao EXATA da lista). Responda em português. Retorne APENAS JSON válido: {"rascunho":"<texto pronto, com [preencha: ...] onde precisar de dado real>","exemplo":"<1 frase do que um bom preenchimento contém>","secao":"<chave_secao da lista>"}`
+    const user = `ITEM DA DIRETRIZ: "${p.rotulo}"\nO QUE O ITEM EXIGE: ${p.exige}\nORIENTAÇÃO DO VERIFICADOR: ${p.comoResolver || '(sem nota)'}\n\nTEMA DO TRABALHO: "${p.tema}"\nSEÇÕES DO TRABALHO (escolha uma chave para "secao"):\n${listaSecoes}\n\nTRABALHO (contexto — use para ancorar, NÃO copie literalmente):\n${p.corpo.slice(0, 16000)}`
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: REVIEW_AI_MODEL,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        temperature: 0.4,
+        max_tokens: 1500,
+      })
+      const txt = completion.choices[0]?.message?.content ?? ''
+      const i = txt.indexOf('{'); const j = txt.lastIndexOf('}')
+      if (i < 0 || j <= i) return { ok: false, codigo: 'PARSE_ERROR', error: 'O rascunho voltou vazio.' }
+      const o = JSON.parse(txt.slice(i, j + 1)) as { rascunho?: unknown; exemplo?: unknown; secao?: unknown }
+      const rascunho = typeof o.rascunho === 'string' ? o.rascunho.trim() : ''
+      if (!rascunho) return { ok: false, codigo: 'PARSE_ERROR', error: 'O rascunho voltou vazio.' }
+      return { ok: true, data: {
+        rascunho,
+        exemplo: typeof o.exemplo === 'string' ? o.exemplo.trim() : '',
+        secaoChave: typeof o.secao === 'string' ? o.secao.trim() : '',
+      } }
+    } catch (err) {
+      return { ok: false, codigo: 'API_ERROR', error: err instanceof Error ? err.message : 'Falha ao redigir o item.' }
+    }
+  }
+
+  /**
    * REVISÃO PROFUNDA de uma seção: o editor REESCREVE a seção inteira para
    * corrigir TODOS os problemas que se aplicam a ela — remove o que sobra,
    * reescreve o que está fraco, ajusta erros e, onde faltar profundidade,

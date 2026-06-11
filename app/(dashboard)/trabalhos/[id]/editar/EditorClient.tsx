@@ -383,8 +383,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
           }
         }
       } else {
-        // Outras seções: auto-valida 4s após geração terminar
-        if (textoGerado.trim().split(/\s+/).length >= 80) {
+        // Outras seções: auto-valida 4s após geração terminar. Limiar 40 (não 80)
+        // para que seções curtas legítimas (ex.: objetivos) também sejam validadas.
+        if (textoGerado.trim().split(/\s+/).length >= 40) {
           const t = setTimeout(() => {
             setValidacao(null)
             handleValidar()

@@ -1286,3 +1286,24 @@ test('CONTRATO anti-embaralhamento: detecta lista de referências e salvar-secao
   assert.ok(/chaveSecao\s*!==\s*'referencias'\s*&&\s*pareceListaReferenciasCompilada/.test(src),
     'a trava só pode barrar a lista FORA da seção de referências')
 })
+
+// ── 19. Diretriz de relato: cada item AUSENTE abre edição com IA (Sonnet) + insere ─
+// O autor inexperiente não fica perdido: a IA (modelo de revisão dedicado) escreve um
+// rascunho pronto por item, ele adapta e insere; ao inserir, a conferência re-roda.
+test('CONTRATO diretriz: item edita com IA do modelo de REVISÃO (Sonnet) e re-valida ao inserir', () => {
+  const { readFileSync } = require('node:fs') as typeof import('node:fs')
+  // 1) O helper de redação do item usa o modelo DEDICADO da revisão (REVIEW_AI_MODEL).
+  const svc = readFileSync(join(process.cwd(), 'lib/ai/reviewService.ts'), 'utf8') as string
+  assert.ok(/redigirItemDiretriz/.test(svc), 'ReviewService deve ter redigirItemDiretriz')
+  const trecho = svc.slice(svc.indexOf('redigirItemDiretriz'), svc.indexOf('redigirItemDiretriz') + 3000)
+  assert.ok(/model:\s*REVIEW_AI_MODEL/.test(trecho), 'redigirItemDiretriz deve usar o modelo de revisão (Sonnet)')
+  assert.ok(/preencha/i.test(trecho), 'o rascunho nunca inventa dado real — usa [preencha: ...]')
+  // 2) A rota de ajuda chama o serviço de revisão (não o modelo de geração).
+  const rota = readFileSync(join(process.cwd(), 'app/api/ia/diretriz-ajudar/route.ts'), 'utf8') as string
+  assert.ok(/reviewService\.redigirItemDiretriz/.test(rota), 'diretriz-ajudar deve usar reviewService.redigirItemDiretriz')
+  // 3) O componente abre o campo editável e RE-CONFERE ao inserir (valida de novo).
+  const comp = readFileSync(join(process.cwd(), 'components/banca/DiretrizRelato.tsx'), 'utf8') as string
+  assert.ok(/textarea/.test(comp), 'cada item precisa de um campo editável (textarea)')
+  assert.ok(/diretriz-ajudar/.test(comp) && /diretriz-inserir/.test(comp), 'componente liga ajudar + inserir')
+  assert.ok(/onInserido\(\)/.test(comp), 'ao inserir deve re-rodar a conferência (validação)')
+})
