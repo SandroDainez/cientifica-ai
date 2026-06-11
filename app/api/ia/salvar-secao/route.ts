@@ -4,6 +4,7 @@ import { getFluxo } from '@/lib/tipos/fluxos-trabalho'
 import { tituloEfetivo } from '@/lib/trabalho/titulo'
 import { fasesEfetivas, getDadosProjeto } from '@/lib/tipos/fases-efetivas'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
+import { pareceListaReferenciasCompilada } from '@/lib/trabalho/guarda-secao'
 import type { StatusSecao, SecaoTrabalho } from '@/types'
 
 export async function POST(request: Request) {
@@ -44,6 +45,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, bloqueado: true })
     }
     conteudo = protecao.conteudo
+  }
+
+  // ── Trava anti-embaralhamento de seções ────────────────────────────────────
+  // A LISTA DE REFERÊNCIAS compilada (começa com o título "## REFERÊNCIAS") só
+  // pode viver na seção 'referencias'. Sem isto, uma gravação cruzada (bug de
+  // contaminação) já colocou a lista dentro do 'desenvolvimento', deixando o corpo
+  // "vazio" e a revisão confusa. Recusa o save destrutivo. Ver lib/trabalho/guarda-secao.
+  if (chaveSecao !== 'referencias' && pareceListaReferenciasCompilada(conteudo)) {
+    console.warn(`[salvar-secao] bloqueado: lista de referências tentando gravar em '${chaveSecao}'`)
+    return NextResponse.json({ ok: true, bloqueado: true })
   }
 
   // Obtém metadados da fase para o upsert (caso a seção ainda não exista — ex.: digitação direta)

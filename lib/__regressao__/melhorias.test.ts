@@ -45,6 +45,7 @@ import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesR
 import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt, buildOutlineSecaoPrompt, buildGerarResumoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
 import { calcularProgresso, secaoTemConteudo } from '@/lib/trabalho/progresso'
+import { pareceListaReferenciasCompilada } from '@/lib/trabalho/guarda-secao'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
 import { formatarReferencia } from '@/lib/referencias/formatar'
@@ -1263,4 +1264,25 @@ test('CONTRATO progresso: editor e exportação usam a MESMA fonte (lib/trabalho
   // Nenhuma das duas pode mais derivar o progresso do array defasado fases_concluidas.
   assert.ok(!/fases_concluidas\.length\s*\/\s*fases\.length/.test(editor), 'editor não pode usar fases_concluidas para o %')
   assert.ok(!/fluxo\?\.fases\.length\s*\?\?\s*1/.test(exportar), 'exportação não pode usar o total BRUTO do fluxo')
+})
+
+// ── 18. Trava anti-embaralhamento: lista de referências só na seção própria ────
+// Regressão do trabalho cujas seções vieram TROCADAS (a lista de referências
+// gravada no 'desenvolvimento', deixando o corpo "vazio"). O salvar-secao deve
+// recusar gravar uma lista de referências compilada em qualquer seção != referencias.
+test('CONTRATO anti-embaralhamento: detecta lista de referências e salvar-secao a barra fora de referencias', () => {
+  // Detector: pega o início "## REFERÊNCIAS"/"Referências" e ignora prosa comum.
+  assert.ok(pareceListaReferenciasCompilada('## REFERÊNCIAS\n\nSILVA, J. Sepse. 2021.'))
+  assert.ok(pareceListaReferenciasCompilada('## Referências\n\n1. SILVA J. 2021.'))
+  assert.ok(pareceListaReferenciasCompilada('REFERÊNCIAS\n\nSILVA, J. 2021.'))
+  assert.ok(!pareceListaReferenciasCompilada('Neste estudo, partimos da definição de sepse...'))
+  assert.ok(!pareceListaReferenciasCompilada('## Desenvolvimento\n\nA mortalidade por sepse...'))
+  assert.ok(!pareceListaReferenciasCompilada(''))
+  assert.ok(!pareceListaReferenciasCompilada(null))
+  // A rota salvar-secao precisa aplicar a trava para chaveSecao != 'referencias'.
+  const { readFileSync } = require('node:fs') as typeof import('node:fs')
+  const src = readFileSync(join(process.cwd(), 'app/api/ia/salvar-secao/route.ts'), 'utf8') as string
+  assert.ok(/pareceListaReferenciasCompilada/.test(src), 'salvar-secao deve usar a trava anti-embaralhamento')
+  assert.ok(/chaveSecao\s*!==\s*'referencias'\s*&&\s*pareceListaReferenciasCompilada/.test(src),
+    'a trava só pode barrar a lista FORA da seção de referências')
 })
