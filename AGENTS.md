@@ -130,6 +130,13 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   geração`): a geração PLANEJA internamente os subtópicos da seção + as referências que
   ancoram cada um, e SÓ ENTÃO escreve a prosa em cima — como um orientador. Entrega só a
   prosa (não imprime o plano). Mata o texto ensaístico na origem. NÃO remover.
+- COERÊNCIA NA CRIAÇÃO (`lib/trabalho/coerencia.ts` → `analisarCoerenciaTituloTipo`,
+  travado por `CONTRATO coerência criação`): a criação avisa quando o TÍTULO contradiz o
+  TIPO e sugere o tipo certo (desenho original × revisão × relato). Orienta, não bloqueia
+  à força (abordagem do professor). NÃO transformar em hard-block.
+- ORDEM DE REDAÇÃO (`/api/ia/gerar-resumo`): o RESUMO é por ÚLTIMO — se o corpo está
+  vazio/raso (< 800 chars), a geração recusa e orienta a escrever o corpo antes (senão o
+  resumo sairia inventado). NÃO remover essa guarda.
 - NORMA E GÊNERO (`buildGerarSecaoPrompt`, travado por `CONTRATO norma/gênero`):
   IMPESSOALIDADE (3ª pessoa/voz impessoal, NUNCA 1ª pessoa), CITAÇÃO DIRETA só com página
   (preferir indireta), e regras de GÊNERO por seção (introdução não antecipa resultados;

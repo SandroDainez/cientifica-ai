@@ -108,5 +108,18 @@ export function analisarCoerenciaTituloTipo(tema: string, tipo: string): Coerenc
     }
   }
 
+  // 3) Tipo é Relato de Caso, mas o título declara uma REVISÃO (gêneros incompatíveis).
+  if (tipo === 'relato_caso') {
+    const termoRev = contem(texto, TERMOS_REVISAO_SISTEMATICA) ?? contem(texto, TERMOS_REVISAO_NARRATIVA)
+    if (termoRev) {
+      return {
+        ok: false,
+        sugestaoTipo: 'artigo_revisao',
+        sugestaoLabel: LABELS.artigo_revisao,
+        aviso: `O título indica uma revisão ("${termoRev}"), mas o tipo selecionado é Relato de Caso — gêneros incompatíveis. Para uma revisão, use "Artigo de Revisão" (ou "Revisão Sistemática").`,
+      }
+    }
+  }
+
   return { ok: true }
 }

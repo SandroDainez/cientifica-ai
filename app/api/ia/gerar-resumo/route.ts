@@ -83,6 +83,15 @@ export async function POST(request: Request) {
       .map(s => [s.nome_secao, extrairTextoSecao(s.conteudo ?? '')])
   )
 
+  // ORDEM DE REDAÇÃO (método-professor): o resumo é escrito por ÚLTIMO — ele sintetiza
+  // o corpo. Se o corpo ainda está vazio/raso, o resumo sairia inventado. Guia a ordem.
+  const corpoChars = Object.values(secoesConteudo).join(' ').replace(/\s+/g, ' ').trim().length
+  if (corpoChars < 800) {
+    return NextResponse.json({
+      error: 'O resumo é escrito por ÚLTIMO: ele resume o trabalho. Gere primeiro o corpo (metodologia, desenvolvimento e conclusão) — assim o resumo reflete o que o trabalho realmente entrega, sem inventar.',
+    }, { status: 400 })
+  }
+
   const userPrompt = buildGerarResumoPrompt(trabalho.tipo_trabalho, secoesConteudo)
   return gerarLimpo(systemPrompt, userPrompt)
 }

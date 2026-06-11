@@ -30,6 +30,7 @@ import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
 import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
 import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
+import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -636,6 +637,18 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO coerência criação: avisa tipo×título incompatível e sugere o tipo certo', () => {
+  // Tipo revisão, título de ensaio clínico → sugere Artigo Original.
+  const r1 = analisarCoerenciaTituloTipo('Ensaio clínico randomizado sobre sepse', 'artigo_revisao')
+  assert.equal(r1.ok, false)
+  assert.equal(r1.sugestaoTipo, 'artigo_original')
+  // Tipo Relato de Caso, título de revisão sistemática → sugere Artigo de Revisão (NOVO).
+  const r2 = analisarCoerenciaTituloTipo('Revisão sistemática da mortalidade por sepse', 'relato_caso')
+  assert.equal(r2.ok, false)
+  assert.equal(r2.sugestaoTipo, 'artigo_revisao')
+  // Coerente → ok.
+  assert.equal(analisarCoerenciaTituloTipo('Revisão narrativa sobre sepse no Brasil', 'artigo_revisao').ok, true)
 })
 test('CONTRATO antiplágio: desligado por padrão; falha graciosa quando não configurado', async () => {
   const off = { habilitado: false, url: '', apiKey: '', provider: 'externo' }
