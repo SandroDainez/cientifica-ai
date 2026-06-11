@@ -443,7 +443,11 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
           outlineAprovado,
         }),
       })
-      if (!res.ok) throw new Error(`Erro na geração: ${res.status}`)
+      if (!res.ok) {
+        let msg = `Erro ${res.status}`
+        try { const j = await res.json() as { error?: string }; if (j?.error) msg = j.error } catch { /* não era JSON */ }
+        throw new Error(msg)
+      }
       if (!res.body) throw new Error('Sem stream')
 
       const reader = res.body.getReader()
@@ -464,7 +468,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
       }
     } catch (err) {
       console.error('Erro na geração:', err)
-      toast.error('Erro ao gerar seção. Tente novamente.')
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar seção. Tente novamente.', { duration: 8000 })
     } finally {
       setStatusIA('idle')
     }
