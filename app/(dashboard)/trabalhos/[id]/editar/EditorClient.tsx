@@ -321,7 +321,18 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
   }
 
   function trocarFase(chave: string) {
+    // FLUSH do autosave pendente ao sair da seção. Antes, isto apenas CANCELAVA o
+    // timer (clearTimeout) — se o autor gerasse/editasse e navegasse antes dos 30s,
+    // o texto se perdia e a seção podia ficar presa em 'gerando'. Agora persistimos
+    // o que estiver pendente antes de trocar (defesa em profundidade: o servidor já
+    // grava a geração, mas isto cobre edições manuais do autor).
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    const chaveSaindo = faseAtualConfig.chave_secao
+    const conteudoSaindo = conteudosRef.current[chaveSaindo] ?? ''
+    const salvoSaindo = ultimoConteudoSalvo.current[chaveSaindo] ?? ''
+    if (conteudoSaindo.trim() && conteudoSaindo !== salvoSaindo) {
+      void handleSalvarSilencioso(chaveSaindo, conteudoSaindo)
+    }
     setFaseAtiva(chave)
     setValidacao(null)
     setTituloOpcoes([])
@@ -853,6 +864,12 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
               />
             ) : (
               <EditorArea
+                // key por seção: REMONTA o editor a cada troca de fase. Sem isto, os
+                // timers internos de autosave (debounce 3s) e a closure de onSalvar
+                // sobreviviam à navegação e podiam gravar o texto de uma seção EM OUTRA
+                // (contaminação cruzada: metodologia vazando para introdução). O remount
+                // destrói qualquer timer pendente da seção anterior.
+                key={faseAtualConfig.chave_secao}
                 fase={faseAtualConfig}
                 conteudo={conteudoAtual}
                 onConteudoChange={setConteudoAtual}

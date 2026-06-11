@@ -294,6 +294,24 @@ export async function POST(request: Request) {
   const minPalavrasHumanizar = fase.min_palavras ?? 0
   const formato = trabalho.formato_citacao
 
+  // ── Persistência server-side do conteúdo gerado ────────────────────────────
+  // A seção foi marcada como 'gerando' acima. SEM isto, o texto gerado vivia só
+  // no navegador e dependia do autosave (30s) do cliente — que era CANCELADO ao
+  // navegar, deixando a seção presa em 'gerando' e o texto perdido (bug "a
+  // metodologia não está salvando"). Gravamos o conteúdo e voltamos o status para
+  // 'gerado' imediatamente, igual ao fast-path de Referências.
+  // A seção "resumo" é JSON estruturado com rota (/gerar-resumo) e proteção
+  // próprias (lib/resumo/proteger.ts) — NUNCA a sobrescrevemos com texto puro.
+  const persistirSecaoGerada = async (texto: string) => {
+    if (chaveSecao === 'resumo' || !texto?.trim()) return
+    const { error } = await supabase
+      .from('secoes_trabalho')
+      .update({ conteudo: texto, conteudo_ia: texto, status: 'gerado' })
+      .eq('trabalho_id', trabalhoId)
+      .eq('chave_secao', chaveSecao)
+    if (error) console.error('[gerar-secao] falha ao persistir conteúdo gerado:', error)
+  }
+
   if (deveHumanizar && minPalavrasHumanizar >= 80) {
     const maxTokensDraft = Math.max(12000, (fase.max_palavras ?? 2000) * 3)
     try {
@@ -312,6 +330,7 @@ export async function POST(request: Request) {
         // Camada final padronizada (mesma do projeto): corrige código R, valida
         // citações contra refs reais, remove travessões e placeholders residuais.
         const validado = posProcessarTextoGerado(humanizado, referencias, formato)
+        await persistirSecaoGerada(validado)
         return streamStringComEfeito(validado)
       }
     } catch (err) {
@@ -324,6 +343,7 @@ export async function POST(request: Request) {
     const textoUnico = await callAI(systemPrompt, userPrompt, false, Math.max(6000, (fase.max_palavras ?? 1500) * 2))
     if (textoUnico && textoUnico.trim().length > 20) {
       const validado = posProcessarTextoGerado(textoUnico, referencias, formato)
+      await persistirSecaoGerada(validado)
       return streamStringComEfeito(validado)
     }
   } catch (err) {

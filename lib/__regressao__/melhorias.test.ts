@@ -1184,3 +1184,44 @@ test('posProcessarTextoGerado: aplica TODAS as camadas de uma vez', () => {
   assert.ok(!out.includes('\\('), 'LaTeX convertido')
   assert.ok(!out.includes('SOBRENOME'), 'placeholder removido')
 })
+
+// ── 15. Persistência da geração: a seção NÃO pode ficar presa em 'gerando' ─────
+// Regressão do bug "o texto da metodologia não está salvando": a rota gerar-secao
+// marcava a seção como 'gerando' mas NUNCA gravava o conteúdo gerado de volta nem
+// resetava o status — o texto vivia só no navegador e dependia do autosave (que era
+// cancelado ao navegar). Agora o servidor persiste o conteúdo + status 'gerado' no
+// ato da geração, exatamente como o fast-path de Referências. NUNCA sobrescreve o
+// resumo (JSON estruturado, rota/proteção próprias).
+test('CONTRATO persistência: gerar-secao grava o conteúdo gerado server-side (status gerado) e poupa o resumo', () => {
+  const { readFileSync } = require('node:fs') as typeof import('node:fs')
+  const src = readFileSync(join(process.cwd(), 'app/api/ia/gerar-secao/route.ts'), 'utf8') as string
+  // 1) Persiste o conteúdo gerado e volta o status para 'gerado' (não fica em 'gerando')
+  assert.ok(/persistirSecaoGerada/.test(src), 'falta a persistência server-side do conteúdo gerado')
+  assert.ok(/status:\s*'gerado'/.test(src), "a persistência deve resetar o status para 'gerado'")
+  assert.ok(/\.update\(\s*\{\s*conteudo[\s\S]*?\}\s*\)/.test(src), 'deve gravar o campo conteudo no banco')
+  // 2) A persistência é CHAMADA antes de transmitir (caminho humanizar E single-pass)
+  const chamadas = (src.match(/await\s+persistirSecaoGerada\(/g) ?? []).length
+  assert.ok(chamadas >= 2, `persistirSecaoGerada deve ser chamada em ambos os caminhos de geração (achei ${chamadas})`)
+  // 3) NUNCA sobrescreve o resumo estruturado (JSON) com texto puro
+  assert.ok(/chaveSecao\s*===\s*'resumo'/.test(src), 'a persistência deve pular a seção resumo (JSON protegido)')
+})
+
+// ── 16. Editor remonta por seção: impede contaminação cruzada de conteúdo ──────
+// Regressão do bug em que o texto de uma seção (ex.: metodologia) vazava para outra
+// (ex.: introdução): o EditorArea não remontava ao trocar de fase, então timers de
+// autosave (debounce) e closures de onSalvar da seção anterior sobreviviam e podiam
+// gravar o conteúdo na seção errada. A key por chave_secao força o remount.
+test('CONTRATO isolamento: EditorArea é remontado por seção (key=chave_secao) — sem contaminação cruzada', () => {
+  const { readFileSync } = require('node:fs') as typeof import('node:fs')
+  const src = readFileSync(join(process.cwd(), 'app/(dashboard)/trabalhos/[id]/editar/EditorClient.tsx'), 'utf8') as string
+  // O <EditorArea> precisa de key derivada da seção ativa para remontar a cada troca.
+  assert.ok(
+    /<EditorArea[\s\S]{0,800}?key=\{faseAtualConfig\.chave_secao\}/.test(src),
+    'EditorArea deve ter key={faseAtualConfig.chave_secao} para remontar por seção',
+  )
+  // E trocarFase deve FAZER FLUSH do autosave pendente (salvar), não só cancelar.
+  assert.ok(
+    /function trocarFase[\s\S]*?handleSalvarSilencioso\(/.test(src),
+    'trocarFase deve persistir o pendente (flush) ao navegar, não apenas limpar o timer',
+  )
+})
