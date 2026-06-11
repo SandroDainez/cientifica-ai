@@ -117,10 +117,11 @@ export const DIRETRIZ_SYS = `Você é um revisor de periódico experiente E um o
 - Se o item depende de informação que SÓ O AUTOR tem (um dado real, uma decisão, um número de registro/CEP), dê instruções curtas e um MODELO do que ele deve escrever — uma frase pronta para ele só adaptar. Nunca o deixe diante de "está faltando, se vire".
 NÃO invente dados nem afirme que algo está presente se não está. Responda em português, com gentileza e objetividade.`
 
-export function buildDiretrizPrompt(diretriz: Diretriz, tema: string, corpo: string): string {
+export function buildDiretrizPrompt(diretriz: Diretriz, tema: string, corpo: string, nivelExpectativa: string): string {
   const itens = diretriz.itens.map((it, i) => `${i + 1}. [${it.id}] ${it.rotulo}: ${it.exige}`).join('\n')
   return `Diretriz de relato: ${diretriz.nome}.
 Tema do trabalho: "${tema}".
+NÍVEL EXIGIDO (calibre o rigor a isto — não cobre de um TCC o de uma tese, nem o contrário): ${nivelExpectativa}
 
 CHECKLIST a conferir:
 ${itens}
@@ -128,7 +129,7 @@ ${itens}
 TEXTO DO TRABALHO:
 ${corpo}
 
-Confira cada item do checklist no texto. Retorne APENAS JSON válido:
+Confira cada item do checklist no texto, com o rigor adequado ao NÍVEL acima. Retorne APENAS JSON válido:
 {"itens":[{"id":"<id do item>","status":"presente|parcial|ausente","nota":"o que há ou o que falta","como_resolver":"instrução simples + modelo do que escrever (vazio se presente)","quem_resolve":"ia|autor"}]}`
 }
 

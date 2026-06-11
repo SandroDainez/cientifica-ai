@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { callAI } from '@/lib/ai/stream'
 import { extrairTextoSecao } from '@/lib/ai/utils'
-import { naturezaTrabalho } from '@/lib/trabalho/pontos-autor'
+import { naturezaTrabalho, nivelAcademico } from '@/lib/trabalho/pontos-autor'
 import { diretrizPara, buildDiretrizPrompt, DIRETRIZ_SYS } from '@/lib/trabalho/diretrizes-relato'
 import type { Trabalho, SecaoTrabalho, DadosProjeto } from '@/types'
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   const natureza = naturezaTrabalho(trabalho.tipo_trabalho, dados)
   const diretriz = diretrizPara(natureza, trabalho.tipo_trabalho, dados)
 
-  const userPrompt = buildDiretrizPrompt(diretriz, trabalho.titulo ?? trabalho.area_conhecimento ?? '', corpo.slice(0, 24000))
+  const userPrompt = buildDiretrizPrompt(diretriz, trabalho.titulo ?? trabalho.area_conhecimento ?? '', corpo.slice(0, 24000), nivelAcademico(trabalho.tipo_trabalho).expectativa)
   let bruto: string
   try { bruto = await callAI(DIRETRIZ_SYS, userPrompt, false, 4000) }
   catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'Falha ao conferir a diretriz.' }, { status: 502 }) }

@@ -12,6 +12,7 @@ import type { NaturezaTrabalho } from '@/lib/trabalho/pontos-autor'
 export interface EnsaioBancaParams {
   tipo: string
   natureza: NaturezaTrabalho
+  nivelExpectativa: string   // o que o NÍVEL acadêmico exige (TCC ≠ tese)
   tema: string
   corpo: string           // seções do trabalho (texto)
   referencias?: string    // lista curta de referências citadas (opcional)
@@ -38,7 +39,8 @@ export function buildEnsaioBancaPrompt(params: EnsaioBancaParams): string {
 ${params.referencias ? `Referências citadas (amostra):\n${params.referencias}\n\n` : ''}TEXTO DO TRABALHO (base das perguntas e dos esboços de resposta):
 ${params.corpo}
 
-Este trabalho é da natureza "${params.natureza}". Gere de 6 a 9 perguntas de banca ADEQUADAS a essa natureza — cobrindo: ${DOMINIOS[params.natureza]} Ajuste a PROFUNDIDADE ao nível do trabalho (um ${params.tipo} não é arguido como uma tese). NÃO faça perguntas que não cabem nesta natureza de trabalho.
+Este trabalho é da natureza "${params.natureza}" e do nível "${params.tipo}". NÍVEL EXIGIDO: ${params.nivelExpectativa}
+Gere de 6 a 9 perguntas de banca ADEQUADAS a essa natureza — cobrindo: ${DOMINIOS[params.natureza]} Calibre a PROFUNDIDADE e a EXIGÊNCIA ao nível acima: um TCC não é arguido como uma tese, e uma tese DEVE ser cobrada quanto à contribuição original. NÃO faça perguntas que não cabem nesta natureza nem cobre de um nível mais alto do que o trabalho é.
 Retorne APENAS JSON válido:
 {"perguntas":[{"pergunta":"...","o_que_a_banca_quer":"...","esboco_resposta":"...","lacuna":"..."}]}`
 }

@@ -158,6 +158,10 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   primários); EMPÍRICO = contexto + método + DADOS + interpretação; RELATO = relevância +
   o caso/consentimento + lições; PROJETO = lacuna + viabilidade (sem resultados). Cada
   ponto tem "o que escrever" + "por que a banca cobra"; ALERTAS visíveis de obrigatoriedade.
+  NÍVEL ACADÊMICO (`nivelAcademico(tipo)`): a EXIGÊNCIA escala com o nível — TCC/graduação
+  (não exige contribuição inédita) < especialização < mestrado < doutorado/tese (exige
+  contribuição ORIGINAL). Usado para calibrar o Ensaio para a Banca e a Diretriz de Relato
+  (rigor proporcional ao nível). NÃO cobrar de um TCC o de uma tese, nem o contrário.
   Salva nos campos de DadosProjeto que JÁ alimentam a geração (a IA integra, sem inventar). NÃO
   regredir nem afrouxar a obrigatoriedade. Botão "Integrar ao trabalho" (`POST
   /api/ia/integrar-ponto`): salva a nota E tece na seção-alvo (`secaoAlvo`), sem inventar

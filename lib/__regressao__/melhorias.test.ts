@@ -31,7 +31,7 @@ import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
 import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
-import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
+import { prontidaoAutor, nivelAcademico } from '@/lib/trabalho/pontos-autor'
 import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
 import { diretrizPara, buildDiretrizPrompt, DIRETRIZ_SYS } from '@/lib/trabalho/diretrizes-relato'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
@@ -655,10 +655,20 @@ test('CONTRATO diretriz: escolhe a diretriz CERTA por natureza/desenho e a IA as
   assert.match(DIRETRIZ_SYS, /N[ÃA]O invente/i)
   assert.match(DIRETRIZ_SYS, /se vire/i)        // proíbe deixar o autor "se vira"
   // O user prompt injeta o checklist e pede JSON com status + como_resolver + quem_resolve.
-  const p = buildDiretrizPrompt(diretrizPara('revisao', 'revisao_sistematica', {}), 'Sepse', 'corpo...')
+  const p = buildDiretrizPrompt(diretrizPara('revisao', 'revisao_sistematica', {}), 'Sepse', 'corpo...', nivelAcademico('tese_doutorado').expectativa)
   assert.match(p, /como_resolver/)
   assert.match(p, /quem_resolve/)
   assert.match(p, /PRISMA|Risco de viés/)
+  assert.match(p, /N[ÍI]VEL EXIGIDO/i)
+})
+test('CONTRATO nível acadêmico: a exigência ESCALA (TCC ≠ tese ≠ artigo)', () => {
+  assert.equal(nivelAcademico('tese_doutorado').nivel, 'doutorado')
+  assert.match(nivelAcademico('tese_doutorado').expectativa, /ORIGINAL/i)         // tese exige ineditismo
+  assert.equal(nivelAcademico('tcc').nivel, 'graduacao')
+  assert.match(nivelAcademico('tcc').expectativa, /N[ÃA]O se exige contribui[çc][ãa]o in[ée]dita/i)  // TCC não
+  assert.equal(nivelAcademico('dissertacao_mestrado').nivel, 'mestrado')
+  assert.equal(nivelAcademico('relatorio_ic').nivel, 'ic')
+  assert.equal(nivelAcademico('artigo_revisao').nivel, 'artigo')
 })
 test('CONTRATO ensaio banca: IA guia o autor (o que a banca quer + esboço) e aponta lacuna sem inventar', () => {
   // O system prompt obriga: o que a banca quer + esboço ancorado + lacuna honesta, sem inventar.
@@ -669,12 +679,13 @@ test('CONTRATO ensaio banca: IA guia o autor (o que a banca quer + esboço) e ap
   assert.match(ENSAIO_BANCA_SYS, /lacuna/)
   assert.match(ENSAIO_BANCA_SYS, /n[ãa]o o deixe sozinho|preparar o autor/i)
   // ADEQUADO À NATUREZA: revisão NÃO pergunta sobre dados primários/amostra.
-  const pRev = buildEnsaioBancaPrompt({ tipo: 'artigo de revisão', natureza: 'revisao', tema: 'Sepse', corpo: 'Introdução... Metodologia...' })
+  const pRev = buildEnsaioBancaPrompt({ tipo: 'artigo de revisão', natureza: 'revisao', nivelExpectativa: 'padrão de publicação', tema: 'Sepse', corpo: 'Introdução... Metodologia...' })
   assert.match(pRev, /natureza "revisao"/)
   assert.match(pRev, /N[ÃA]O pergunte sobre coleta de dados prim[áa]rios/i)
   assert.ok(pRev.includes('Sepse') && pRev.includes('Metodologia'))
+  assert.match(pRev, /N[ÍI]VEL EXIGIDO/i)   // calibra pelo nível acadêmico
   // Projeto NÃO pergunta sobre resultados (ainda não existem).
-  const pProj = buildEnsaioBancaPrompt({ tipo: 'projeto', natureza: 'projeto', tema: 'X', corpo: 'plano...' })
+  const pProj = buildEnsaioBancaPrompt({ tipo: 'projeto', natureza: 'projeto', nivelExpectativa: 'qualificação', tema: 'X', corpo: 'plano...' })
   assert.match(pProj, /N[ÃA]O pergunte sobre resultados/i)
   assert.match(pProj, /VIABILIDADE/)
 })

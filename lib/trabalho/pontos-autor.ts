@@ -10,6 +10,23 @@ import type { DadosProjeto } from '@/types'
 
 export type NaturezaTrabalho = 'revisao' | 'empirico' | 'relato' | 'projeto'
 
+export type NivelAcademico = 'ic' | 'graduacao' | 'especializacao' | 'mestrado' | 'doutorado' | 'artigo'
+
+/**
+ * Nível acadêmico do trabalho — a EXIGÊNCIA escala com ele. NÃO se cobra de um TCC o
+ * que se cobra de uma tese (contribuição original ao conhecimento). Devolve o nível e
+ * uma "expectativa" curta usada para calibrar a profundidade (Ensaio, Diretriz).
+ */
+export function nivelAcademico(tipo: string | undefined): { nivel: NivelAcademico; rotulo: string; expectativa: string } {
+  const t = (tipo ?? '').toLowerCase()
+  if (t.includes('tese') || t.includes('doutorado')) return { nivel: 'doutorado', rotulo: 'Tese (Doutorado)', expectativa: 'Exige CONTRIBUIÇÃO ORIGINAL e inédita ao conhecimento, profundidade teórica e rigor metodológico de excelência. A banca cobra ineditismo e domínio profundo.' }
+  if (t.includes('dissertacao') || t.includes('mestrado')) return { nivel: 'mestrado', rotulo: 'Dissertação (Mestrado)', expectativa: 'Exige contribuição relevante, domínio metodológico sólido e revisão abrangente — não necessariamente inédita, mas consistente e bem fundamentada.' }
+  if (t.includes('relatorio_ic') || t.includes('inicia')) return { nivel: 'ic', rotulo: 'Iniciação Científica', expectativa: 'Nível inicial: clareza, método correto e bom relato. Rigor proporcional ao começo da formação — NÃO se exige contribuição inédita.' }
+  if (t.includes('especial')) return { nivel: 'especializacao', rotulo: 'Especialização', expectativa: 'Aplicação aprofundada de conhecimento consolidado; revisão consistente. Não se exige ineditismo.' }
+  if (t.includes('tcc') || t.includes('monografia') || t.includes('graduacao')) return { nivel: 'graduacao', rotulo: 'Graduação (TCC/Monografia)', expectativa: 'Exige DOMÍNIO e aplicação CORRETA do método e da literatura. NÃO se exige contribuição inédita ao conhecimento — competência e coerência bastam.' }
+  return { nivel: 'artigo', rotulo: 'Artigo / publicação', expectativa: 'Padrão de publicação: foco, rigor metodológico e relevância para a comunidade científica.' }
+}
+
 /** Natureza do trabalho — define o que a banca cobra. Deriva do tipo e da coleta. */
 export function naturezaTrabalho(tipo: string | undefined, dados?: Partial<DadosProjeto> | null): NaturezaTrabalho {
   const t = (tipo ?? '').toLowerCase()
