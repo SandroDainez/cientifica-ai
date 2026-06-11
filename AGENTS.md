@@ -137,11 +137,15 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
 - ORDEM DE REDAÇÃO (`/api/ia/gerar-resumo`): o RESUMO é por ÚLTIMO — se o corpo está
   vazio/raso (< 800 chars), a geração recusa e orienta a escrever o corpo antes (senão o
   resumo sairia inventado). NÃO remover essa guarda.
-- NORMA E GÊNERO (`buildGerarSecaoPrompt`, travado por `CONTRATO norma/gênero`):
-  IMPESSOALIDADE (3ª pessoa/voz impessoal, NUNCA 1ª pessoa), CITAÇÃO DIRETA só com página
-  (preferir indireta), e regras de GÊNERO por seção (introdução não antecipa resultados;
-  conclusão não traz citação/tema novo; discussão compara com literatura + limitações).
-  Computadas por `fase.chave_secao`. NÃO remover.
+- NORMA E GÊNERO — CONSCIENTE DO FORMATO (`buildGerarSecaoPrompt`, travado por `CONTRATO
+  norma/gênero`): as regras MUDAM conforme `formato_citacao` (NÃO impor ABNT a todos):
+  • VOZ: ABNT = impessoalidade (nunca 1ª pessoa); APA 7 = 1ª pessoa PERMITIDA; Vancouver
+    = voz ativa, 1ª pessoa aceitável. • CITAÇÃO DIRETA: ABNT (>3 linhas recuo 4cm, p. X) /
+    APA (≥40 palavras bloco, p. X) / Vancouver (aspas + [n]). • TABELAS: ABNT "Fonte:" /
+    APA "Note." / Vancouver numerada. • Resumo (`buildGerarResumoPrompt`): tamanho/norma
+    por formato (ABNT 150–500 / APA ≤250 / Vancouver ~250–300). Regras de GÊNERO por seção
+    (introdução não antecipa resultado; conclusão sem citação/tema novo; discussão compara
+    + limitações) são format-agnósticas. NÃO regredir para "tudo ABNT".
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da

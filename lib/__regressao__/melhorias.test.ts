@@ -765,6 +765,14 @@ test('CONTRATO norma/gênero: impessoalidade, citação direta com página e reg
   assert.match(pIntro, /ABREVIATURAS|primeiro uso/i)    // sigla definida no 1º uso
   const concl = { id: 'consideracoes_finais', chave_secao: 'consideracoes_finais', nome: 'Considerações Finais', instrucoes: 'x', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
   assert.match(buildGerarSecaoPrompt(concl, { titulo: 'T', formato_citacao: 'abnt' }), /N[ÃA]O introduza cita[çc][ãa]o nova/i)
+  // CONSCIÊNCIA DE FORMATO: APA PERMITE 1ª pessoa (não impõe impessoalidade ABNT).
+  const pApa = buildGerarSecaoPrompt(intro, { titulo: 'T', formato_citacao: 'apa' })
+  assert.match(pApa, /NORMA \(APA\)/)
+  assert.match(pApa, /PERMITE.*1[ªa] pessoa/i)
+  assert.ok(!/NUNCA use 1[ªa] pessoa/i.test(pApa), 'APA NÃO deve proibir 1ª pessoa')
+  assert.match(pApa, /Note\./)   // tabela APA usa "Note.", não "Fonte:"
+  const pVanc = buildGerarSecaoPrompt(intro, { titulo: 'T', formato_citacao: 'vancouver' })
+  assert.match(pVanc, /NORMA \(VANCOUVER\)/)
 })
 test('CONTRATO resumo estruturado: ordem fixa + FIDELIDADE ao corpo (não promete o que não entrega)', () => {
   const p = buildGerarResumoPrompt('artigo_revisao' as never, { introducao: 'x', metodologia: 'y' })

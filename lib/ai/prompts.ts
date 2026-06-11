@@ -377,17 +377,35 @@ export function buildGerarSecaoPrompt(
   partes.push(`## Seção a redigir: ${fase.nome}`)
   partes.push(`\n${fase.instrucoes}`)
 
-  // NORMA E GÊNERO (ABNT + gênero textual da seção): impessoalidade, citação direta com
-  // página, e o que cada seção PODE/NÃO PODE fazer. Regras que uma banca cobra.
+  // NORMA E GÊNERO — CONSCIENTE DO FORMATO (ABNT/APA/Vancouver têm regras DIFERENTES de
+  // voz, citação direta e tabelas). Impessoalidade é ABNT; APA 7 PERMITE 1ª pessoa.
   const chaveGen = (fase.chave_secao ?? fase.id ?? '').toLowerCase()
+  const normaFmt = dadosTrabalho.formato_citacao ?? 'abnt'
   const generoNotas: string[] = []
   if (/introdu/.test(chaveGen)) generoNotas.push('Esta é a INTRODUÇÃO: contextualize do geral ao específico até a pergunta/objetivo — NÃO antecipe resultados nem conclusões.')
   if (/conclus|consideracoes/.test(chaveGen)) generoNotas.push('Esta é a CONCLUSÃO/CONSIDERAÇÕES: sintetize o que o corpo mostrou e responda ao objetivo — NÃO introduza citação nova nem tema novo.')
   if (/discuss/.test(chaveGen)) generoNotas.push('Esta é a DISCUSSÃO: compare os achados com a literatura e declare as LIMITAÇÕES do trabalho.')
-  partes.push(`\n**NORMA E GÊNERO (obrigatório):**
-- IMPESSOALIDADE: escreva em 3ª pessoa / voz impessoal ("observou-se", "este estudo analisa", "os dados indicam"). NUNCA use 1ª pessoa ("eu", "nós", "nosso", "acreditamos", "nossa análise").
-- CITAÇÃO DIRETA: prefira a citação INDIRETA (paráfrase + fonte). Se citar literalmente, só com a PÁGINA (AUTOR, ano, p. X); trechos de até 3 linhas entre aspas no texto; mais de 3 linhas em recuo, fonte menor, sem aspas. Sem a página, NÃO faça citação direta — parafraseie.
-- TABELAS/FIGURAS: toda tabela ou figura precisa de TÍTULO numerado acima (ex.: "Tabela 1 — ...", "Figura 1 — ..."), ser CHAMADA no texto antes de aparecer ("conforme a Tabela 1"), e ter FONTE abaixo ("Fonte: ..." ou "Fonte: elaborado pelo autor"). NÃO insira tabela/figura solta, sem título, chamada ou fonte.
+
+  const regraVoz = normaFmt === 'apa'
+    ? 'VOZ (APA 7): a APA PERMITE e até recomenda a 1ª pessoa para descrever o que os autores fizeram ("we analyzed", "neste estudo, analisamos"). Use com parcimônia; evite atribuir ação a "o estudo" como se fosse uma pessoa.'
+    : normaFmt === 'vancouver'
+    ? 'VOZ (Vancouver/ICMJE): voz ativa, clara e concisa; a 1ª pessoa é aceitável para descrever o que os autores fizeram.'
+    : 'IMPESSOALIDADE (ABNT): escreva em 3ª pessoa / voz impessoal ("observou-se", "este estudo analisa"). NUNCA use 1ª pessoa ("eu", "nós", "nosso", "acreditamos").'
+  const regraCitDireta = normaFmt === 'apa'
+    ? 'CITAÇÃO DIRETA (APA): prefira a indireta. Literal: <40 palavras entre aspas com (Autor, ano, p. X); ≥40 palavras em bloco recuado, sem aspas, com a página. Sem página/parágrafo, parafraseie.'
+    : normaFmt === 'vancouver'
+    ? 'CITAÇÃO DIRETA (Vancouver): prefira a indireta. Se literal, entre aspas com a referência numérica [n] e a página quando relevante. Use citação direta com moderação.'
+    : 'CITAÇÃO DIRETA (ABNT): prefira a indireta. Literal: até 3 linhas entre aspas no texto (AUTOR, ano, p. X); mais de 3 linhas em recuo de 4 cm, fonte menor, sem aspas. Sem a página, NÃO faça citação direta — parafraseie.'
+  const regraTabela = normaFmt === 'apa'
+    ? 'TABELAS/FIGURAS (APA): "Table 1" (negrito) e, na linha seguinte, o título em itálico, acima; chamada no texto ("see Table 1"); nota abaixo iniciada por "Note." quando necessário.'
+    : normaFmt === 'vancouver'
+    ? 'TABELAS/FIGURAS (Vancouver): numere ("Table 1.") com legenda; cite no texto na ordem de aparição; indique a fonte se reproduzida.'
+    : 'TABELAS/FIGURAS (ABNT): TÍTULO numerado acima ("Tabela 1 — ...", "Figura 1 — ..."), CHAMADA no texto antes de aparecer ("conforme a Tabela 1"), e FONTE abaixo ("Fonte: ..." / "Fonte: elaborado pelo autor").'
+
+  partes.push(`\n**NORMA (${normaFmt.toUpperCase()}) E GÊNERO (obrigatório):**
+- ${regraVoz}
+- ${regraCitDireta}
+- ${regraTabela}
 - ABREVIATURAS/SIGLAS: defina por extenso no PRIMEIRO uso, com a sigla entre parênteses ("unidade de terapia intensiva (UTI)"); depois use só a sigla. Não use sigla nunca definida.${generoNotas.length ? '\n- ' + generoNotas.join('\n- ') : ''}`)
 
   // ANCORA TEMPORAL (TODO tipo de trabalho, qualquer área): o modelo gerador tende a
@@ -807,16 +825,25 @@ Organize sua resposta em:
 
 export function buildGerarResumoPrompt(
   tipoTrabalho: TipoTrabalho,
-  secoesConteudo: Record<string, string>
+  secoesConteudo: Record<string, string>,
+  formato: FormatoCitacao = 'abnt',
 ): string {
   const secoesTxt = Object.entries(secoesConteudo)
     .map(([k, v]) => `### ${k}\n${v.substring(0, 800)}`)
     .join('\n\n')
 
+  // Limite/norma do resumo conforme o formato: ABNT NBR 6028 (150–500), APA (≤250),
+  // Vancouver/periódico (geralmente 250–300, muitas vezes estruturado por rótulos).
+  const regraTamanho = formato === 'apa'
+    ? 'Ter até ~250 palavras (padrão APA)'
+    : formato === 'vancouver'
+    ? 'Ter ~250–300 palavras (padrão de periódico/Vancouver)'
+    : 'Ter entre 150 e 500 palavras (ABNT NBR 6028)'
+
   return `Com base nas seções abaixo do trabalho, redija um resumo acadêmico estruturado.
 
 O resumo deve:
-- Ter entre 150 e 500 palavras (ABNT NBR 6028)
+- ${regraTamanho}
 - Seguir, NESTA ORDEM, a estrutura: contextualização (1-2 frases) → objetivo (1 frase) → metodologia (2-3 frases) → principais resultados (2-4 frases) → conclusão (1-2 frases)
 - FIDELIDADE AO CORPO (obrigatório): cada elemento deve refletir EXATAMENTE o que as seções abaixo trazem. NÃO prometa comparações, países, fontes, bases de dados ou números que o corpo NÃO apresenta. Se o corpo compara com a Inglaterra, o resumo diz Inglaterra — não "Alemanha e EUA". Não anuncie no resumo o que o trabalho não cumpre.
 - Não conter citações bibliográficas

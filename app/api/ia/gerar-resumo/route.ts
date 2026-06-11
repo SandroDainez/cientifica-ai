@@ -92,6 +92,6 @@ export async function POST(request: Request) {
     }, { status: 400 })
   }
 
-  const userPrompt = buildGerarResumoPrompt(trabalho.tipo_trabalho, secoesConteudo)
+  const userPrompt = buildGerarResumoPrompt(trabalho.tipo_trabalho, secoesConteudo, trabalho.formato_citacao ?? 'abnt')
   return gerarLimpo(systemPrompt, userPrompt)
 }
