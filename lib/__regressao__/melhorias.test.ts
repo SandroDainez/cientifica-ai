@@ -33,6 +33,7 @@ import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antipl
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
 import { prontidaoAutor, nivelAcademico, avaliarPreenchimento } from '@/lib/trabalho/pontos-autor'
 import { roteiroOrientador } from '@/lib/trabalho/roteiro-orientador'
+import { AJUDAR_PONTO_SYS, buildAjudarPontoPrompt } from '@/lib/ai/ajudar-ponto'
 import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
 import { diretrizPara, buildDiretrizPrompt, DIRETRIZ_SYS } from '@/lib/trabalho/diretrizes-relato'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
@@ -661,6 +662,18 @@ test('CONTRATO diretriz: escolhe a diretriz CERTA por natureza/desenho e a IA as
   assert.match(p, /quem_resolve/)
   assert.match(p, /PRISMA|Risco de viés/)
   assert.match(p, /N[ÍI]VEL EXIGIDO/i)
+})
+test('CONTRATO me ajude a escrever: rascunho de partida, sem inventar dado real ([preencha])', () => {
+  // O system prompt: rascunho de partida, 1ª pessoa, e PROIBIDO inventar dado real → [preencha].
+  assert.match(AJUDAR_PONTO_SYS, /RASCUNHO de partida/i)
+  assert.match(AJUDAR_PONTO_SYS, /NUNCA invente/i)
+  assert.match(AJUDAR_PONTO_SYS, /\[preencha/i)
+  assert.match(AJUDAR_PONTO_SYS, /EXEMPLO/i)
+  // O user prompt injeta o ponto + tema + corpo e pede JSON {rascunho, exemplo}.
+  const p = buildAjudarPontoPrompt({ titulo: 'Dados reais', oQueEscrever: 'cole os dados', porQue: 'a banca confere', campo: 'dados_coletados', tema: 'Sepse', corpo: 'Introdução...' })
+  assert.match(p, /"rascunho"/)
+  assert.match(p, /"exemplo"/)
+  assert.ok(p.includes('Sepse') && p.includes('Dados reais'))
 })
 test('CONTRATO feedback do ponto: avisa quando está curto ou quando dado vem sem números', () => {
   // Vazio: sem alerta (o obrigatório cuida disso).

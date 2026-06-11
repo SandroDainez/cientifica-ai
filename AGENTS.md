@@ -171,7 +171,12 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   contribuição ORIGINAL). Usado para calibrar o Ensaio para a Banca e a Diretriz de Relato
   (rigor proporcional ao nível). NÃO cobrar de um TCC o de uma tese, nem o contrário.
   Salva nos campos de DadosProjeto que JÁ alimentam a geração (a IA integra, sem inventar). NÃO
-  regredir nem afrouxar a obrigatoriedade. Botão "Integrar ao trabalho" (`POST
+  regredir nem afrouxar a obrigatoriedade. ASSISTÊNCIA AO PREENCHIMENTO (usuário inexperiente
+  não sabe o que pôr): botão "Me ajude a escrever" (`POST /api/ia/ajudar-ponto` +
+  `lib/ai/ajudar-ponto.ts`, travado por `CONTRATO me ajude a escrever`) gera um RASCUNHO de
+  partida ancorado no trabalho, em 1ª pessoa, com `[preencha: ...]` onde precisa de dado real
+  (NUNCA inventa) + um exemplo; preenche o campo p/ o autor adaptar. `avaliarPreenchimento`
+  avisa se ficou curto/sem números. Botão "Integrar ao trabalho" (`POST
   /api/ia/integrar-ponto`): salva a nota E tece na seção-alvo (`secaoAlvo`), sem inventar
   (posProcessar + anti-colapso + backup). NA EXPORTAÇÃO: `exportar/page.tsx` calcula
   `prontidaoAutor` e o `ExportarClient` AVISA (não bloqueia) os pontos obrigatórios

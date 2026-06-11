@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, CheckCircle2, Loader2, PenLine, ShieldAlert, GraduationCap } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, PenLine, ShieldAlert, GraduationCap, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { prontidaoAutor, avaliarPreenchimento, type PontoAutorAvaliado } from '@/lib/trabalho/pontos-autor'
@@ -70,7 +70,27 @@ function PontoCard({ ponto, trabalhoId, dadosProjeto, onSalvo }: {
   const valorInicial = (dadosProjeto?.[ponto.campo] as string | undefined) ?? ''
   const [texto, setTexto] = useState(valorInicial)
   const [integrando, setIntegrando] = useState(false)
+  const [ajudando, setAjudando] = useState(false)
+  const [exemplo, setExemplo] = useState('')
   const pendenteObrig = ponto.obrigatorio && !ponto.preenchido
+
+  // "Me ajude a escrever": a IA gera um rascunho de partida (ancorado no trabalho, com
+  // [preencha: ...] onde precisa de dado real) e preenche o campo para o autor adaptar.
+  async function ajudar() {
+    setAjudando(true)
+    try {
+      const res = await fetch('/api/ia/ajudar-ponto', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trabalhoId, titulo: ponto.titulo, oQueEscrever: ponto.oQueEscrever, porQue: ponto.porQue, campo: ponto.campo }),
+      })
+      const data = await res.json() as { ok?: boolean; rascunho?: string; exemplo?: string; error?: string }
+      if (!res.ok || !data.rascunho) throw new Error(data.error ?? 'falha')
+      setTexto(t => (t.trim() ? `${t}\n\n${data.rascunho}` : data.rascunho!))
+      setExemplo(data.exemplo ?? '')
+      toast.success('Rascunho criado! Adapte com a sua realidade e substitua os [preencha: …].')
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao gerar o rascunho.') }
+    finally { setAjudando(false) }
+  }
 
   // Integra: salva a nota E tece na seção-alvo (se já existir), sem inventar.
   async function integrar() {
@@ -104,13 +124,24 @@ function PontoCard({ ponto, trabalhoId, dadosProjeto, onSalvo }: {
       )}
       <p className="text-sm text-foreground"><strong>O que escrever:</strong> {ponto.oQueEscrever}</p>
       <p className="text-xs text-muted-foreground mt-0.5"><strong>Por que a banca cobra:</strong> {ponto.porQue}</p>
+
+      {/* Não sabe o que pôr? A IA escreve um rascunho de partida para você adaptar. */}
+      <div className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5">
+        <span className="text-xs text-muted-foreground flex-1">Não sabe o que escrever? A IA cria um rascunho de partida pra você só adaptar.</span>
+        <Button size="sm" variant="outline" onClick={ajudar} disabled={ajudando} className="gap-1.5 shrink-0">
+          {ajudando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Me ajude a escrever
+        </Button>
+      </div>
+
       <textarea
         value={texto}
         onChange={e => setTexto(e.target.value)}
         rows={4}
-        placeholder="Escreva aqui o que só você pode informar — a IA integra ao texto, sem inventar."
+        placeholder="Escreva aqui o que só você pode informar — ou clique em 'Me ajude a escrever'. A IA integra ao texto, sem inventar."
         className="mt-2 w-full rounded-lg border border-border bg-background p-2.5 text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
+      {exemplo && <p className="mt-1 text-xs text-muted-foreground"><strong>Exemplo de um bom preenchimento:</strong> {exemplo}</p>}
       {(() => {
         const aval = avaliarPreenchimento(ponto.campo, texto)
         return !aval.ok && aval.dica ? (
