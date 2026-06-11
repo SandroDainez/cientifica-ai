@@ -790,6 +790,7 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
           <div className="mx-6 mt-3">
             <PontosDoAutor
               trabalhoId={trabalho.id}
+              tipo={trabalho.tipo_trabalho}
               dadosProjeto={(trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | null | undefined}
             />
           </div>

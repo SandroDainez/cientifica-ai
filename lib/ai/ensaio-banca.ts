@@ -7,11 +7,23 @@
 // deixa o autor sozinho. Onde o trabalho não deixa algo claro (contribuição, dados),
 // aponta a LACUNA com franqueza, sem inventar. Objetivo: preparar, nunca enganar.
 
+import type { NaturezaTrabalho } from '@/lib/trabalho/pontos-autor'
+
 export interface EnsaioBancaParams {
   tipo: string
+  natureza: NaturezaTrabalho
   tema: string
   corpo: string           // seções do trabalho (texto)
   referencias?: string    // lista curta de referências citadas (opcional)
+}
+
+// Domínios de pergunta POR NATUREZA — não generalista. Uma revisão não responde sobre
+// amostra/dados primários; um projeto ainda não tem resultados.
+const DOMINIOS: Record<NaturezaTrabalho, string> = {
+  revisao: 'contribuição/recorte crítico; estratégia de busca e critérios de seleção; lacunas que a revisão evidencia; atualidade e qualidade das fontes; força da síntese. NÃO pergunte sobre coleta de dados primários, amostra ou estatística — é uma revisão.',
+  empirico: 'contribuição original; justificativa das escolhas de método; amostra, instrumentos e ÉTICA (CEP/consentimento); o que os dados de fato sustentam; validade e limitações; coerência conclusão↔resultados.',
+  relato: 'relevância do caso (por que relatá-lo); ÉTICA (consentimento, anonimização); fidelidade da descrição clínica; articulação do caso com a literatura; a lição prática. NÃO pergunte sobre amostra/estatística.',
+  projeto: 'lacuna e contribuição ESPERADA; adequação e VIABILIDADE do método proposto (recursos, prazo, acesso); aspectos éticos previstos; clareza dos objetivos. NÃO pergunte sobre resultados — é uma proposta, ainda não há dados.',
 }
 
 export const ENSAIO_BANCA_SYS = `Você é, ao mesmo tempo, o PRESIDENTE de uma banca examinadora experiente e um ORIENTADOR que PREPARA o autor para a defesa. Para o trabalho dado, gere as perguntas que a banca realmente faria — diretas, do nível de uma arguição real — e, para CADA pergunta, ENTREGUE três coisas:
@@ -26,7 +38,7 @@ export function buildEnsaioBancaPrompt(params: EnsaioBancaParams): string {
 ${params.referencias ? `Referências citadas (amostra):\n${params.referencias}\n\n` : ''}TEXTO DO TRABALHO (base das perguntas e dos esboços de resposta):
 ${params.corpo}
 
-Gere de 6 a 9 perguntas de banca cobrindo: contribuição/originalidade; justificativa/relevância; escolhas de método (por que este e não outro); resultados e o que os dados de fato sustentam; coerência conclusão↔resultados; limitações; diálogo com a literatura; implicações/aplicação.
+Este trabalho é da natureza "${params.natureza}". Gere de 6 a 9 perguntas de banca ADEQUADAS a essa natureza — cobrindo: ${DOMINIOS[params.natureza]} Ajuste a PROFUNDIDADE ao nível do trabalho (um ${params.tipo} não é arguido como uma tese). NÃO faça perguntas que não cabem nesta natureza de trabalho.
 Retorne APENAS JSON válido:
 {"perguntas":[{"pergunta":"...","o_que_a_banca_quer":"...","esboco_resposta":"...","lacuna":"..."}]}`
 }

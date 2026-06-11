@@ -648,27 +648,38 @@ test('CONTRATO ensaio banca: IA guia o autor (o que a banca quer + esboço) e ap
   assert.match(ENSAIO_BANCA_SYS, /NUNCA invente/i)
   assert.match(ENSAIO_BANCA_SYS, /lacuna/)
   assert.match(ENSAIO_BANCA_SYS, /n[ãa]o o deixe sozinho|preparar o autor/i)
-  // O user prompt injeta o corpo real e pede JSON com as 4 partes por pergunta.
-  const p = buildEnsaioBancaPrompt({ tipo: 'artigo', tema: 'Sepse', corpo: 'Introdução... Metodologia...' })
-  assert.match(p, /contribui[çc][ãa]o\/originalidade/i)
-  assert.match(p, /esboco_resposta/)
-  assert.ok(p.includes('Sepse') && p.includes('Metodologia'))
+  // ADEQUADO À NATUREZA: revisão NÃO pergunta sobre dados primários/amostra.
+  const pRev = buildEnsaioBancaPrompt({ tipo: 'artigo de revisão', natureza: 'revisao', tema: 'Sepse', corpo: 'Introdução... Metodologia...' })
+  assert.match(pRev, /natureza "revisao"/)
+  assert.match(pRev, /N[ÃA]O pergunte sobre coleta de dados prim[áa]rios/i)
+  assert.ok(pRev.includes('Sepse') && pRev.includes('Metodologia'))
+  // Projeto NÃO pergunta sobre resultados (ainda não existem).
+  const pProj = buildEnsaioBancaPrompt({ tipo: 'projeto', natureza: 'projeto', tema: 'X', corpo: 'plano...' })
+  assert.match(pProj, /N[ÃA]O pergunte sobre resultados/i)
+  assert.match(pProj, /VIABILIDADE/)
 })
-test('CONTRATO pontos do autor: obrigatoriedade adapta ao tipo de estudo; prontidão conta pendentes', () => {
-  // Estudo empírico (coleta primária): dados/método/interpretação são OBRIGATÓRIOS.
-  const empiricoVazio = prontidaoAutor({ tipo_coleta: 'primaria' })
-  assert.equal(empiricoVazio.totalObrigatorios, 4)           // contexto + metodologia + dados + interpretação
-  assert.equal(empiricoVazio.obrigatoriosPendentes, 4)
-  assert.equal(empiricoVazio.pronto, false)
-  // Revisão (bibliográfica): só contexto/contribuição é obrigatório.
-  const revisao = prontidaoAutor({ tipo_coleta: 'bibliografica' })
+test('CONTRATO pontos do autor: ADAPTA por natureza (revisão ≠ empírico ≠ projeto), não generalista', () => {
+  // Empírico (artigo original): contexto + método + DADOS + interpretação obrigatórios.
+  const empirico = prontidaoAutor('artigo_original', {})
+  assert.equal(empirico.natureza, 'empirico')
+  assert.equal(empirico.totalObrigatorios, 4)
+  assert.ok(empirico.pontos.some(p => p.id === 'dados'))               // pede dados reais
+  // Revisão: NÃO pede dados primários — só a contribuição/recorte é obrigatória.
+  const revisao = prontidaoAutor('artigo_revisao', {})
+  assert.equal(revisao.natureza, 'revisao')
   assert.equal(revisao.totalObrigatorios, 1)
-  // Preencher o dado real marca como preenchido.
-  const comDados = prontidaoAutor({ tipo_coleta: 'primaria', notas_contexto: 'minha contribuição é X, lacuna Y', notas_metodologia: 'coorte em 2 hospitais', dados_coletados: 'mortalidade de 42% (n=80)', notas_interpretacao: 'os achados sugerem Z, limitação: amostra pequena' })
-  assert.equal(comDados.obrigatoriosPendentes, 0)
-  assert.equal(comDados.pronto, true)
-  // Cada ponto traz o "o que escrever", o "por que" (a banca) e a SEÇÃO-ALVO p/ integrar.
-  assert.ok(empiricoVazio.pontos.every(p => p.oQueEscrever.length > 10 && p.porQue.length > 10 && p.secaoAlvo.length > 0))
+  assert.ok(!revisao.pontos.some(p => p.id === 'dados'))               // NÃO exige dados de uma revisão
+  // Projeto (proposta): ainda não há resultados → não pede dados, pede viabilidade.
+  const projeto = prontidaoAutor('projeto_pesquisa', {})
+  assert.equal(projeto.natureza, 'projeto')
+  assert.ok(projeto.pontos.some(p => p.id === 'viabilidade') && !projeto.pontos.some(p => p.id === 'dados'))
+  // Acadêmico (TCC) vira empírico SÓ se houver coleta primária; senão é revisão (mais leve).
+  assert.equal(prontidaoAutor('tcc', { tipo_coleta: 'primaria' }).natureza, 'empirico')
+  assert.equal(prontidaoAutor('tcc', {}).natureza, 'revisao')
+  // Preencher marca como preenchido; cada ponto traz o que escrever + por que + seção-alvo.
+  const cheio = prontidaoAutor('artigo_original', { notas_contexto: 'contribuição X', notas_metodologia: 'coorte em 2 hospitais', dados_coletados: 'mortalidade 42% (n=80)', notas_interpretacao: 'limitação: amostra pequena' })
+  assert.equal(cheio.pronto, true)
+  assert.ok(empirico.pontos.every(p => p.oQueEscrever.length > 10 && p.porQue.length > 10 && p.secaoAlvo.length > 0))
 })
 test('CONTRATO coerência criação: avisa tipo×título incompatível e sugere o tipo certo', () => {
   // Tipo revisão, título de ensaio clínico → sugere Artigo Original.

@@ -151,14 +151,14 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   superior → autor → afiliação → curso → Instructor → data); Vancouver = title page
   simples. SUMÁRIO: no export PADRÃO (documento completo) para trabalhos com seções; no
   export para PERIÓDICO (`docx-periodico`) NÃO há sumário (revista não usa índice). NÃO regredir.
-- PONTOS DO AUTOR (`lib/trabalho/pontos-autor.ts` → `prontidaoAutor`, travado por
-  `CONTRATO pontos do autor`; UI `components/trabalho/PontosDoAutor.tsx` no editor): os
-  lugares onde SÓ o autor pode dar a substância (contexto/contribuição, método real,
-  DADOS reais, interpretação) — o que a BANCA cobra do autor, não do app. Cada ponto tem
-  "o que escrever" + "por que a banca cobra"; a obrigatoriedade ADAPTA ao tipo (empírico
-  exige dados/método/interpretação; revisão só contribuição). ALERTAS bem visíveis de
-  obrigatoriedade (o trabalho não é "real/aprovável" sem os obrigatórios). Salva nos
-  campos de DadosProjeto que JÁ alimentam a geração (a IA integra, sem inventar). NÃO
+- PONTOS DO AUTOR — ADAPTADO POR NATUREZA (`lib/trabalho/pontos-autor.ts` →
+  `naturezaTrabalho` + `prontidaoAutor(tipo, dados)`, travado por `CONTRATO pontos do
+  autor`; UI `PontosDoAutor.tsx` no editor): os pontos que SÓ o autor pode dar, DIFERENTES
+  por natureza (NÃO generalista): REVISÃO = recorte/contribuição crítica (não exige dados
+  primários); EMPÍRICO = contexto + método + DADOS + interpretação; RELATO = relevância +
+  o caso/consentimento + lições; PROJETO = lacuna + viabilidade (sem resultados). Cada
+  ponto tem "o que escrever" + "por que a banca cobra"; ALERTAS visíveis de obrigatoriedade.
+  Salva nos campos de DadosProjeto que JÁ alimentam a geração (a IA integra, sem inventar). NÃO
   regredir nem afrouxar a obrigatoriedade. Botão "Integrar ao trabalho" (`POST
   /api/ia/integrar-ponto`): salva a nota E tece na seção-alvo (`secaoAlvo`), sem inventar
   (posProcessar + anti-colapso + backup). NA EXPORTAÇÃO: `exportar/page.tsx` calcula
@@ -169,7 +169,10 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   age como presidente de banca + orientador — gera as perguntas da defesa ancoradas no
   trabalho e, para CADA uma, dá "o que a banca quer" + um ESBOÇO de resposta (não deixa o
   autor sozinho) + a LACUNA honesta quando o trabalho não deixa algo claro (sem inventar).
-  O autor treina a resposta com as próprias palavras. NÃO regredir para "só perguntar".
+  ADEQUADO À NATUREZA (`DOMINIOS` por natureza): revisão não pergunta sobre dados primários;
+  projeto não pergunta sobre resultados; relato foca caso/ética; profundidade ajustada ao
+  tipo. O autor treina a resposta com as próprias palavras. NÃO regredir para "só perguntar"
+  nem para perguntas generalistas.
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da

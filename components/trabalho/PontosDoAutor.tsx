@@ -11,6 +11,7 @@ import type { DadosProjeto } from '@/types'
 
 interface Props {
   trabalhoId: string
+  tipo?: string
   dadosProjeto?: DadosProjeto | null
 }
 
@@ -20,9 +21,9 @@ interface Props {
  * da banca, e ALERTA bem visível de obrigatoriedade. O autor escreve → salva → a IA
  * usa na geração (sem inventar). Reusa o save de dados_projeto.
  */
-export function PontosDoAutor({ trabalhoId, dadosProjeto }: Props) {
+export function PontosDoAutor({ trabalhoId, tipo, dadosProjeto }: Props) {
   const router = useRouter()
-  const { pontos, obrigatoriosPendentes, totalObrigatorios } = prontidaoAutor(dadosProjeto)
+  const { pontos, obrigatoriosPendentes, totalObrigatorios } = prontidaoAutor(tipo, dadosProjeto)
 
   return (
     <div className="rounded-xl border border-border bg-background p-4 space-y-3">

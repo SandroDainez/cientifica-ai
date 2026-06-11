@@ -7,7 +7,8 @@ import { callAI } from '@/lib/ai/stream'
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
-import type { Trabalho, SecaoTrabalho, Referencia, FormatoCitacao } from '@/types'
+import { naturezaTrabalho } from '@/lib/trabalho/pontos-autor'
+import type { Trabalho, SecaoTrabalho, Referencia, FormatoCitacao, DadosProjeto } from '@/types'
 
 export const maxDuration = 300
 
@@ -64,8 +65,10 @@ export async function POST(request: Request) {
   const { citadas } = separarReferenciasCitadas(referencias, corpo, fmt)
   const refsTexto = citadas.slice(0, 20).map(r => `${(r.autores?.[0]?.sobrenome ?? '').toUpperCase()}, ${r.ano} — ${r.titulo}`).join('\n')
 
+  const dadosProjeto = (trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as Partial<DadosProjeto> | undefined
   const userPrompt = buildEnsaioBancaPrompt({
     tipo: (trabalho.tipo_trabalho ?? 'trabalho').replace(/_/g, ' '),
+    natureza: naturezaTrabalho(trabalho.tipo_trabalho, dadosProjeto),
     tema: trabalho.titulo ?? trabalho.area_conhecimento ?? '',
     corpo: corpo.slice(0, 24000),
     referencias: refsTexto || undefined,

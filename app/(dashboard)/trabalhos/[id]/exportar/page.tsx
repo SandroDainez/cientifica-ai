@@ -56,7 +56,7 @@ export default async function ExportarPage({ params }: Props) {
   // Prontidão para a banca: pontos OBRIGATÓRIOS do autor ainda pendentes. Avisa na
   // exportação (não bloqueia — o autor confirma) para não exportar a parte dele faltando.
   const dadosProjeto = ((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as DadosProjeto | undefined) ?? null
-  const pontosAutorPendentes = prontidaoAutor(dadosProjeto).pontos
+  const pontosAutorPendentes = prontidaoAutor(trabalho.tipo_trabalho, dadosProjeto).pontos
     .filter(p => p.obrigatorio && !p.preenchido)
     .map(p => ({ titulo: p.titulo, oQueEscrever: p.oQueEscrever }))
 
