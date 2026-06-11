@@ -87,6 +87,13 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
   cobre. Conservador (só dispara se o tópico está no título e ausente do tema). A rota
   `analyze` mescla nas `referencias_suspeitas` sem duplicar. NÃO transformar em remoção
   automática (risco de falso-positivo) nem regredir.
+- VERIFICAÇÃO DE SUPORTE (`lib/revisao/verificar-suporte.ts` → `verificarNumerosSemSuporte`,
+  travado por `CONTRATO suporte`): por CÓDIGO, flagra PERCENTUAL citado ao lado de uma
+  referência cujo RESUMO (abstract) NÃO contém aquele número → problema categoria "citacao",
+  "média" (verificar), correção = confirmar na fonte ou generalizar. Conservador: só
+  percentuais; só acusa se a fonte citada TEM resumo (senão não verificável → cala); casa
+  citação↔ref por `acharRefPorCitacao`. A rota `analyze` mescla nos `problemas_encontrados`.
+  É o ponto #1 de confiabilidade (número atribuído a fonte que não o sustenta). NÃO regredir.
 - REVISÃO (`REVIEW_SYSTEM_PROMPT`, bloco INTEGRIDADE A-E): caça (A) número sem fonte
   → "alta", correcao generaliza o número; (B) ref off-topic pelo ASSUNTO REAL (câncer
   num trabalho de sepse) → "remover"; (C) fonte fraca/não-primária (newsletter,

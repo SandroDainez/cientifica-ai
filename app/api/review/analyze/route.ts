@@ -8,6 +8,7 @@ import { reviewService, type ReviewParams, type ReviewErrorCode } from '@/lib/ai
 import { separarReferenciasCitadas } from '@/lib/referencias/citadas'
 import { montarFontesParaRevisao } from '@/lib/referencias/dossie'
 import { detectarRefsOutroAssunto, type SuspeitaOffTopic } from '@/lib/referencias/off-topic'
+import { verificarNumerosSemSuporte, type ProblemaSuporte } from '@/lib/revisao/verificar-suporte'
 import type { Referencia, FormatoCitacao } from '@/types'
 
 // Revisão pode ser longa (modelo grande) — aumenta o timeout da função.
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
   // para ela conferir se cada citação tem suporte real na fonte. Best-effort.
   // Também roda a trava DETERMINÍSTICA de off-topic (ref de outra doença/campo).
   let suspeitasOffTopic: SuspeitaOffTopic[] = []
+  let problemasSuporte: ProblemaSuporte[] = []
   if (trabalhoId) {
     try {
       const { data: trab } = await supabase
@@ -76,6 +78,8 @@ export async function POST(request: Request) {
           if (fontesResumo) params.fontesResumo = fontesResumo
           // Off-topic determinístico: só sobre refs CITADAS (as da lista final).
           suspeitasOffTopic = detectarRefsOutroAssunto(citadas, `${params.tema ?? ''} ${params.area ?? ''}`)
+          // Suporte: percentual citado que NÃO consta no resumo da fonte citada.
+          problemasSuporte = verificarNumerosSemSuporte(params.trabalho, refs)
         }
       }
     } catch { /* segue sem o resumo das fontes */ }
@@ -95,6 +99,17 @@ export async function POST(request: Request) {
     const jaTem = new Set(existentes.map(s => (s.referencia ?? '').toLowerCase().replace(/\s+/g, '')))
     const novas = suspeitasOffTopic.filter(s => !jaTem.has(s.referencia.toLowerCase().replace(/\s+/g, '')))
     out.data.referencias_suspeitas = [...existentes, ...novas]
+  }
+
+  // Mescla os problemas de SUPORTE (percentual não localizado no resumo da fonte) nos
+  // problemas do LLM, sem duplicar pelo trecho. Categoria citação, "média" (verificar).
+  if (problemasSuporte.length > 0 && out.data && typeof out.data === 'object') {
+    const existentes = Array.isArray(out.data.problemas_encontrados) ? out.data.problemas_encontrados : []
+    const trechosVistos = new Set(existentes.map(p => (p.trecho ?? '').toLowerCase().replace(/\s+/g, '').slice(0, 60)))
+    const novos = problemasSuporte
+      .filter(p => !trechosVistos.has(p.trecho.toLowerCase().replace(/\s+/g, '').slice(0, 60)))
+      .map(p => ({ categoria: 'citacao' as const, gravidade: 'media' as const, trecho: p.trecho, problema: p.problema, sugestao: p.sugestao, impacto_estimado: -4 }))
+    out.data.problemas_encontrados = [...existentes, ...novos]
   }
 
   return NextResponse.json(out.data)

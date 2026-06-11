@@ -28,6 +28,7 @@ import { acharRefPorCitacao, removerEntradaDeCitacoes, extrairSobrenomeAno, renu
 import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
 import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
+import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -634,6 +635,21 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO suporte: flagra percentual citado que NÃO consta no resumo da fonte; não acusa quando consta nem sem resumo', () => {
+  const refComNumero = { id: '1', titulo: 'Sepsis mortality', ano: 2019, autores: [{ nome: 'O', sobrenome: 'Ranzani' }], abstract: 'In this cohort, sepsis lethality was reduced to 18% after the intervention across hospitals in the region.' } as never
+  const refSemNumero = { id: '2', titulo: 'Sepsis in Brazil', ano: 2014, autores: [{ nome: 'L', sobrenome: 'Taniguchi' }], abstract: 'This study analyzed sepsis-related deaths using the national registry over several years.' } as never
+  const refSemAbstract = { id: '3', titulo: 'Regional disparities', ano: 2020, autores: [{ nome: 'M', sobrenome: 'Lobo' }], abstract: '' } as never
+  // Número 18% citado RANZANI e o resumo dele CONTÉM 18% → NÃO flagra.
+  assert.equal(verificarNumerosSemSuporte('A letalidade caiu para 18% (RANZANI, 2019).', [refComNumero]).length, 0)
+  // Número 55% citado TANIGUCHI cujo resumo NÃO contém 55% → flagra.
+  const r = verificarNumerosSemSuporte('No Norte, a mortalidade ultrapassa 55% (TANIGUCHI, 2014).', [refSemNumero])
+  assert.equal(r.length, 1)
+  assert.match(r[0].problema, /55% n[ãa]o foi localizado/i)
+  // Fonte SEM resumo → não dá para verificar → NÃO acusa.
+  assert.equal(verificarNumerosSemSuporte('A taxa é de 40% (LOBO, 2020).', [refSemAbstract]).length, 0)
+  // Percentual SEM citação → não acusa.
+  assert.equal(verificarNumerosSemSuporte('A taxa nacional é de cerca de 40%.', [refComNumero]).length, 0)
 })
 test('CONTRATO off-topic: sinaliza ref de outra doença (câncer num trabalho de sepse) sem falso-positivo', () => {
   const tema = 'Sepse no Brasil: desigualdades regionais na mortalidade'
