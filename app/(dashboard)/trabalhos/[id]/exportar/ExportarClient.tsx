@@ -15,6 +15,7 @@ import { useReferenceValidator } from '@/hooks/useReferenceValidator'
 import { PERIODICOS } from '@/lib/exportacao/periodicos'
 import { AdvancedReview } from '@/components/review/AdvancedReview'
 import { EnsaioBanca } from '@/components/banca/EnsaioBanca'
+import { DiretrizRelato } from '@/components/banca/DiretrizRelato'
 import type { Trabalho, Referencia } from '@/types'
 
 interface Props {
@@ -237,6 +238,9 @@ export function ExportarClient({ trabalho, totalFases, secoesComConteudo, refere
           idioma="pt-BR"
         />
       )}
+
+      {/* Padrão de excelência — diretriz de relato (EQUATOR) conferida item a item */}
+      {corpoTrabalho?.trim() && <DiretrizRelato trabalhoId={trabalho.id} />}
 
       {/* Ensaio para a Banca — prepara o autor para a defesa (a IA guia cada ponto) */}
       {corpoTrabalho?.trim() && <EnsaioBanca trabalhoId={trabalho.id} />}

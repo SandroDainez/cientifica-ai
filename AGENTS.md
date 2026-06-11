@@ -164,6 +164,15 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   (posProcessar + anti-colapso + backup). NA EXPORTAÇÃO: `exportar/page.tsx` calcula
   `prontidaoAutor` e o `ExportarClient` AVISA (não bloqueia) os pontos obrigatórios
   pendentes, exigindo um "ciente, exportar mesmo assim" antes de baixar.
+- DIRETRIZ DE RELATO / EXCELÊNCIA (`lib/trabalho/diretrizes-relato.ts` → `diretrizPara`
+  + `buildDiretrizPrompt`/`DIRETRIZ_SYS`; `POST /api/ia/diretriz-relato`; UI
+  `components/banca/DiretrizRelato.tsx` na exportação; travado por `CONTRATO diretriz`):
+  escolhe a diretriz EQUATOR CERTA pela natureza/desenho (REVISÃO sistemática=PRISMA /
+  narrativa=SANRA; EMPÍRICO randomizado=CONSORT / observacional=STROBE; RELATO=CARE;
+  PROJETO=checklist de qualificação) e confere o trabalho item a item. PRINCÍPIO: a IA
+  ASSISTE o autor — para cada item ausente/parcial dá "como resolver" em linguagem simples
+  + MODELO do que escrever + marca quem_resolve (ia|autor); NUNCA o deixa perdido nem
+  inventa dado. NÃO regredir para checklist mudo nem generalista.
 - ENSAIO PARA A BANCA (`lib/ai/ensaio-banca.ts` + `POST /api/ia/ensaio-banca`, travado
   por `CONTRATO ensaio banca`; UI `components/banca/EnsaioBanca.tsx` na exportação): a IA
   age como presidente de banca + orientador — gera as perguntas da defesa ancoradas no

@@ -33,6 +33,7 @@ import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antipl
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
 import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
 import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
+import { diretrizPara, buildDiretrizPrompt, DIRETRIZ_SYS } from '@/lib/trabalho/diretrizes-relato'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -639,6 +640,25 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO diretriz: escolhe a diretriz CERTA por natureza/desenho e a IA assiste o autor', () => {
+  // Natureza → diretriz correta (type-aware).
+  assert.equal(diretrizPara('revisao', 'revisao_sistematica', {}).sigla, 'PRISMA')
+  assert.equal(diretrizPara('revisao', 'artigo_revisao', {}).sigla, 'SANRA')           // narrativa
+  assert.equal(diretrizPara('relato', 'relato_caso', {}).sigla, 'CARE')
+  assert.equal(diretrizPara('projeto', 'projeto_pesquisa', {}).sigla, 'PROJETO')
+  assert.equal(diretrizPara('empirico', 'artigo_original', { delineamento: 'ensaio clínico randomizado' }).sigla, 'CONSORT')
+  assert.equal(diretrizPara('empirico', 'artigo_original', { delineamento: 'coorte' }).sigla, 'STROBE')
+  // O system prompt embute o princípio: assistir, dar modelo, não deixar perdido, sem inventar.
+  assert.match(DIRETRIZ_SYS, /MENOR esfor[çc]o/i)
+  assert.match(DIRETRIZ_SYS, /MODELO do que/i)
+  assert.match(DIRETRIZ_SYS, /N[ÃA]O invente/i)
+  assert.match(DIRETRIZ_SYS, /se vire/i)        // proíbe deixar o autor "se vira"
+  // O user prompt injeta o checklist e pede JSON com status + como_resolver + quem_resolve.
+  const p = buildDiretrizPrompt(diretrizPara('revisao', 'revisao_sistematica', {}), 'Sepse', 'corpo...')
+  assert.match(p, /como_resolver/)
+  assert.match(p, /quem_resolve/)
+  assert.match(p, /PRISMA|Risco de viés/)
 })
 test('CONTRATO ensaio banca: IA guia o autor (o que a banca quer + esboço) e aponta lacuna sem inventar', () => {
   // O system prompt obriga: o que a banca quer + esboço ancorado + lacuna honesta, sem inventar.
