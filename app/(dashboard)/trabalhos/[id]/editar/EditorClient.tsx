@@ -739,6 +739,24 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
           </div>
         </div>
 
+        {/* Navegação de seções — telas pequenas. A Sidebar é "hidden lg:flex"; sem isto,
+            no celular/tablet o autor fica PRESO numa seção, sem trocar. */}
+        <div className="lg:hidden mx-6 mt-3">
+          <label htmlFor="sel-secao" className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Seção atual — toque para trocar</label>
+          <select
+            id="sel-secao"
+            value={faseAtiva}
+            onChange={e => trocarFase(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {fases.map((f, i) => (
+              <option key={f.chave_secao} value={f.chave_secao}>
+                {i + 1}. {f.nome}{fasesConcluidas.includes(f.chave_secao) ? ' ✓' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Banner: plano do projeto não criado */}
         {!((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto) && (
           <div className="mx-6 mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-3">
