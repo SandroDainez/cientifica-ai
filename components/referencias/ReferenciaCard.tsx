@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Copy, Trash2, CheckCheck, FileText, BookOpen, Globe, GraduationCap, Scale, FileBarChart, BookMarked, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
+import { ehFonteFraca } from '@/lib/referencias/qualidade'
 import type { Referencia, FormatoCitacao, TipoReferencia } from '@/types'
 
 const TIPO_ICONS: Record<TipoReferencia, React.ElementType> = {
@@ -75,6 +76,14 @@ export function ReferenciaCard({ referencia: r, formato, onDeletar, deletando }:
               </span>
             )}
             {r.journal && <span className="text-xs text-muted-foreground">· {r.journal}</span>}
+            {ehFonteFraca(r) && (
+              <span
+                className="text-xs px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700"
+                title="Fonte possivelmente fraca/não-primária (newsletter, preprint ou item de 1 página). Prefira artigos revisados por pares como base do trabalho."
+              >
+                ⚠ fonte fraca
+              </span>
+            )}
             <span className={cn('text-xs px-1.5 py-0.5 rounded border ml-auto', CONF_COLORS[r.confiabilidade])}>
               {r.confiabilidade}
             </span>

@@ -31,7 +31,7 @@ import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
 import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
-import { prontidaoAutor, nivelAcademico } from '@/lib/trabalho/pontos-autor'
+import { prontidaoAutor, nivelAcademico, avaliarPreenchimento } from '@/lib/trabalho/pontos-autor'
 import { roteiroOrientador } from '@/lib/trabalho/roteiro-orientador'
 import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
 import { diretrizPara, buildDiretrizPrompt, DIRETRIZ_SYS } from '@/lib/trabalho/diretrizes-relato'
@@ -661,6 +661,20 @@ test('CONTRATO diretriz: escolhe a diretriz CERTA por natureza/desenho e a IA as
   assert.match(p, /quem_resolve/)
   assert.match(p, /PRISMA|Risco de viés/)
   assert.match(p, /N[ÍI]VEL EXIGIDO/i)
+})
+test('CONTRATO feedback do ponto: avisa quando está curto ou quando dado vem sem números', () => {
+  // Vazio: sem alerta (o obrigatório cuida disso).
+  assert.equal(avaliarPreenchimento('notas_contexto', '').ok, true)
+  // Muito curto → avisa.
+  assert.equal(avaliarPreenchimento('notas_contexto', 'importante').ok, false)
+  // Dado sem número → avisa especificamente.
+  const semNum = avaliarPreenchimento('dados_coletados', 'a mortalidade foi alta no Norte e Nordeste do país')
+  assert.equal(semNum.ok, false)
+  assert.match(semNum.dica ?? '', /N[ÚU]MEROS/i)
+  // Dado com número e detalhe → ok.
+  assert.equal(avaliarPreenchimento('dados_coletados', 'mortalidade de 42% (n=80) no Norte, contra 35% no Sul').ok, true)
+  // Texto com detalhe suficiente em outro campo → ok.
+  assert.equal(avaliarPreenchimento('notas_contexto', 'A lacuna é a ausência de estudos regionais comparando Norte e Sul no período recente.').ok, true)
 })
 test('CONTRATO roteiro: conduz o autor por tipo — empírico c/ humanos mostra CEP/TCLE; revisão não', () => {
   const base = { refsCount: 20, secoesComConteudo: 5, totalSecoesCorpo: 5, documentosGerados: [], pontosAutorPendentes: 0 }

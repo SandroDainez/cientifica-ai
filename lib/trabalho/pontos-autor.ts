@@ -116,6 +116,21 @@ function preenchido(valor: unknown): boolean {
 }
 
 /**
+ * Feedback imediato sobre o que o autor escreveu num ponto — para não deixá-lo achar
+ * que "qualquer coisa serve". Determinístico (sem custo): avisa se está curto demais
+ * ou se um ponto de DADOS veio sem números. Devolve { ok, dica }.
+ */
+export function avaliarPreenchimento(campo: string, texto: string): { ok: boolean; dica?: string } {
+  const t = (texto ?? '').trim()
+  if (!t) return { ok: true }   // vazio: ainda não preencheu (o alerta de obrigatório cuida disso)
+  if (t.length < 30) return { ok: false, dica: 'Está muito curto — descreva em frases completas, com detalhe. A IA usa exatamente o que você der.' }
+  if (campo === 'dados_coletados' && !/\d/.test(t)) {
+    return { ok: false, dica: 'Faltam NÚMEROS — inclua os dados reais (ex.: "mortalidade de 42% (n=80)"). Sem dado concreto, não há resultado para a banca.' }
+  }
+  return { ok: true }
+}
+
+/**
  * Avalia os pontos do autor para o trabalho, ADAPTADOS à natureza (revisão/empírico/
  * relato/projeto). Retorna quais se aplicam, quais são obrigatórios e o que falta.
  */

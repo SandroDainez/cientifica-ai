@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, Loader2, PenLine, ShieldAlert, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { prontidaoAutor, type PontoAutorAvaliado } from '@/lib/trabalho/pontos-autor'
+import { prontidaoAutor, avaliarPreenchimento, type PontoAutorAvaliado } from '@/lib/trabalho/pontos-autor'
 import type { DadosProjeto } from '@/types'
 
 interface Props {
@@ -111,6 +111,12 @@ function PontoCard({ ponto, trabalhoId, dadosProjeto, onSalvo }: {
         placeholder="Escreva aqui o que só você pode informar — a IA integra ao texto, sem inventar."
         className="mt-2 w-full rounded-lg border border-border bg-background p-2.5 text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
+      {(() => {
+        const aval = avaliarPreenchimento(ponto.campo, texto)
+        return !aval.ok && aval.dica ? (
+          <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">💡 {aval.dica}</p>
+        ) : null
+      })()}
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-[11px] text-muted-foreground">A IA integra ao texto — sem inventar nada além do que você escreveu.</span>
         <Button size="sm" onClick={integrar} disabled={integrando || !texto.trim() || texto.trim() === valorInicial.trim()} className="gap-1.5">
