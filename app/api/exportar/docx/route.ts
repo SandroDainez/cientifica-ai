@@ -301,6 +301,34 @@ export async function GET(request: Request) {
     )
   }
 
+  // ── Folha de rosto (ABNT NBR 14724) ─────────────────────────
+  // Trabalhos acadêmicos exigem, após a capa: autor, título, a NATUREZA do trabalho
+  // (recuada à direita) e orientador. A capa sozinha não cumpre a norma.
+  const TIPO_NATUREZA: Record<string, string> = {
+    tcc: 'Trabalho de Conclusão de Curso', monografia: 'Monografia',
+    dissertacao_mestrado: 'Dissertação de Mestrado', tese_doutorado: 'Tese de Doutorado',
+    relatorio_ic: 'Relatório de Iniciação Científica',
+  }
+  if ((trabalho.formato_citacao ?? 'abnt') === 'abnt' && TIPO_NATUREZA[trabalho.tipo_trabalho]) {
+    const inst = pData?.instituicao ?? trabalho.instituicao_destino ?? ''
+    const natureza = `${TIPO_NATUREZA[trabalho.tipo_trabalho]} apresentado${inst ? ' à ' + inst : ''} como requisito parcial para obtenção do título correspondente${orientadorCapa ? ', sob a orientação de ' + orientadorCapa : ''}.`
+    children.push(
+      paragrafo(autorCapa || '', { center: true, indent: false, pageBreakBefore: true }),
+      empty(), empty(), empty(),
+      paragrafo((tituloCapa || 'TÍTULO DO TRABALHO').toUpperCase(), { center: true, bold: true, indent: false }),
+      empty(), empty(),
+      new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        indent: { left: convertInchesToTwip(3.0) },
+        spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO },
+        children: [new TextRun({ text: natureza, font: FONT, size: SIZE })],
+      }),
+      empty(), empty(),
+      ...(orientadorCapa ? [paragrafo(`Orientador(a): ${orientadorCapa}`, { center: true, indent: false }), empty()] : []),
+      paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
+    )
+  }
+
   // ── Seções ──────────────────────────────────────────────────
   // Constrói uma tabela DOCX no padrão ABNT (tabela aberta) a partir de linhas markdown
   function construirTabelaDocx(linhasTabela: string[]): Table | null {
