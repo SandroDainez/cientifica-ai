@@ -32,6 +32,7 @@ import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
 import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
+import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -638,6 +639,20 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO ensaio banca: IA guia o autor (o que a banca quer + esboço) e aponta lacuna sem inventar', () => {
+  // O system prompt obriga: o que a banca quer + esboço ancorado + lacuna honesta, sem inventar.
+  assert.match(ENSAIO_BANCA_SYS, /o_que_a_banca_quer/)
+  assert.match(ENSAIO_BANCA_SYS, /esboco_resposta/)
+  assert.match(ENSAIO_BANCA_SYS, /ANCORADO/)
+  assert.match(ENSAIO_BANCA_SYS, /NUNCA invente/i)
+  assert.match(ENSAIO_BANCA_SYS, /lacuna/)
+  assert.match(ENSAIO_BANCA_SYS, /n[ãa]o o deixe sozinho|preparar o autor/i)
+  // O user prompt injeta o corpo real e pede JSON com as 4 partes por pergunta.
+  const p = buildEnsaioBancaPrompt({ tipo: 'artigo', tema: 'Sepse', corpo: 'Introdução... Metodologia...' })
+  assert.match(p, /contribui[çc][ãa]o\/originalidade/i)
+  assert.match(p, /esboco_resposta/)
+  assert.ok(p.includes('Sepse') && p.includes('Metodologia'))
 })
 test('CONTRATO pontos do autor: obrigatoriedade adapta ao tipo de estudo; prontidão conta pendentes', () => {
   // Estudo empírico (coleta primária): dados/método/interpretação são OBRIGATÓRIOS.

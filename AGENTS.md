@@ -164,6 +164,12 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   (posProcessar + anti-colapso + backup). NA EXPORTAÇÃO: `exportar/page.tsx` calcula
   `prontidaoAutor` e o `ExportarClient` AVISA (não bloqueia) os pontos obrigatórios
   pendentes, exigindo um "ciente, exportar mesmo assim" antes de baixar.
+- ENSAIO PARA A BANCA (`lib/ai/ensaio-banca.ts` + `POST /api/ia/ensaio-banca`, travado
+  por `CONTRATO ensaio banca`; UI `components/banca/EnsaioBanca.tsx` na exportação): a IA
+  age como presidente de banca + orientador — gera as perguntas da defesa ancoradas no
+  trabalho e, para CADA uma, dá "o que a banca quer" + um ESBOÇO de resposta (não deixa o
+  autor sozinho) + a LACUNA honesta quando o trabalho não deixa algo claro (sem inventar).
+  O autor treina a resposta com as próprias palavras. NÃO regredir para "só perguntar".
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da
