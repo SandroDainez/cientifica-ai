@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -245,6 +245,26 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
   const [delta, setDelta] = useState<{ notaAntes: number; notaDepois: number; qtdAntes: number; qtdDepois: number } | null>(null)
   const metadados = { tipo, tema, area, normas, idioma }
 
+  // Antiplágio/Originalidade: o botão só aparece se o serviço estiver LIGADO (env).
+  // Enquanto desligado, fica oculto e não muda nada na tela.
+  const [origDisponivel, setOrigDisponivel] = useState(false)
+  const [origLoading, setOrigLoading] = useState(false)
+  const [origResultado, setOrigResultado] = useState<{ similaridade?: number; motivo?: string } | null>(null)
+  useEffect(() => {
+    fetch('/api/integridade/antiplagio').then(r => r.json()).then(d => setOrigDisponivel(!!d?.disponivel)).catch(() => {})
+  }, [])
+  async function verificarOriginalidade() {
+    setOrigLoading(true); setOrigResultado(null)
+    try {
+      const res = await fetch('/api/integridade/antiplagio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trabalhoId }) })
+      const data = await res.json() as { disponivel?: boolean; similaridade?: number; motivo?: string }
+      if (!data.disponivel) { toast.message(data.motivo ?? 'Antiplágio indisponível.'); return }
+      setOrigResultado({ similaridade: data.similaridade })
+      toast.success(typeof data.similaridade === 'number' ? `Similaridade: ${data.similaridade}%` : 'Verificação concluída.')
+    } catch { toast.error('Falha ao verificar originalidade.') }
+    finally { setOrigLoading(false) }
+  }
+
   // Problemas que a IA pode tentar corrigir trocando texto (todos, exceto os
   // puramente estruturais, que dependem de reorganizar/criar seções). A correção
   // em si é gerada na hora, seção por seção, pelo endpoint /api/review/corrigir.
@@ -459,6 +479,12 @@ export function AdvancedReview({ trabalhoId, trabalho, tipo, tema, area, normas,
               <Button onClick={revisaoFinalCompleta} className="gap-2">
                 <Sparkles className="h-4 w-4" /> Corrigir o trabalho
               </Button>
+              {origDisponivel && (
+                <Button variant="outline" className="gap-2" onClick={verificarOriginalidade} disabled={origLoading}>
+                  {origLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileWarning className="h-4 w-4" />}
+                  Verificar originalidade{typeof origResultado?.similaridade === 'number' ? ` · ${origResultado.similaridade}%` : ''}
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => { setEstado('inicial'); setAnalise(null); setDelta(null) }}>Fechar</Button>
             </div>
             <p className="text-xs text-muted-foreground">

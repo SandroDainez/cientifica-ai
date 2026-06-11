@@ -29,6 +29,7 @@ import { compilarSecaoReferencias } from '@/lib/referencias/compilar-secao'
 import { renumerarSubsecoes } from '@/lib/formatacao/subsecoes'
 import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
 import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
+import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -635,6 +636,17 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO antiplágio: desligado por padrão; falha graciosa quando não configurado', async () => {
+  const off = { habilitado: false, url: '', apiKey: '', provider: 'externo' }
+  assert.equal(antiplagioConfigurado(off), false)
+  const r = await verificarPlagio('um texto qualquer', off)   // não faz chamada externa
+  assert.equal(r.disponivel, false)
+  assert.match(r.motivo ?? '', /n[ãa]o configurado/i)
+  // Configurar exige os 3 campos (habilitado + url + chave).
+  assert.equal(antiplagioConfigurado({ habilitado: true, url: 'https://x', apiKey: 'k', provider: 'p' }), true)
+  assert.equal(antiplagioConfigurado({ habilitado: true, url: '', apiKey: 'k', provider: 'p' }), false)
+  assert.equal(antiplagioConfigurado({ habilitado: false, url: 'https://x', apiKey: 'k', provider: 'p' }), false)
 })
 test('CONTRATO qualidade: detecta fonte fraca (newsletter/preprint/1 página) sem rejeitar fonte boa', () => {
   assert.equal(ehFonteFraca({ journal: 'Hospitalist News' }), true)        // newsletter

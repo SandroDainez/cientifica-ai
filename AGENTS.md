@@ -113,6 +113,14 @@ assunto. Vale para TODO tipo/área. Prevenção na GERAÇÃO + captura na REVIS�
   prefixo é corrigido pelo número da seção pai (i+1): "1.1"→"4.1". Só toca linha que
   começa com d.d[.d] + espaço + MAIÚSCULA (não confunde com "2.5 vezes"). NÃO regredir.
 
+- ANTIPLÁGIO / ORIGINALIDADE (PRONTO mas DESLIGADO — `lib/integridade/antiplagio.ts` +
+  `app/api/integridade/antiplagio`, travado por `CONTRATO antiplágio`): fiação completa,
+  provider-agnóstica, LIGA só com env (`ANTIPLAGIO_ENABLED=true` + `ANTIPLAGIO_API_URL` +
+  `ANTIPLAGIO_API_KEY`). Sem isso → `disponivel:false` gracioso (nada quebra) e o botão
+  "Verificar originalidade" no painel de revisão fica OCULTO (aparece sozinho quando
+  ligado). Ao escolher o provedor real (Turnitin/Copyleaks/…), ajustar só `chamarProvedor`
+  ao formato da API dele. Documentado em `.env.example`. NÃO ligar por padrão.
+
 ## Citações: AMPLITUDE + ancoragem (vale para TODO tipo de trabalho)
 
 Regras travadas por teste (`CONTRATO citações`/`CONTRATO geração`). Aplicam-se a
