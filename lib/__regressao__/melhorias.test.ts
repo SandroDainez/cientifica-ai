@@ -36,7 +36,7 @@ import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinha
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizarTermos, resumirAbstract, pontuarRelevancia, selecionarFontesRelevantes, montarFontesParaRevisao } from '@/lib/referencias/dossie'
-import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt, buildOutlineSecaoPrompt } from '@/lib/ai/prompts'
+import { formatarRefsParaPrompt, buildInstrucaoCitacaoReferencias, buildGerarSecaoPrompt, buildOutlineSecaoPrompt, buildGerarResumoPrompt } from '@/lib/ai/prompts'
 import { protegerConteudoResumo } from '@/lib/resumo/proteger'
 import type { ReviewParams, ReviewResult, ReviewOutcome } from '@/lib/ai/reviewService'
 import { rankSecaoDocumento } from '@/lib/tipos/ordem-documento'
@@ -748,8 +748,17 @@ test('CONTRATO norma/gênero: impessoalidade, citação direta com página e reg
   assert.match(pIntro, /CITAÇÃO DIRETA/)
   assert.match(pIntro, /p\. X|p[áa]gina/i)
   assert.match(pIntro, /N[ÃA]O antecipe resultados/i)   // regra da introdução
+  assert.match(pIntro, /Tabela 1|TABELAS\/FIGURAS/)     // tabela/figura com título+fonte
+  assert.match(pIntro, /ABREVIATURAS|primeiro uso/i)    // sigla definida no 1º uso
   const concl = { id: 'consideracoes_finais', chave_secao: 'consideracoes_finais', nome: 'Considerações Finais', instrucoes: 'x', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
   assert.match(buildGerarSecaoPrompt(concl, { titulo: 'T', formato_citacao: 'abnt' }), /N[ÃA]O introduza cita[çc][ãa]o nova/i)
+})
+test('CONTRATO resumo estruturado: ordem fixa + FIDELIDADE ao corpo (não promete o que não entrega)', () => {
+  const p = buildGerarResumoPrompt('artigo_revisao' as never, { introducao: 'x', metodologia: 'y' })
+  assert.match(p, /NESTA ORDEM/i)
+  assert.match(p, /objetivo.*metodologia.*resultados.*conclus/i)
+  assert.match(p, /FIDELIDADE AO CORPO/i)
+  assert.match(p, /N[ÃA]O prometa/i)
 })
 test('CONTRATO esqueleto: outline pede plano em JSON; prosa RESPEITA outline aprovado', () => {
   const fase = { id: 'desenvolvimento', chave_secao: 'desenvolvimento', nome: 'Desenvolvimento', instrucoes: 'cobrir disparidades', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
