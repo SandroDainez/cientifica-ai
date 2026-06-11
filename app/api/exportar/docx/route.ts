@@ -220,18 +220,16 @@ export async function GET(request: Request) {
   // Vancouver: título, autor, instituição (mais simples)
 
   if (trabalho.formato_citacao === 'apa') {
-    // APA 7ª Ed — título page
+    // APA 7 — Title page (student paper): título no terço superior (negrito, title case),
+    // depois autor, afiliação, curso, professor e data — NESTA ordem (APA 7, §2.3).
     children.push(
-      empty(), empty(), empty(),
-      ...(autorCapa ? [
-        paragrafo(autorCapa, { center: true, indent: false }),
-        empty(),
-      ] : []),
+      empty(), empty(), empty(), empty(),
       paragrafo(
         (tituloSentence || 'Title of Work'),
         { center: true, bold: true, indent: false, size: 28 }
       ),
       empty(),
+      ...(autorCapa ? [paragrafo(autorCapa, { center: true, indent: false })] : []),
       ...(pData?.instituicao || trabalho.instituicao_destino ? [
         paragrafo(pData?.instituicao ?? trabalho.instituicao_destino ?? '', { center: true, indent: false }),
       ] : []),
@@ -239,10 +237,8 @@ export async function GET(request: Request) {
         paragrafo(trabalho.area_conhecimento, { center: true, indent: false }),
       ] : []),
       ...(orientadorCapa ? [
-        empty(),
-        paragrafo(`Professor: ${orientadorCapa}`, { center: true, indent: false }),
+        paragrafo(`Instructor: ${orientadorCapa}`, { center: true, indent: false }),
       ] : []),
-      empty(),
       paragrafo(String(new Date().getFullYear()), { center: true, indent: false }),
     )
   } else if (trabalho.formato_citacao === 'vancouver') {

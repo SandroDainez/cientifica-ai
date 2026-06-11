@@ -14,7 +14,7 @@ import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   PageBreak, convertInchesToTwip, LineRuleType,
   Table, TableRow, TableCell, WidthType, BorderStyle,
-  TableOfContents, HeadingLevel,
+  HeadingLevel,
 } from 'docx'
 import type { Trabalho, SecaoTrabalho, Referencia, FormatoCitacao } from '@/types'
 
@@ -428,25 +428,9 @@ export async function GET(request: Request) {
     }
   }
 
-  // ── Sumário (apenas ABNT — obrigatório para TCC, monografia, dissertação) ──
-  const tiposComSumario = ['tcc', 'monografia', 'dissertacao_mestrado', 'tese_doutorado', 'relatorio_ic']
-  if (tiposComSumario.includes(trabalho.tipo_trabalho)) {
-    children.push(new Paragraph({ children: [new PageBreak()] }))
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { line: fmt.lineSpacing, lineRule: LineRuleType.AUTO, after: 480 },
-        children: [new TextRun({ text: 'SUMÁRIO', font: FONT, size: SIZE, bold: true })],
-      })
-    )
-    children.push(
-      new TableOfContents('Sumário', {
-        hyperlink: true,
-        headingStyleRange: '1-1',
-      })
-    )
-    children.push(new Paragraph({ children: [new PageBreak()] }))
-  }
+  // ── SEM sumário no export para PERIÓDICO ──────────────────────
+  // Submissão a periódico (artigo) NÃO leva sumário/índice — não é praxe de revista
+  // científica. O sumário fica só no export padrão do trabalho (documento completo).
 
   secoesParaExportar.forEach((secao, i) => {
     children.push(

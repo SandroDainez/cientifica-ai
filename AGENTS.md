@@ -146,6 +146,11 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
     por formato (ABNT 150–500 / APA ≤250 / Vancouver ~250–300). Regras de GÊNERO por seção
     (introdução não antecipa resultado; conclusão sem citação/tema novo; discussão compara
     + limitações) são format-agnósticas. NÃO regredir para "tudo ABNT".
+- CAPA/TÍTULO E SUMÁRIO POR FORMATO (DOCX): ABNT = capa + FOLHA DE ROSTO (natureza do
+  trabalho, só tipos acadêmicos); APA 7 = title page na ordem correta (título no terço
+  superior → autor → afiliação → curso → Instructor → data); Vancouver = title page
+  simples. SUMÁRIO: no export PADRÃO (documento completo) para trabalhos com seções; no
+  export para PERIÓDICO (`docx-periodico`) NÃO há sumário (revista não usa índice). NÃO regredir.
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da
