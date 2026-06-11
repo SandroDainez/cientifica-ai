@@ -31,6 +31,7 @@ import { detectarRefsOutroAssunto } from '@/lib/referencias/off-topic'
 import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
+import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
 import { buildAlinharResumoPrompt } from '@/lib/ai/reviewService'
 import { temNumeroFabricado, alinhamentoResumoSeguro } from '@/lib/resumo/alinhar'
@@ -637,6 +638,22 @@ test('CONTRATO citações: instrução exige AMPLITUDE e NÃO proíbe citar refs
   assert.match(instr, /AMPL|MUITAS|diversidade|distintas/i)            // amplitude obrigatória
   assert.ok(!/proibido citar uma fonte só porque o título/i.test(instr)) // NÃO regredir ao conservadorismo
   assert.match(instr, /inventar/i)                                      // anti-fabricação preservada
+})
+test('CONTRATO pontos do autor: obrigatoriedade adapta ao tipo de estudo; prontidão conta pendentes', () => {
+  // Estudo empírico (coleta primária): dados/método/interpretação são OBRIGATÓRIOS.
+  const empiricoVazio = prontidaoAutor({ tipo_coleta: 'primaria' })
+  assert.equal(empiricoVazio.totalObrigatorios, 4)           // contexto + metodologia + dados + interpretação
+  assert.equal(empiricoVazio.obrigatoriosPendentes, 4)
+  assert.equal(empiricoVazio.pronto, false)
+  // Revisão (bibliográfica): só contexto/contribuição é obrigatório.
+  const revisao = prontidaoAutor({ tipo_coleta: 'bibliografica' })
+  assert.equal(revisao.totalObrigatorios, 1)
+  // Preencher o dado real marca como preenchido.
+  const comDados = prontidaoAutor({ tipo_coleta: 'primaria', notas_contexto: 'minha contribuição é X, lacuna Y', notas_metodologia: 'coorte em 2 hospitais', dados_coletados: 'mortalidade de 42% (n=80)', notas_interpretacao: 'os achados sugerem Z, limitação: amostra pequena' })
+  assert.equal(comDados.obrigatoriosPendentes, 0)
+  assert.equal(comDados.pronto, true)
+  // Cada ponto traz o "o que escrever" e o "por que" (a banca).
+  assert.ok(empiricoVazio.pontos.every(p => p.oQueEscrever.length > 10 && p.porQue.length > 10))
 })
 test('CONTRATO coerência criação: avisa tipo×título incompatível e sugere o tipo certo', () => {
   // Tipo revisão, título de ensaio clínico → sugere Artigo Original.
