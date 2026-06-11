@@ -728,6 +728,17 @@ test('CONTRATO geração: injeta a DATA ATUAL (âncora temporal) p/ a busca não
   assert.match(prompt, /esqueleto ancorado|MÉTODO DE REDAÇÃO/i)
   assert.match(prompt, /subt[óo]picos/i)
 })
+test('CONTRATO norma/gênero: impessoalidade, citação direta com página e regra de seção', () => {
+  const intro = { id: 'introducao', chave_secao: 'introducao', nome: 'Introdução', instrucoes: 'x', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
+  const pIntro = buildGerarSecaoPrompt(intro, { titulo: 'T', formato_citacao: 'abnt' })
+  assert.match(pIntro, /IMPESSOALIDADE/)
+  assert.match(pIntro, /1[ªa] pessoa/i)
+  assert.match(pIntro, /CITAÇÃO DIRETA/)
+  assert.match(pIntro, /p\. X|p[áa]gina/i)
+  assert.match(pIntro, /N[ÃA]O antecipe resultados/i)   // regra da introdução
+  const concl = { id: 'consideracoes_finais', chave_secao: 'consideracoes_finais', nome: 'Considerações Finais', instrucoes: 'x', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
+  assert.match(buildGerarSecaoPrompt(concl, { titulo: 'T', formato_citacao: 'abnt' }), /N[ÃA]O introduza cita[çc][ãa]o nova/i)
+})
 test('CONTRATO esqueleto: outline pede plano em JSON; prosa RESPEITA outline aprovado', () => {
   const fase = { id: 'desenvolvimento', chave_secao: 'desenvolvimento', nome: 'Desenvolvimento', instrucoes: 'cobrir disparidades', elementos_obrigatorios: [], erros_comuns: [] } as unknown as import('@/types').FaseConfig
   const out = buildOutlineSecaoPrompt(fase, { titulo: 'Sepse no Brasil', formato_citacao: 'abnt' })

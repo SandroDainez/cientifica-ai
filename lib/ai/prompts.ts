@@ -377,6 +377,17 @@ export function buildGerarSecaoPrompt(
   partes.push(`## Seção a redigir: ${fase.nome}`)
   partes.push(`\n${fase.instrucoes}`)
 
+  // NORMA E GÊNERO (ABNT + gênero textual da seção): impessoalidade, citação direta com
+  // página, e o que cada seção PODE/NÃO PODE fazer. Regras que uma banca cobra.
+  const chaveGen = (fase.chave_secao ?? fase.id ?? '').toLowerCase()
+  const generoNotas: string[] = []
+  if (/introdu/.test(chaveGen)) generoNotas.push('Esta é a INTRODUÇÃO: contextualize do geral ao específico até a pergunta/objetivo — NÃO antecipe resultados nem conclusões.')
+  if (/conclus|consideracoes/.test(chaveGen)) generoNotas.push('Esta é a CONCLUSÃO/CONSIDERAÇÕES: sintetize o que o corpo mostrou e responda ao objetivo — NÃO introduza citação nova nem tema novo.')
+  if (/discuss/.test(chaveGen)) generoNotas.push('Esta é a DISCUSSÃO: compare os achados com a literatura e declare as LIMITAÇÕES do trabalho.')
+  partes.push(`\n**NORMA E GÊNERO (obrigatório):**
+- IMPESSOALIDADE: escreva em 3ª pessoa / voz impessoal ("observou-se", "este estudo analisa", "os dados indicam"). NUNCA use 1ª pessoa ("eu", "nós", "nosso", "acreditamos", "nossa análise").
+- CITAÇÃO DIRETA: prefira a citação INDIRETA (paráfrase + fonte). Se citar literalmente, só com a PÁGINA (AUTOR, ano, p. X); trechos de até 3 linhas entre aspas no texto; mais de 3 linhas em recuo, fonte menor, sem aspas. Sem a página, NÃO faça citação direta — parafraseie.${generoNotas.length ? '\n- ' + generoNotas.join('\n- ') : ''}`)
+
   // ANCORA TEMPORAL (TODO tipo de trabalho, qualquer área): o modelo gerador tende a
   // usar datas perto do treinamento dele (ex.: "conduzido em março de 2024") mesmo
   // quando o trabalho é feito hoje — inconsistência temporal num trabalho gerado anos

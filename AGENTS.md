@@ -122,6 +122,11 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   geração`): a geração PLANEJA internamente os subtópicos da seção + as referências que
   ancoram cada um, e SÓ ENTÃO escreve a prosa em cima — como um orientador. Entrega só a
   prosa (não imprime o plano). Mata o texto ensaístico na origem. NÃO remover.
+- NORMA E GÊNERO (`buildGerarSecaoPrompt`, travado por `CONTRATO norma/gênero`):
+  IMPESSOALIDADE (3ª pessoa/voz impessoal, NUNCA 1ª pessoa), CITAÇÃO DIRETA só com página
+  (preferir indireta), e regras de GÊNERO por seção (introdução não antecipa resultados;
+  conclusão não traz citação/tema novo; discussão compara com literatura + limitações).
+  Computadas por `fase.chave_secao`. NÃO remover.
 - ESQUELETO APROVÁVEL (Fase 2 do método-professor, travado por `CONTRATO esqueleto`):
   `buildOutlineSecaoPrompt` + rota `POST /api/ia/gerar-outline` devolvem o PLANO da seção
   em JSON (subtópicos + refs que ancoram cada um) para o usuário aprovar/editar ANTES da
