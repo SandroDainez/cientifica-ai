@@ -151,6 +151,14 @@ QUALQUER tipo de trabalho — a lógica é type-agnostic e centralizada:
   superior → autor → afiliação → curso → Instructor → data); Vancouver = title page
   simples. SUMÁRIO: no export PADRÃO (documento completo) para trabalhos com seções; no
   export para PERIÓDICO (`docx-periodico`) NÃO há sumário (revista não usa índice). NÃO regredir.
+- ROTEIRO DO ORIENTADOR (`lib/trabalho/roteiro-orientador.ts` → `roteiroOrientador`,
+  travado por `CONTRATO roteiro`; UI `components/trabalho/RoteiroOrientador.tsx` no editor):
+  CONDUZ o autor inexperiente — monta, em ORDEM, só os passos que ESTE tipo/natureza exige
+  (TYPE-AWARE: empírico c/ humanos mostra TCLE/CEP/cálculo amostral; revisão não; sistemática
+  mostra PROSPERO/busca), com status (feito/pendente), o que é, como fazer, e QUEM resolve
+  (ia/autor/misto). Determinístico, a partir de tipo+dados+refs+seções+documentos+pontos
+  pendentes. Mostra o "próximo passo" e linka para a ação. Objetivo: o iniciante nunca fica
+  perdido. NÃO remover passos type-specific nem tornar generalista.
 - PONTOS DO AUTOR — ADAPTADO POR NATUREZA (`lib/trabalho/pontos-autor.ts` →
   `naturezaTrabalho` + `prontidaoAutor(tipo, dados)`, travado por `CONTRATO pontos do
   autor`; UI `PontosDoAutor.tsx` no editor): os pontos que SÓ o autor pode dar, DIFERENTES

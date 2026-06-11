@@ -16,9 +16,10 @@ export default async function EditorPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: trabalhoData }, { data: secoesData }] = await Promise.all([
+  const [{ data: trabalhoData }, { data: secoesData }, { count: refsCount }] = await Promise.all([
     supabase.from('trabalhos').select('*').eq('id', id).eq('usuario_id', user.id).single(),
     supabase.from('secoes_trabalho').select('*').eq('trabalho_id', id).order('ordem'),
+    supabase.from('referencias').select('id', { count: 'exact', head: true }).eq('trabalho_id', id),
   ])
 
   if (!trabalhoData) redirect('/trabalhos')
@@ -44,6 +45,7 @@ export default async function EditorPage({ params }: Props) {
       trabalho={trabalho}
       fases={fases}
       secoesIniciais={secoes}
+      refsCount={refsCount ?? 0}
     />
   )
 }

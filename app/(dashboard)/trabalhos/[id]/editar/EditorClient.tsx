@@ -16,6 +16,8 @@ import QuestionarioGeracaoModal, { type RespostasQuestionario } from '@/componen
 import OutlineApprovalModal, { type SubtopicoOutline } from '@/components/editor/OutlineApprovalModal'
 import { PainelDadosAutenticos } from '@/components/trabalho/PainelDadosAutenticos'
 import { PontosDoAutor } from '@/components/trabalho/PontosDoAutor'
+import { RoteiroOrientador } from '@/components/trabalho/RoteiroOrientador'
+import { prontidaoAutor } from '@/lib/trabalho/pontos-autor'
 import { PainelPlanilhaResultados } from '@/components/editor/PainelPlanilhaResultados'
 import { HistoricoVersoes } from '@/components/editor/HistoricoVersoes'
 import { BlocoFinalizacao } from '@/components/editor/BlocoFinalizacao'
@@ -100,6 +102,7 @@ interface EditorClientProps {
   trabalho: Trabalho
   fases: FaseConfig[]
   secoesIniciais: SecaoTrabalho[]
+  refsCount?: number
 }
 
 // ── Pré-preenche o questionário de geração com dados do plano do projeto ───────
@@ -164,7 +167,7 @@ const TIPOS_SEM_DADOS_EMPIRICOS = new Set([
   'artigo_revisao', 'revisao_sistematica', 'projeto_pesquisa', 'relato_caso',
 ])
 
-export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }: EditorClientProps) {
+export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, refsCount = 0 }: EditorClientProps) {
   const router = useRouter()
 
   // Filtro centralizado por tipo de trabalho (workTypeSchemas). Mantém a lógica
@@ -784,6 +787,20 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais }
             </div>
           )
         })()}
+
+        {/* Roteiro do Orientador — conduz o autor: o que fazer a seguir, por tipo */}
+        <div className="mx-6 mt-3">
+          <RoteiroOrientador
+            trabalhoId={trabalho.id}
+            tipo={trabalho.tipo_trabalho}
+            dados={dadosProjetoTrabalho}
+            refsCount={refsCount}
+            secoesComConteudo={Object.values(conteudos).filter(v => (v ?? '').trim()).length}
+            totalSecoesCorpo={fasesRecebidas.filter(f => !['resumo', 'titulo', 'referencias'].includes(f.chave_secao ?? '')).length}
+            documentosGerados={Object.keys(((trabalho.dados_trabalho as Record<string, unknown>)?.documentos_projeto as Record<string, unknown> | undefined) ?? {})}
+            pontosAutorPendentes={prontidaoAutor(trabalho.tipo_trabalho, dadosProjetoTrabalho).obrigatoriosPendentes}
+          />
+        </div>
 
         {/* Pontos do Autor — o que SÓ o autor pode dar (obrigatório p/ trabalho real) */}
         {Boolean((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto) && (

@@ -32,6 +32,7 @@ import { verificarNumerosSemSuporte } from '@/lib/revisao/verificar-suporte'
 import { antiplagioConfigurado, verificarPlagio } from '@/lib/integridade/antiplagio'
 import { analisarCoerenciaTituloTipo } from '@/lib/trabalho/coerencia'
 import { prontidaoAutor, nivelAcademico } from '@/lib/trabalho/pontos-autor'
+import { roteiroOrientador } from '@/lib/trabalho/roteiro-orientador'
 import { ENSAIO_BANCA_SYS, buildEnsaioBancaPrompt } from '@/lib/ai/ensaio-banca'
 import { diretrizPara, buildDiretrizPrompt, DIRETRIZ_SYS } from '@/lib/trabalho/diretrizes-relato'
 import { filtrarApontamentos, ehFalsoPositivoFormatacaoReferencia, ehFalsoPositivoDataAtual, trechoExisteNoTexto, ehPreferenciaEstilo } from '@/lib/revisao/filtrar-apontamentos'
@@ -660,6 +661,24 @@ test('CONTRATO diretriz: escolhe a diretriz CERTA por natureza/desenho e a IA as
   assert.match(p, /quem_resolve/)
   assert.match(p, /PRISMA|Risco de viés/)
   assert.match(p, /N[ÍI]VEL EXIGIDO/i)
+})
+test('CONTRATO roteiro: conduz o autor por tipo — empírico c/ humanos mostra CEP/TCLE; revisão não', () => {
+  const base = { refsCount: 20, secoesComConteudo: 5, totalSecoesCorpo: 5, documentosGerados: [], pontosAutorPendentes: 0 }
+  // Empírico com seres humanos: tem TCLE, protocolo CEP, aprovação CEP (sua parte), cálculo amostral.
+  const emp = roteiroOrientador({ tipo: 'artigo_original', dados: { tipo_coleta: 'primaria', envolve_seres_humanos: true }, ...base })
+  const idsEmp = emp.map(p => p.id)
+  assert.ok(idsEmp.includes('tcle') && idsEmp.includes('cep_doc') && idsEmp.includes('cep_aprov') && idsEmp.includes('amostra'))
+  assert.equal(emp.find(p => p.id === 'cep_aprov')?.quemResolve, 'autor')   // aprovação do CEP é do autor
+  // Revisão de literatura: NÃO mostra CEP/TCLE/amostra (não cabe).
+  const rev = roteiroOrientador({ tipo: 'artigo_revisao', dados: { tipo_coleta: 'bibliografica' }, ...base })
+  const idsRev = rev.map(p => p.id)
+  assert.ok(!idsRev.includes('tcle') && !idsRev.includes('cep_doc') && !idsRev.includes('amostra'))
+  // Revisão sistemática: mostra protocolo/PROSPERO e estratégia de busca.
+  const sist = roteiroOrientador({ tipo: 'revisao_sistematica', dados: { tipo_coleta: 'bibliografica' }, ...base })
+  assert.ok(sist.map(p => p.id).includes('protocolo') && sist.map(p => p.id).includes('busca'))
+  // Status reflete o estado: projeto/refs/seções feitos; cada passo diz quem resolve.
+  assert.ok(rev.find(p => p.id === 'secoes')?.status === 'feito')
+  assert.ok(rev.every(p => p.titulo && p.comoFazer && ['ia', 'autor', 'misto'].includes(p.quemResolve)))
 })
 test('CONTRATO nível acadêmico: a exigência ESCALA (TCC ≠ tese ≠ artigo)', () => {
   assert.equal(nivelAcademico('tese_doutorado').nivel, 'doutorado')
