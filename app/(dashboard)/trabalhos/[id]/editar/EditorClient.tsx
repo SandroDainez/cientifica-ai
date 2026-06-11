@@ -418,9 +418,9 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
       if (!res.ok || !data.ok || !data.subtopicos?.length) throw new Error(data.error ?? 'falha')
       setEsqueleto({ aberto: true, gerando: false, subtopicos: data.subtopicos, respostas, instrucoes })
     } catch {
-      // Fallback silencioso: segue direto para a prosa, como antes.
+      // Fallback SILENCIOSO: o esqueleto é opcional; se tropeçar, segue direto para a
+      // prosa sem alarmar o autor (a seção é gerada normalmente). Sem toast de "erro".
       setEsqueleto(null)
-      toast.message('Não consegui montar o esqueleto agora — escrevendo direto.')
       executarGeracao(respostas, instrucoes)
     }
   }
