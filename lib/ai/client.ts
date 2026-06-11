@@ -2,7 +2,10 @@ import OpenAI from 'openai'
 
 export type AIProvider = 'grok' | 'deepseek' | 'anthropic' | 'openai'
 
-const provider = (process.env.AI_PROVIDER || 'grok') as AIProvider
+// Default = deepseek: é o provedor de GERAÇÃO usado no app (a revisão final é
+// separada, no Sonnet via REVIEW_AI_MODEL/REVIEW_ANTHROPIC_API_KEY). Se AI_PROVIDER
+// ficar vazio, cai em deepseek — não num provedor que não usamos.
+const provider = (process.env.AI_PROVIDER || 'deepseek') as AIProvider
 
 function createClient(): OpenAI {
   switch (provider) {
