@@ -605,6 +605,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
     documentoCompleto && (tipo === 'escrita' || tipo === 'preparacao')
 
   const [step, setStep] = useState<Step>(dadosProjetoInicial ? 'plano' : 'input')
+  // Aba do plano: separa AÇÃO ("o que falta fazer") de LEITURA ("visão geral"),
+  // para os cards de preenchimento não se perderem no meio das explicações.
+  const [abaProjeto, setAbaProjeto] = useState<'fazer' | 'visao'>('fazer')
 
   // Guided form fields
   const [tema, setTema] = useState('')
@@ -1479,6 +1482,40 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
             </div>
           </div>
 
+          {/* ── Abas: AÇÃO (o que falta fazer) × LEITURA (visão geral) ──────── */}
+          <div className="flex items-center gap-1 border-b border-border -mb-2">
+            <button
+              type="button"
+              onClick={() => setAbaProjeto('fazer')}
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors',
+                abaProjeto === 'fazer'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <ClipboardList className="h-4 w-4" /> O que falta fazer
+              {totalChecklist > 0 && doneChecklist < totalChecklist && (
+                <span className="rounded-full bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 text-[11px] font-bold px-2 py-0.5">
+                  {totalChecklist - doneChecklist}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAbaProjeto('visao')}
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors',
+                abaProjeto === 'visao'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Info className="h-4 w-4" /> Visão geral
+            </button>
+          </div>
+
+          {abaProjeto === 'visao' && (<>
           {/* ── Visão geral: 4-col stats strip ─────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <InfoCard label="Tipo de Trabalho" value={TIPO_LABELS[planData.tipo_trabalho_sugerido] ?? planData.tipo_trabalho_sugerido} />
@@ -1607,7 +1644,9 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
               : <div />
             }
           </div>
+          </>)}
 
+          {abaProjeto === 'fazer' && (<>
           {/* ── Roadmap ─────────────────────────────────────────────────────── */}
           {planData.roadmap && planData.roadmap.length > 0 && (
             <div className="space-y-4">
@@ -2246,6 +2285,7 @@ export function ProjetoCriadorClient({ trabalho, dadosProjetoInicial, documentos
               </div>
             )
           })()}
+          </>)}
 
 
           {/* Ações */}
