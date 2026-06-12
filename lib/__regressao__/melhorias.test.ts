@@ -1208,22 +1208,30 @@ test('CONTRATO persistência: gerar-secao grava o conteúdo gerado server-side (
   assert.ok(/chaveSecao\s*===\s*'resumo'/.test(src), 'a persistência deve pular a seção resumo (JSON protegido)')
 })
 
-// ── 16. Editor remonta por seção: impede contaminação cruzada de conteúdo ──────
-// Regressão do bug em que o texto de uma seção (ex.: metodologia) vazava para outra
-// (ex.: introdução): o EditorArea não remontava ao trocar de fase, então timers de
-// autosave (debounce) e closures de onSalvar da seção anterior sobreviviam e podiam
-// gravar o conteúdo na seção errada. A key por chave_secao força o remount.
-test('CONTRATO isolamento: EditorArea é remontado por seção (key=chave_secao) — sem contaminação cruzada', () => {
+// ── 16. Isolamento por seção SEM remontar o editor (navegação não trava) ───────
+// Regressão do bug em que o texto de uma seção (ex.: metodologia) vazava para outra:
+// o autosave (debounce 3s) do EditorArea tinha deps só [conteudo] e podia gravar com
+// o onSalvar/seção anterior. Em vez de remontar o EditorArea a cada troca (key —
+// pesado, travava a navegação), o autosave passa a depender TAMBÉM de fase.chave_secao:
+// ao trocar de seção o timer pendente é cancelado e re-agendado para a seção certa.
+// O backstop real continua sendo a persistência server-side da geração (CONTRATO 15).
+test('CONTRATO isolamento: autosave do EditorArea reseta por seção; navegação não remonta', () => {
   const { readFileSync } = require('node:fs') as typeof import('node:fs')
-  const src = readFileSync(join(process.cwd(), 'app/(dashboard)/trabalhos/[id]/editar/EditorClient.tsx'), 'utf8') as string
-  // O <EditorArea> precisa de key derivada da seção ativa para remontar a cada troca.
+  const editorArea = readFileSync(join(process.cwd(), 'components/editor/EditorArea.tsx'), 'utf8') as string
+  const editorClient = readFileSync(join(process.cwd(), 'app/(dashboard)/trabalhos/[id]/editar/EditorClient.tsx'), 'utf8') as string
+  // O efeito de autosave (3s) deve ter fase.chave_secao nas deps → cancela/re-agenda por seção.
   assert.ok(
-    /<EditorArea[\s\S]{0,800}?key=\{faseAtualConfig\.chave_secao\}/.test(src),
-    'EditorArea deve ter key={faseAtualConfig.chave_secao} para remontar por seção',
+    /setTimeout\(\(\)\s*=>\s*\{\s*onSalvar\(false\)\s*\},\s*3000\)[\s\S]{0,260}?\},\s*\[conteudo,\s*fase\.chave_secao\]\)/.test(editorArea),
+    'autosave do EditorArea deve depender de [conteudo, fase.chave_secao]',
   )
-  // E trocarFase deve FAZER FLUSH do autosave pendente (salvar), não só cancelar.
+  // E NÃO deve remontar o editor por seção (a key pesada foi removida — travava a navegação).
   assert.ok(
-    /function trocarFase[\s\S]*?handleSalvarSilencioso\(/.test(src),
+    !/<EditorArea[\s\S]{0,800}?key=\{faseAtualConfig\.chave_secao\}/.test(editorClient),
+    'EditorArea NÃO deve ter key por seção (remonte pesado trava a navegação)',
+  )
+  // trocarFase deve FAZER FLUSH do autosave pendente (salvar), não só cancelar.
+  assert.ok(
+    /function trocarFase[\s\S]*?handleSalvarSilencioso\(/.test(editorClient),
     'trocarFase deve persistir o pendente (flush) ao navegar, não apenas limpar o timer',
   )
 })

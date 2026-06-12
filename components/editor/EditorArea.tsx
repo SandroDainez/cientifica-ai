@@ -120,14 +120,19 @@ export function EditorArea({
     el.style.height = `${Math.max(el.scrollHeight, 280)}px`
   }, [conteudo])
 
-  // Auto-save com debounce (3s após parar de digitar)
+  // Auto-save com debounce (3s após parar de digitar).
+  // `fase.chave_secao` ENTRA nas deps de propósito: ao trocar de seção, o cleanup
+  // CANCELA imediatamente qualquer save pendente da seção anterior e o efeito re-roda
+  // já com o onSalvar da seção nova — assim um save nunca grava o texto de uma seção
+  // EM OUTRA (contaminação cruzada), sem precisar remontar o editor (que travava a
+  // navegação). A persistência server-side da geração é o backstop principal.
   useEffect(() => {
     if (!conteudo.trim() || statusIA !== 'idle') return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { onSalvar(false) }, 3000)
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conteudo])
+  }, [conteudo, fase.chave_secao])
 
   // Auto-revisão silenciosa: 25s após o usuário parar de editar (não validado
   // recentemente). Limiar de 40 palavras: seções CURTAS mas legítimas (ex.: objetivos

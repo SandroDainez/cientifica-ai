@@ -870,12 +870,6 @@ export function EditorClient({ trabalho, fases: fasesRecebidas, secoesIniciais, 
               />
             ) : (
               <EditorArea
-                // key por seção: REMONTA o editor a cada troca de fase. Sem isto, os
-                // timers internos de autosave (debounce 3s) e a closure de onSalvar
-                // sobreviviam à navegação e podiam gravar o texto de uma seção EM OUTRA
-                // (contaminação cruzada: metodologia vazando para introdução). O remount
-                // destrói qualquer timer pendente da seção anterior.
-                key={faseAtualConfig.chave_secao}
                 fase={faseAtualConfig}
                 conteudo={conteudoAtual}
                 onConteudoChange={setConteudoAtual}
