@@ -5,6 +5,7 @@ import {
   requiredRegulatoryEvidenceRoutes,
   upsertRegulatoryEvidence,
   verifiedRegulatoryRoutes,
+  type RegulatoryDocumentIntegrity,
   type RegulatoryEvidenceEntry,
   type RegulatoryEvidenceRegistry,
 } from '@/lib/research-os/regulatory-evidence'
@@ -23,6 +24,21 @@ function asRegistry(value: unknown): RegulatoryEvidenceRegistry | null {
   return v.version === 1 && Array.isArray(v.entries) ? value as RegulatoryEvidenceRegistry : null
 }
 
+function sanitizeDocument(value: unknown): RegulatoryDocumentIntegrity | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const v = value as Record<string, unknown>
+  if (typeof v.path !== 'string' || typeof v.sha256 !== 'string') return undefined
+  return {
+    bucket: typeof v.bucket === 'string' ? v.bucket.slice(0, 100) : '',
+    path: v.path.slice(0, 1000),
+    fileName: typeof v.fileName === 'string' ? v.fileName.slice(0, 300) : '',
+    mimeType: typeof v.mimeType === 'string' ? v.mimeType.slice(0, 120) : '',
+    size: typeof v.size === 'number' ? v.size : Number(v.size),
+    sha256: v.sha256.slice(0, 64),
+    uploadedAt: typeof v.uploadedAt === 'string' ? v.uploadedAt.slice(0, 40) : '',
+  }
+}
+
 function sanitizeEntry(value: unknown): Partial<RegulatoryEvidenceEntry> {
   if (!value || typeof value !== 'object') return {}
   const v = value as Record<string, unknown>
@@ -36,6 +52,7 @@ function sanitizeEntry(value: unknown): Partial<RegulatoryEvidenceEntry> {
     identifier: typeof v.identifier === 'string' ? v.identifier.slice(0, 300) : '',
     issuer: typeof v.issuer === 'string' ? v.issuer.slice(0, 300) : undefined,
     documentReference: typeof v.documentReference === 'string' ? v.documentReference.slice(0, 1000) : undefined,
+    document: sanitizeDocument(v.document),
     issuedAt: typeof v.issuedAt === 'string' ? v.issuedAt.slice(0, 30) : undefined,
     expiresAt: typeof v.expiresAt === 'string' ? v.expiresAt.slice(0, 30) : undefined,
     verifiedAt: typeof v.verifiedAt === 'string' ? v.verifiedAt.slice(0, 40) : undefined,

@@ -3,6 +3,16 @@ import { routeEthics } from './ethics-router'
 
 export type RegulatoryEvidenceStatus = 'registrado' | 'verificado' | 'revogado'
 
+export interface RegulatoryDocumentIntegrity {
+  bucket: string
+  path: string
+  fileName: string
+  mimeType: string
+  size: number
+  sha256: string
+  uploadedAt: string
+}
+
 export interface RegulatoryEvidenceEntry {
   id: string
   route: EthicsRoute
@@ -10,6 +20,7 @@ export interface RegulatoryEvidenceEntry {
   identifier: string
   issuer?: string
   documentReference?: string
+  document?: RegulatoryDocumentIntegrity
   issuedAt?: string
   expiresAt?: string
   verifiedAt?: string
@@ -35,10 +46,26 @@ const ROUTES_REQUIRING_EVIDENCE = new Set<EthicsRoute>([
   'consentimento_publicacao_caso',
 ])
 
+const SHA256_RE = /^[a-f0-9]{64}$/i
+
 function clean(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const text = value.trim()
   return text || undefined
+}
+
+function validDocument(document: RegulatoryDocumentIntegrity | undefined): boolean {
+  return Boolean(
+    document
+      && clean(document.bucket)
+      && clean(document.path)
+      && clean(document.fileName)
+      && clean(document.mimeType)
+      && Number.isFinite(document.size)
+      && document.size > 0
+      && SHA256_RE.test(document.sha256)
+      && clean(document.uploadedAt),
+  )
 }
 
 export function requiredRegulatoryEvidenceRoutes(state: ResearchProjectState): EthicsRoute[] {
@@ -62,14 +89,17 @@ export function validateRegulatoryEvidenceEntry(
   if (entry.status === 'verificado' && !clean(entry.verifiedAt)) {
     errors.push('Evidência marcada como verificada precisa registrar verifiedAt.')
   }
-  if (entry.status === 'verificado' && !clean(entry.documentReference)) {
-    errors.push('Evidência regulatória só pode ser marcada como verificada quando houver referência documental real.')
+  if (entry.status === 'verificado' && !validDocument(entry.document)) {
+    errors.push('Evidência regulatória só pode ser verificada quando houver documento privado com SHA-256, tamanho, tipo e caminho de storage registrados.')
+  }
+  if (entry.status === 'verificado' && entry.document && entry.documentReference !== entry.document.path) {
+    errors.push('A referência documental precisa apontar exatamente para o documento íntegro registrado no storage.')
   }
   if (entry.expiresAt && entry.issuedAt && entry.expiresAt < entry.issuedAt) {
     errors.push('A data de expiração não pode ser anterior à data de emissão.')
   }
-  if (entry.status === 'registrado' && clean(entry.documentReference) && !clean(entry.verifiedAt)) {
-    warnings.push('Documento registrado, mas ainda não marcado como verificado.')
+  if (entry.status === 'registrado' && validDocument(entry.document) && !clean(entry.verifiedAt)) {
+    warnings.push('Documento íntegro registrado, mas a evidência ainda não foi marcada como verificada.')
   }
 
   return { valid: errors.length === 0, errors, warnings }
@@ -82,13 +112,25 @@ export function sanitizeRegulatoryEvidenceEntry(
 ): RegulatoryEvidenceEntry {
   const route = raw.route as EthicsRoute
   const status: RegulatoryEvidenceStatus = raw.status === 'verificado' || raw.status === 'revogado' ? raw.status : 'registrado'
+  const document = raw.document && typeof raw.document === 'object'
+    ? {
+        bucket: clean(raw.document.bucket) ?? '',
+        path: clean(raw.document.path) ?? '',
+        fileName: clean(raw.document.fileName) ?? '',
+        mimeType: clean(raw.document.mimeType) ?? '',
+        size: Number(raw.document.size),
+        sha256: clean(raw.document.sha256)?.toLowerCase() ?? '',
+        uploadedAt: clean(raw.document.uploadedAt) ?? '',
+      }
+    : undefined
   const entry: RegulatoryEvidenceEntry = {
     id: clean(raw.id) ?? `reg-${Date.now().toString(36)}`,
     route,
     status,
     identifier: clean(raw.identifier) ?? '',
     issuer: clean(raw.issuer),
-    documentReference: clean(raw.documentReference),
+    documentReference: document?.path ?? clean(raw.documentReference),
+    document,
     issuedAt: clean(raw.issuedAt),
     expiresAt: clean(raw.expiresAt),
     verifiedAt: status === 'verificado' ? (clean(raw.verifiedAt) ?? now) : clean(raw.verifiedAt),

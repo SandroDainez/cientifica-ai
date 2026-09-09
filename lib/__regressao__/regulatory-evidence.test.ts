@@ -6,6 +6,7 @@ import {
   upsertRegulatoryEvidence,
   validateRegulatoryEvidenceEntry,
   verifiedRegulatoryRoutes,
+  type RegulatoryDocumentIntegrity,
   type RegulatoryEvidenceEntry,
 } from '../research-os/regulatory-evidence'
 
@@ -17,13 +18,24 @@ function humanCohortState() {
   return state
 }
 
+const document: RegulatoryDocumentIntegrity = {
+  bucket: 'research-regulatory-documents',
+  path: 'user/project/cep_conep_plataforma_brasil/abc-parecer.pdf',
+  fileName: 'parecer.pdf',
+  mimeType: 'application/pdf',
+  size: 120034,
+  sha256: 'a'.repeat(64),
+  uploadedAt: '2026-09-09T12:00:00.000Z',
+}
+
 const verifiedEntry: RegulatoryEvidenceEntry = {
   id: 'cep1',
   route: 'cep_conep_plataforma_brasil',
   status: 'verificado',
   identifier: 'CAAE 12345678.9.0000.0001',
   issuer: 'CEP institucional',
-  documentReference: 'parecer-consubstanciado-123456.pdf',
+  documentReference: document.path,
+  document,
   issuedAt: '2026-08-01',
   verifiedAt: '2026-09-09T12:00:00.000Z',
 }
@@ -44,10 +56,25 @@ test('não marca como verificada sem identificador real', () => {
   assert.match(validation.errors.join(' '), /identificador real/i)
 })
 
-test('não marca como verificada sem referência documental real', () => {
-  const validation = validateRegulatoryEvidenceEntry({ ...verifiedEntry, documentReference: '' }, humanCohortState())
+test('não marca como verificada sem documento íntegro e SHA-256', () => {
+  const validation = validateRegulatoryEvidenceEntry({ ...verifiedEntry, document: undefined, documentReference: undefined }, humanCohortState())
   assert.equal(validation.valid, false)
-  assert.match(validation.errors.join(' '), /referência documental real/i)
+  assert.match(validation.errors.join(' '), /SHA-256/i)
+})
+
+test('rejeita fingerprint SHA-256 malformado', () => {
+  const validation = validateRegulatoryEvidenceEntry({
+    ...verifiedEntry,
+    document: { ...document, sha256: 'abc123' },
+  }, humanCohortState())
+  assert.equal(validation.valid, false)
+  assert.match(validation.errors.join(' '), /SHA-256/i)
+})
+
+test('referência documental precisa apontar para o mesmo objeto íntegro', () => {
+  const validation = validateRegulatoryEvidenceEntry({ ...verifiedEntry, documentReference: 'outro/arquivo.pdf' }, humanCohortState())
+  assert.equal(validation.valid, false)
+  assert.match(validation.errors.join(' '), /exatamente/i)
 })
 
 test('registro verificado válido libera a rota para Submission Readiness', () => {
