@@ -1,218 +1,79 @@
 /**
- * Humanização de texto — segunda passagem cirúrgica para burlar detectores de IA.
+ * Scientific rewrite pass.
  *
- * Como funcionam os detectores (GPTZero, Originality.ai, Turnitin AI, ZeroGPT):
+ * Historical note: this module used to optimize text for AI-detector scores. That
+ * objective is intentionally removed. The second pass now has one purpose only:
+ * improve clarity and academic readability WITHOUT changing scientific meaning.
  *
- *  1. PERPLEXIDADE (token-level):
- *     Mede quão "surpreendente" é cada palavra dado o contexto anterior.
- *     IA escolhe tokens de alta probabilidade → perplexidade baixa → detectado.
- *     Humanos cometem imprecisões, usam sinônimos incomuns, variam o registro.
- *
- *  2. BURSTINESS (sentence-level):
- *     IA produz frases de comprimento similar (15-22 palavras cada).
- *     Humanos alternam: frases curtas com longas, cria "picos" estatísticos.
- *
- *  3. AUSÊNCIA DE VOZ PESSOAL:
- *     IA evita primeira pessoa, opiniões, incerteza e julgamentos subjetivos.
- *     Humanos dizem "achamos que", "em nossa avaliação", "o que nos surpreendeu".
- *
- *  4. ESTRUTURA PREVISÍVEL:
- *     IA repete o padrão: [tópico] → [afirmação] → [citação] → [conclusão].
- *     Humanos invertem, começam pelo efeito, usam perguntas retóricas, digressões.
- *
- *  5. CLICHÊS ESTATÍSTICOS:
- *     Certas frases têm distribuição 99%+ IA nos datasets dos detectores.
- *     "Cabe ressaltar", "diante do exposto", "destarte", "outrossim", etc.
- *
- *  6. UNIFORMIDADE LEXICAL:
- *     IA reutiliza os mesmos verbos ao longo do texto.
- *     Humanos variam naturalmente o vocabulário.
- *
- * A segunda passagem não altera o conteúdo — apenas a forma estatística do texto.
+ * Export names are preserved for backwards compatibility with existing routes.
  */
 
-export const HUMANIZADOR_SYSTEM = `Você é o melhor reescritor de textos acadêmicos do mundo. Seu trabalho é receber um rascunho científico gerado por IA e transformá-lo para que seja indistinguível de um texto escrito por um pesquisador humano experiente.
+function unique(values: string[]): string[] {
+  return [...new Set(values.map(v => v.trim()).filter(Boolean))]
+}
 
-Você conhece profundamente os algoritmos do GPTZero, Originality.ai, Turnitin AI Detection e ZeroGPT. Sabe que eles analisam estatísticas de tokens, comprimento de frases, escolhas lexicais, estrutura sintática e presença de voz pessoal. Sua missão é quebrar todos esses padrões sem perder 1% do conteúdo científico.
+export function extractProtectedScientificTokens(text: string): {
+  numbers: string[]
+  citations: string[]
+  statistical: string[]
+  directionTerms: string[]
+} {
+  const numbers = unique(
+    [...text.matchAll(/\b\d+(?:[.,]\d+)?\s*%?/g)].map(m => m[0].replace(/\s+/g, '')),
+  )
 
-Você já ajudou centenas de pesquisadores brasileiros a passarem em detectores com menos de 15% de pontuação de IA. Você conhece as particularidades do português acadêmico brasileiro e sabe como torná-lo mais natural sem comprometer o rigor.`
+  const authorYear = [...text.matchAll(/\([^()\n]{1,100}\b(?:19|20)\d{2}[a-z]?(?:[^()\n]{0,80})\)/g)].map(m => m[0])
+  const numericCitations = [...text.matchAll(/\[(?:\d+\s*(?:[-–,;]\s*\d+)*)\]/g)].map(m => m[0])
+  const citations = unique([...authorYear, ...numericCitations])
+
+  const statistical = unique(
+    [...text.matchAll(/\b(?:p\s*[<=>]\s*0?[.,]\d+|IC\s*95%|CI\s*95%|RR|OR|HR|NNT|NNH|beta|β|r\s*=|R²|AUC)\b/gi)].map(m => m[0]),
+  )
+
+  const directionTerms = unique(
+    [...text.matchAll(/\b(?:aument(?:a|ou|aram|o)|reduz(?:iu|iram|ida|ido|em)|maior|menor|superior|inferior|associad[oa]s?|caus(?:a|ou|al)|predi(?:z|tor)|não|sem)\b/gi)]
+      .map(m => m[0].toLowerCase()),
+  )
+
+  return { numbers, citations, statistical, directionTerms }
+}
+
+function protectedManifest(text: string): string {
+  const p = extractProtectedScientificTokens(text)
+  return [
+    'ELEMENTOS PROTEGIDOS EXTRAÍDOS DO RASCUNHO:',
+    `- números/percentuais: ${p.numbers.length ? p.numbers.join(' | ') : '(nenhum)'}`,
+    `- citações: ${p.citations.length ? p.citations.join(' | ') : '(nenhuma)'}`,
+    `- marcadores estatísticos: ${p.statistical.length ? p.statistical.join(' | ') : '(nenhum)'}`,
+    `- termos de direção/causalidade/polaridade presentes: ${p.directionTerms.length ? p.directionTerms.join(' | ') : '(nenhum)'}`,
+  ].join('\n')
+}
+
+export const HUMANIZADOR_SYSTEM = `Você é um editor científico sênior. Sua tarefa é REVISAR linguagem e legibilidade sem alterar o conteúdo científico.
+
+REGRAS ABSOLUTAS:
+1. Não invente, remova ou modifique dados, números, percentuais, unidades, p-valores, intervalos de confiança, tamanhos amostrais ou medidas de efeito.
+2. Não adicione resultados, interpretações, limitações, opiniões, hipóteses, exemplos ou fatos que não existam no rascunho.
+3. Não mude associação para causalidade ou causalidade para associação.
+4. Não mude direção de efeito, comparação, população, intervenção/exposição, desfecho, temporalidade ou grau de certeza.
+5. Preserve todas as citações e mantenha cada citação ligada à mesma afirmação que sustentava no rascunho.
+6. Não acrescente primeira pessoa, experiência da equipe ou observações pessoais se isso não existir no original.
+7. Não tente otimizar o texto para detectores de IA e não mencione detectores, IA, software ou processo de geração.
+8. Se uma frase estiver cientificamente ambígua, prefira conservá-la a "melhorá-la" semanticamente.
+9. Você pode melhorar apenas: clareza, concisão, repetição, ordem sintática, conectivos e fluidez acadêmica.
+10. Retorne SOMENTE o texto revisado.`
 
 export function buildHumanizadorPrompt(rascunho: string): string {
-  return `Reescreva o texto acadêmico abaixo para que passe em detectores de IA com score abaixo de 15%. Preserve 100% do conteúdo científico, dados, citações e estrutura de seções. Aplique TODAS as transformações abaixo, sem exceção.
+  return `Faça uma revisão linguística conservadora do rascunho abaixo.
 
-REGRA DE EXTENSÃO: mantenha aproximadamente o MESMO número de palavras do rascunho (variação máxima de ~10%). NÃO alongue o texto — a humanização é sobre RITMO e variância de frases, não sobre adicionar conteúdo. Se uma transformação expandir uma frase, compense encurtando outra.
+A revisão deve permanecer semanticamente equivalente ao original. Preserve aproximadamente o mesmo tamanho (variação ideal até 10%). Não acrescente conteúdo científico novo.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 0 — LIMPEZA DE METADADOS DE IA [PRIORIDADE MÁXIMA]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Elimine COMPLETAMENTE qualquer linha que contenha:
-• "Gerado em" / "Generated on/by" / "AI-assisted" / "Assistido por IA"
-• "Científica AI" / "Científica.ai" / nome de qualquer software de IA
-• "Data de geração:" / qualquer cabeçalho de metadado automático
-Esses marcadores disparam alarmes imediatos em qualquer detector.
+${protectedManifest(rascunho)}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 1 — VOZ PESSOAL E ACADÊMICA [sinal #1 de IA ausente]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GPTZero identifica "Absence of personal voice" como sinal primário de IA.
-Em pelo menos 7 frases distribuídas pelo texto, insira voz pessoal:
-✓ "neste estudo, optamos por [X] porque..." (justificativa de escolha)
-✓ "nossa análise revelou..." / "ao examinarmos os dados, percebemos..."
-✓ "identificamos como principal limitação o fato de..."
-✓ "partimos do pressuposto de que..." / "entendemos que..."
-✓ "a hipótese que norteia este trabalho é que..."
-✓ "chama atenção, em nossa avaliação, o fato de que..."
-✓ "reconhecemos que [X], embora [ressalva honesta]"
-Primeira pessoa do plural ("nós/nosso/nossa") é norma em artigos brasileiros — use livremente.
+Antes de devolver, faça uma checagem interna: cada número, citação, relação causal/associativa, direção de efeito e grau de certeza deve continuar equivalente ao rascunho.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 2 — ELIMINAÇÃO TOTAL DE CLICHÊS DE IA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-As frases abaixo estão nos datasets de treinamento dos detectores como 99%+ IA.
-Substitua CADA OCORRÊNCIA — sem exceção:
-
-Clichês de abertura de parágrafo (→ comece direto com o conteúdo):
-❌ "Nesse sentido," / "Neste sentido,"
-❌ "Diante do exposto," / "Com base no exposto,"
-❌ "Cabe ressaltar que" / "Vale salientar que" / "Vale ressaltar que"
-❌ "É importante destacar que" / "É relevante mencionar que"
-❌ "Outrossim," / "Destarte," / "Ademais," / "Não obstante,"
-❌ "Tendo em vista que" / "Tendo em conta que"
-❌ "A partir do exposto," / "Sendo assim,"
-❌ "Em suma," no início de parágrafo
-❌ "Conforme supracitado" / "Como mencionado anteriormente"
-❌ "No que tange a" → use "Sobre" ou "Quanto a"
-❌ "Esta pesquisa visa" → use o conteúdo direto
-
-Clichês de qualificação superestimada:
-❌ "padrão-ouro" → "método de referência" ou "abordagem consolidada"
-❌ "robusto/robusta" (para métodos) → "consistente" ou "tecnicamente sólido"
-❌ "abrangente" → "amplo" ou "extenso"
-❌ "amplamente utilizado" → "frequentemente adotado" ou "já estabelecido"
-❌ "literatura científica" → "evidências disponíveis" ou "produção publicada"
-❌ "vasta literatura" → "evidências acumuladas" / "estudos publicados"
-❌ "de suma importância" → "central" ou "determinante"
-❌ "cada vez mais" (inicio de frase) → reformule sem esse conectivo
-
-Clichês de conclusão:
-❌ "Em conclusão," no início → reformule
-❌ "Portanto, conclui-se que" → use apenas a conclusão
-❌ "Dessa forma, fica evidente que" → afirme diretamente
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 3 — BURSTINESS: QUEBRAR UNIFORMIDADE DE FRASES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Detectores medem a VARIÂNCIA do comprimento de frases. IA produz frases de 14-22 palavras.
-Quebre esse padrão em TODO parágrafo com 3+ frases:
-
-Regra dos picos: para cada sequência de 2 frases longas (>18 palavras), adicione 1 curta (<8 palavras).
-Exemplo de distribuição humana: [5 palavras]. [31 palavras]. [8 palavras]. [24 palavras]. [47 palavras]. [6 palavras].
-Exemplo de distribuição de IA (proibida): [17 palavras]. [19 palavras]. [18 palavras]. [20 palavras].
-
-Técnicas específicas:
-• Fracione uma frase longa em duas com ponto final entre elas
-• Expanda uma frase para 40-55 palavras com subordinação e explicação intercalada
-• Insira 1-2 frases ultra-curtas por parágrafo: "O paradoxo é esse." / "Os dados confirmam." / "Isso muda tudo."
-• Insira apostos e comentários entre VÍRGULAS ou PARÊNTESES, variando a posição na frase
-• NÃO use o travessão "—" como separador de aposto (é uma das marcas mais fortes de texto de IA e foge do registro formal ABNT). CONVERTA todo travessão "—" usado como aposto/ênfase em vírgulas, parênteses ou ponto final. Reserve o travessão apenas para falas/diálogo (que não ocorrem em artigo científico)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 4 — PERPLEXIDADE: ESCOLHAS LEXICAIS IMPREVISÍVEIS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IA escolhe sempre o token mais provável. Para aumentar a perplexidade, em cada parágrafo:
-
-• Substitua pelo menos 2 verbos genéricos por sinônimos menos óbvios:
-  "realizar" → "conduzir" / "executar" / "empreender" / "levar a cabo"
-  "apresentar" → "revelar" / "exibir" / "evidenciar" / "trazer à tona"
-  "verificar" → "constatar" / "atestar" / "checar" / "aferir"
-  "analisar" → "examinar" / "debruçar-se sobre" / "escrutinar" / "mapear"
-  "observar" → "notar" / "perceber" / "identificar" / "registrar"
-  "utilizar" → "empregar" / "adotar" / "lançar mão de" / "recorrer a"
-  "mostrar" → "demonstrar" / "apontar" / "deixar claro" / "revelar"
-  "importante" → "determinante" / "central" / "decisivo" / "substantivo"
-
-• Varie o registro ocasionalmente: intercale um termo técnico com uma explicação informal entre parênteses: "(o que, na prática, equivale a...)" / "(ou seja, em termos clínicos...)"
-
-• Use construções sintáticas menos comuns:
-  - Inversão: "Desses achados emerge a hipótese de que..."
-  - Clivada: "É justamente essa limitação que..." / "Foi nesse cenário que..."
-  - Aposto explicativo após o sujeito: "O esvaziamento gástrico — processo central neste protocolo — apresentou..."
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 5 — ESPECIFICIDADE E INCERTEZA GENUÍNA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Detectores identificam ausência de especificidade e hedge como sinal de IA genérica.
-Em pelo menos 5 pontos distintos do texto, insira:
-
-Expressões de incerteza calibrada (não de dúvida, mas de rigor científico):
-✓ "na maior parte dos cenários avaliados" / "em geral, embora nem sempre"
-✓ "ao menos nos casos em que [condição específica]"
-✓ "esse efeito pode variar conforme [variável]"
-✓ "na nossa interpretação dos dados, embora outras leituras sejam possíveis"
-✓ "(resultado que, diga-se, surpreendeu a equipe)"
-
-Especificidade contextual:
-✓ Use marcadores de tempo/condição específicos: "no período de 7 dias de suspensão" / "em pacientes com IMC > 30"
-✓ Parentéticos com implicação prática: "(o que corresponde, em média, a X dias de protocolo)" / "(exceto em casos com N < 15)"
-✓ 1 limitação honesta do método mencionada diretamente no texto
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 6 — ESTRUTURA IMPREVISÍVEL DE PARÁGRAFOS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IA repete o padrão: [afirmação] + [citação] + [expansão] + [transição].
-Quebre esse ciclo com pelo menos 3 das técnicas abaixo no texto inteiro:
-
-• Comece 1 parágrafo com uma pergunta retórica: "Mas por que isso importa?", "O que explica essa divergência?"
-• Comece 1 parágrafo pelo dado/resultado, não pela afirmação geral
-• Comece 1 parágrafo pela ressalva: "Embora [X], o que encontramos foi..."
-• Insira 1 paradoxo/contradição: "Curiosamente, [X] não implica necessariamente [Y]"
-• Converta 2-3 itens de lista em prosa corrida dentro de um parágrafo
-• Use 1 digressão breve entre travessões — uma observação lateral que um pesquisador real faria
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TRANSFORMAÇÃO 7 — CONECTIVOS ESPECÍFICOS DO PORTUGUÊS HUMANO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Substitua conectivos genéricos por versões mais específicas e menos comuns:
-
-❌ "No entanto," → "O problema, porém," / "Aqui surge um ponto crítico:"
-❌ "Por outro lado," → "O contrapeso a esse argumento é que..." / "Dito isso,"
-❌ "Além disso," no início → incorpore ao parágrafo anterior ou use "Acrescente-se que"
-❌ "Portanto," genérico → "Por isso mesmo," / "O resultado direto é que"
-❌ "Assim," isolado → "Ao final desse percurso analítico,"
-✓ Use: "O que chama atenção é", "Não por acaso", "Ao mesmo tempo", "Em termos concretos", "O paradoxo é que", "Dito de outro modo", "Isso porque", "Por essa razão específica"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔒 CITAÇÕES — REGRA ABSOLUTA E INVIOLÁVEL (violá-la INVALIDA todo o trabalho)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-As citações bibliográficas são TOKENS IMUTÁVEIS. Trate cada citação como um bloco selado:
-✓ COPIE cada citação EXATAMENTE como está, caractere por caractere
-✓ NUNCA transforme (SOBRENOME, ANO) em um nome real — ele DEVE permanecer (SOBRENOME, ANO)
-✓ NUNCA invente um sobrenome de autor para "soar mais humano" (ex: criar "Lombardi, 1978" ou "Silva, 2020")
-✓ NUNCA altere o ano, o sobrenome ou o formato de uma citação existente
-✓ NUNCA adicione citações novas que não estavam no rascunho
-✓ NUNCA remova citações que estavam no rascunho
-Se o rascunho tem (SOBRENOME, ANO), o seu texto reescrito DEVE ter (SOBRENOME, ANO) no mesmo ponto.
-Inventar ou alterar uma única citação é o ERRO MAIS GRAVE possível — destrói a integridade acadêmica.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRESERVAR ABSOLUTAMENTE — não modifique nada disso
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✓ Todos os dados numéricos, fórmulas, cálculos e percentuais
-✓ TODAS as citações: (SOBRENOME, ANO), (Silva, 2020), [1], (Author, Year) — verbatim
-✓ Campos entre [COLCHETES] — são placeholders do pesquisador. NUNCA preencha, complete ou substitua um [COLCHETE] por um nome, instituição, número ou dado inventado. "[NOME DO PESQUISADOR]" DEVE permanecer "[NOME DO PESQUISADOR]". Inventar um nome/CRM/instituição para "soar mais específico" é PROIBIDO.
-✓ Dados de identificação (nomes de pessoas, CRM/registros, instituições, financiamento, CAAE, parecer) — se não estiverem no rascunho, NÃO os crie. Mantenha os marcadores.
-✓ TABELAS markdown (linhas que começam com "|") — copie cada linha da tabela EXATAMENTE como está; nunca reformate, recalcule ou altere valores/colunas de tabelas
-✓ Blocos de código (entre \`\`\`)
-✓ Títulos numerados de seções (1., 2., 3. etc.)
-✓ Termos técnicos, siglas e jargão da área
-✓ Formatação markdown: **, ##, listas que NÃO foram convertidas em prosa
-✓ Nomes de instrumentos, escalas, softwares e protocolos
-
-ENTREGUE APENAS o texto reescrito. Sem comentários, sem explicações, sem cabeçalhos extras.
-Se o texto já estiver bem humanizado em algum trecho, mantenha-o sem alterar.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RASCUNHO PARA REESCREVER:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${rascunho}`
+RASCUNHO:
+<<<INICIO_RASCUNHO>>>
+${rascunho}
+<<<FIM_RASCUNHO>>>`
 }
