@@ -6,11 +6,13 @@ import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 import type { MethodologyInput, MethodologyPlan } from '@/lib/research-os/methodology-engine'
 import type { SampleSizeInput, SampleSizePlan } from '@/lib/research-os/sample-size-engine'
 import type { ProtocolLockRecord } from '@/lib/research-os/protocol-lock'
+import type { ExecutionAnalysisRecord } from '@/lib/research-os/execution-analysis-lock'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
 import { EvidencePanel } from './EvidencePanel'
 import { MethodologyPanel } from './MethodologyPanel'
 import { SampleSizePanel } from './SampleSizePanel'
 import { ProtocolLockPanel } from './ProtocolLockPanel'
+import { ExecutionAnalysisPanel } from './ExecutionAnalysisPanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -37,6 +39,7 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const initialSampleSizeInput = (researchOs.sample_size_input as SampleSizeInput | undefined) ?? null
   const initialSampleSizePlan = (researchOs.sample_size_plan as SampleSizePlan | undefined) ?? null
   const initialProtocolLock = (researchOs.protocol_lock as ProtocolLockRecord | undefined) ?? null
+  const initialExecutionAnalysis = (researchOs.execution_analysis as ExecutionAnalysisRecord | undefined) ?? null
 
   return (
     <div>
@@ -56,6 +59,11 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
           initialPlan={initialSampleSizePlan}
         />
         <ProtocolLockPanel trabalhoId={trabalho.id} initialLock={initialProtocolLock} />
+        <ExecutionAnalysisPanel
+          trabalhoId={trabalho.id}
+          protocolLock={initialProtocolLock}
+          initialRecord={initialExecutionAnalysis}
+        />
         <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
       </div>
     </div>
