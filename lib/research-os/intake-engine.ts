@@ -33,8 +33,9 @@ export interface ScientificIntakeResult {
 
 function inferHumanDataSource(facts: ScientificIntakeInput['facts']): HumanDataSource {
   if (facts?.humanDataSource) return facts.humanDataSource
+  if (facts?.investigatorAssignsIntervention) return 'intervencao_prospectiva'
   if (facts?.historicalDataOnly) return 'prontuario_retrospectivo'
-  if (facts?.investigatorAssignsIntervention || facts?.followsForwardInTime) return 'observacional_prospectiva'
+  if (facts?.followsForwardInTime) return 'observacional_prospectiva'
   return 'nenhum'
 }
 
