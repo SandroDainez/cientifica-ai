@@ -57,9 +57,13 @@ function asResultFactRegistry(value: unknown): ResultFactRegistry | null {
     : null
 }
 
-function protocolLockFromState(value: unknown): unknown {
+function stateBridge(value: unknown, key: string): unknown {
   if (!value || typeof value !== 'object') return undefined
-  return (value as Record<string, unknown>)._protocol_lock
+  return (value as Record<string, unknown>)[key]
+}
+
+function protocolLockFromState(value: unknown): unknown {
+  return stateBridge(value, '_protocol_lock')
 }
 
 export function buildGenerationEvidencePolicy(params: {
@@ -85,8 +89,8 @@ export function buildGenerationEvidencePolicy(params: {
   }
 
   if (RESULTS_SECTIONS.has(params.sectionKey)) {
-    const execution = asExecutionRecord(params.executionAnalysis)
-    const registry = asResultFactRegistry(params.resultFactRegistry)
+    const execution = asExecutionRecord(params.executionAnalysis ?? stateBridge(params.researchProjectState, '_execution_analysis'))
+    const registry = asResultFactRegistry(params.resultFactRegistry ?? stateBridge(params.researchProjectState, '_result_fact_registry'))
     if (!execution) {
       return {
         researchOsActive: true,
