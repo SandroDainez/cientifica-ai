@@ -75,7 +75,10 @@ function fingerprint(value: unknown): string {
 }
 
 export function extractResultNumericTokens(text: string): string[] {
-  const matches = text.match(/(?<![\p{L}\d])(?:\d+(?:[.,]\d+)?)(?:\s*%|\b)/gu) ?? []
+  // Captura valores mesmo quando aparecem imediatamente após rótulos estatísticos,
+  // por exemplo IC95%, p0,05 ou R2. O que evitamos é apenas iniciar no meio de
+  // outro token numérico já em curso.
+  const matches = text.match(/(?<!\d)(?:\d+(?:[.,]\d+)?)(?:\s*%|\b)/gu) ?? []
   return [...new Set(matches.map(token => token.replace(/\s+/g, '').replace(',', '.').toLowerCase()))]
 }
 
