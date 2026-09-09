@@ -4,9 +4,11 @@ import type { Trabalho } from '@/types'
 import type { ResearchProjectState } from '@/lib/research-os/types'
 import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 import type { MethodologyInput, MethodologyPlan } from '@/lib/research-os/methodology-engine'
+import type { SampleSizeInput, SampleSizePlan } from '@/lib/research-os/sample-size-engine'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
 import { EvidencePanel } from './EvidencePanel'
 import { MethodologyPanel } from './MethodologyPanel'
+import { SampleSizePanel } from './SampleSizePanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -30,6 +32,8 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const initialEvidenceMap = (researchOs.evidence_map as EvidenceMapResult | undefined) ?? null
   const initialMethodologyPlan = (researchOs.methodology_plan as MethodologyPlan | undefined) ?? null
   const initialMethodologyInput = (researchOs.methodology_input as MethodologyInput | undefined) ?? null
+  const initialSampleSizeInput = (researchOs.sample_size_input as SampleSizeInput | undefined) ?? null
+  const initialSampleSizePlan = (researchOs.sample_size_plan as SampleSizePlan | undefined) ?? null
 
   return (
     <div>
@@ -40,6 +44,13 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
           initialState={initialState}
           initialPlan={initialMethodologyPlan}
           initialInput={initialMethodologyInput}
+        />
+        <SampleSizePanel
+          trabalhoId={trabalho.id}
+          initialState={initialState}
+          methodologyInput={initialMethodologyInput}
+          initialInput={initialSampleSizeInput}
+          initialPlan={initialSampleSizePlan}
         />
         <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
       </div>
