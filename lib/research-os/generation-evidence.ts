@@ -1,6 +1,9 @@
 import type { EvidenceMapResult } from './evidence-engine'
 import { evaluateEvidenceGate, type EvidenceGateDecision, type EvidenceGateSection } from './evidence-gate'
 import { evaluateMethodologyGate, isMethodologySection } from './methodology-gate'
+import type { MethodologyPlan } from './methodology-engine'
+import { buildProtocolGroundedMethodsPolicy, isProtocolLockRecord } from './protocol-generation'
+import type { SampleSizePlan } from './sample-size-engine'
 import type { ResearchProjectState } from './types'
 
 const SECTION_MAP: Record<string, EvidenceGateSection> = {
@@ -22,11 +25,31 @@ function asResearchProjectState(value: unknown): ResearchProjectState | null {
   return value as ResearchProjectState
 }
 
+function asMethodologyPlan(value: unknown): MethodologyPlan | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<MethodologyPlan>
+  return typeof v.design === 'string' && typeof v.readiness === 'string' ? value as MethodologyPlan : null
+}
+
+function asSampleSizePlan(value: unknown): SampleSizePlan | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<SampleSizePlan>
+  return typeof v.status === 'string' ? value as SampleSizePlan : null
+}
+
+function protocolLockFromState(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return undefined
+  return (value as Record<string, unknown>)._protocol_lock
+}
+
 export function buildGenerationEvidencePolicy(params: {
   sectionKey: string
   researchProjectState: unknown
   evidenceMap: EvidenceMapResult | null | undefined
   currentReferenceIds?: string[]
+  methodologyPlan?: unknown
+  sampleSizePlan?: unknown
+  protocolLock?: unknown
 }): GenerationEvidencePolicy {
   const researchOsActive = Boolean(params.researchProjectState)
   const section = SECTION_MAP[params.sectionKey] ?? 'outro'
@@ -41,6 +64,39 @@ export function buildGenerationEvidencePolicy(params: {
 
   if (isMethodologySection(params.sectionKey)) {
     const methodologyState = asResearchProjectState(params.researchProjectState)
+    const protocolLock = params.protocolLock ?? protocolLockFromState(params.researchProjectState)
+
+    if (isProtocolLockRecord(protocolLock)) {
+      if (!methodologyState) {
+        return {
+          researchOsActive: true,
+          decision: {
+            allowed: false,
+            level: 'bloquear',
+            reasons: ['O estado científico atual está inválido e não pode ser comparado ao protocolo congelado.'],
+          },
+          promptGuardrail: '',
+        }
+      }
+
+      const protocolPolicy = buildProtocolGroundedMethodsPolicy({
+        state: methodologyState,
+        methodology: params.methodologyPlan === undefined ? undefined : asMethodologyPlan(params.methodologyPlan),
+        sampleSize: params.sampleSizePlan === undefined ? undefined : asSampleSizePlan(params.sampleSizePlan),
+        protocolLock,
+      })
+
+      return {
+        researchOsActive: true,
+        decision: {
+          allowed: protocolPolicy.allowed,
+          level: protocolPolicy.level,
+          reasons: protocolPolicy.reasons,
+        },
+        promptGuardrail: protocolPolicy.promptGuardrail,
+      }
+    }
+
     const methodologyDecision = methodologyState
       ? evaluateMethodologyGate(params.sectionKey, methodologyState)
       : {

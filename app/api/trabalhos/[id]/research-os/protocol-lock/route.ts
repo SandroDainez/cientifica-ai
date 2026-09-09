@@ -86,10 +86,21 @@ export async function POST(
       amendmentReason: action === 'amend' ? body.reason : undefined,
     })
 
+    // Compatibility bridge for the current generation route, which already loads
+    // project_state. The canonical copy remains research_os.protocol_lock; this
+    // mirror lets Methods enforce the frozen protocol without another DB query or
+    // widening the large gerar-secao route. Remove when generation receives the
+    // full Research OS envelope directly.
+    const stateForGeneration = {
+      ...state,
+      _protocol_lock: protocolLock,
+    }
+
     const nextDadosTrabalho = {
       ...current,
       research_os: {
         ...researchOs,
+        project_state: stateForGeneration,
         protocol_lock: protocolLock,
         protocol_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
