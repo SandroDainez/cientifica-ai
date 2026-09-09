@@ -63,10 +63,13 @@ export function validateRegulatoryEvidenceEntry(
     errors.push('Evidência marcada como verificada precisa registrar verifiedAt.')
   }
   if (entry.status === 'verificado' && !clean(entry.documentReference)) {
-    warnings.push('A evidência está verificada, mas ainda não possui referência documental anexada/registrada.')
+    errors.push('Evidência regulatória só pode ser marcada como verificada quando houver referência documental real.')
   }
   if (entry.expiresAt && entry.issuedAt && entry.expiresAt < entry.issuedAt) {
     errors.push('A data de expiração não pode ser anterior à data de emissão.')
+  }
+  if (entry.status === 'registrado' && clean(entry.documentReference) && !clean(entry.verifiedAt)) {
+    warnings.push('Documento registrado, mas ainda não marcado como verificado.')
   }
 
   return { valid: errors.length === 0, errors, warnings }
