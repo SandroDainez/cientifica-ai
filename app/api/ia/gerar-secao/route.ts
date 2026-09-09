@@ -26,6 +26,12 @@ import {
   isDiscussionSection,
   type DiscussionGenerationAudit,
 } from '@/lib/research-os/discussion-generation-audit'
+import {
+  auditManuscriptClaims,
+  isManuscriptClaimAuditSection,
+  manuscriptClaimAuditMetadata,
+  type ManuscriptClaimAudit,
+} from '@/lib/research-os/manuscript-claim-audit'
 import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 import type { ResearchProjectState } from '@/lib/research-os/types'
 import type { Trabalho, Referencia } from '@/types'
@@ -307,6 +313,7 @@ export async function POST(request: Request) {
     semanticLock?: ReturnType<typeof semanticLockMetadata>,
     resultsEnforcement?: ResultsGenerationEnforcement,
     discussionAudit?: DiscussionGenerationAudit,
+    manuscriptClaimAudit?: ManuscriptClaimAudit,
   ) => {
     if (chaveSecao === 'resumo' || !texto?.trim()) return
     const { error } = await supabase
@@ -321,6 +328,7 @@ export async function POST(request: Request) {
           semantic_lock: semanticLock,
           result_fact_lock: resultsEnforcement ? resultsEnforcementMetadata(resultsEnforcement) : undefined,
           discussion_provenance_audit: discussionAudit ? discussionAuditMetadata(discussionAudit) : undefined,
+          manuscript_claim_audit: manuscriptClaimAudit ? manuscriptClaimAuditMetadata(manuscriptClaimAudit) : undefined,
         },
       })
       .eq('trabalho_id', trabalhoId)
@@ -340,6 +348,13 @@ export async function POST(request: Request) {
     researchProjectState,
   })
 
+  const auditarClaimsAntesDePersistir = (texto: string) => auditManuscriptClaims({
+    sectionKey: chaveSecao,
+    text: texto,
+    researchProjectState,
+    evidenceMap,
+  })
+
   const respostaBloqueioResultados = (enforcement: ResultsGenerationEnforcement) => NextResponse.json({
     error: `Research OS rejeitou a redação de Resultados porque ela introduziu conteúdo numérico não aprovado. ${(enforcement.validation?.reasons ?? []).join(' ')}`,
     code: 'RESULT_FACT_LOCK_VIOLATION',
@@ -356,6 +371,16 @@ export async function POST(request: Request) {
     discussionAudit: audit,
     action: {
       label: 'Abrir Research OS / Result Fact Lock',
+      href: `/trabalhos/${trabalhoId}/research-os`,
+    },
+  }, { status: 409 })
+
+  const respostaBloqueioClaims = (audit: ManuscriptClaimAudit) => NextResponse.json({
+    error: `Research OS rejeitou a redação porque encontrou claim científico material sem provenance suficiente ou com força maior que a fonte autorizada. ${audit.reasons.join(' ')}`,
+    code: 'MANUSCRIPT_CLAIM_AUDIT_VIOLATION',
+    manuscriptClaimAudit: audit,
+    action: {
+      label: 'Revisar Result Fact Lock e Evidence Map',
       href: `/trabalhos/${trabalhoId}/research-os`,
     },
   }, { status: 409 })
@@ -390,7 +415,12 @@ export async function POST(request: Request) {
           console.warn('[gerar-secao] Discussion Provenance rejeitou saída de duas passagens:', discussionAudit.reasons)
           return respostaBloqueioDiscussao(discussionAudit)
         }
-        await persistirSecaoGerada(validado, semanticLockMetadata(safe), resultsEnforcement, discussionAudit)
+        const manuscriptClaimAudit = auditarClaimsAntesDePersistir(validado)
+        if (!manuscriptClaimAudit.allowed) {
+          console.warn('[gerar-secao] Manuscript Claim Audit rejeitou saída de duas passagens:', manuscriptClaimAudit.reasons)
+          return respostaBloqueioClaims(manuscriptClaimAudit)
+        }
+        await persistirSecaoGerada(validado, semanticLockMetadata(safe), resultsEnforcement, discussionAudit, manuscriptClaimAudit)
         return streamStringComEfeito(validado)
       }
     } catch (err) {
@@ -412,7 +442,12 @@ export async function POST(request: Request) {
         console.warn('[gerar-secao] Discussion Provenance rejeitou saída single-pass:', discussionAudit.reasons)
         return respostaBloqueioDiscussao(discussionAudit)
       }
-      await persistirSecaoGerada(validado, undefined, resultsEnforcement, discussionAudit)
+      const manuscriptClaimAudit = auditarClaimsAntesDePersistir(validado)
+      if (!manuscriptClaimAudit.allowed) {
+        console.warn('[gerar-secao] Manuscript Claim Audit rejeitou saída single-pass:', manuscriptClaimAudit.reasons)
+        return respostaBloqueioClaims(manuscriptClaimAudit)
+      }
+      await persistirSecaoGerada(validado, undefined, resultsEnforcement, discussionAudit, manuscriptClaimAudit)
       return streamStringComEfeito(validado)
     }
   } catch (err) {
@@ -436,6 +471,17 @@ export async function POST(request: Request) {
       code: 'DISCUSSION_GENERATION_FAILED_CLOSED',
       action: {
         label: 'Revisar proveniência dos achados',
+        href: `/trabalhos/${trabalhoId}/research-os`,
+      },
+    }, { status: 502 })
+  }
+
+  if (evidencePolicy.researchOsActive && isManuscriptClaimAuditSection(chaveSecao)) {
+    return NextResponse.json({
+      error: 'A geração auditável desta seção falhou. Por segurança, o Research OS não entrega Discussão/Conclusão sem conseguir verificar a provenance dos claims materiais antes da entrega.',
+      code: 'MANUSCRIPT_CLAIM_AUDIT_FAILED_CLOSED',
+      action: {
+        label: 'Revisar Result Fact Lock e Evidence Map',
         href: `/trabalhos/${trabalhoId}/research-os`,
       },
     }, { status: 502 })
