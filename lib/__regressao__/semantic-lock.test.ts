@@ -20,6 +20,13 @@ test('semantic lock aceita reescrita conservadora', () => {
   assert.equal(result.ok, true)
 })
 
+test('semantic lock aceita flexão equivalente da mesma família semântica', () => {
+  const before = 'A exposição esteve associada a menor mortalidade.'
+  const after = 'Observou-se associação da exposição com menor mortalidade.'
+  const result = validateScientificRewrite(before, after)
+  assert.equal(result.ok, true)
+})
+
 test('semantic lock bloqueia número novo', () => {
   const before = 'Foram avaliados 120 pacientes.'
   const after = 'Foram avaliados 120 pacientes, com mortalidade de 18%.'
@@ -41,8 +48,8 @@ test('semantic lock bloqueia troca associação por causalidade', () => {
   const after = 'A exposição causou o desfecho.'
   const result = validateScientificRewrite(before, after)
   assert.equal(result.ok, false)
-  assert.ok(result.metrics.changedDirectionTerms.some(v => v.includes('associad')))
-  assert.ok(result.metrics.changedDirectionTerms.some(v => v.includes('caus')))
+  assert.ok(result.metrics.changedDirectionTerms.includes('-associacao'))
+  assert.ok(result.metrics.changedDirectionTerms.includes('+causalidade'))
 })
 
 test('semantic lock bloqueia reescrita que expande demais', () => {
