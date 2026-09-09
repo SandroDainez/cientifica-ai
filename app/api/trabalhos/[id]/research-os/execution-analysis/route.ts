@@ -108,10 +108,15 @@ export async function POST(
       freeze: action === 'freeze',
     })
 
+    const projectState = researchOs.project_state && typeof researchOs.project_state === 'object'
+      ? researchOs.project_state as Record<string, unknown>
+      : null
+
     const nextDadosTrabalho = {
       ...current,
       research_os: {
         ...researchOs,
+        project_state: projectState ? { ...projectState, _execution_analysis: record } : researchOs.project_state,
         execution_analysis: record,
         execution_analysis_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
