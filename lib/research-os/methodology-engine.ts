@@ -111,7 +111,7 @@ export function buildMethodologyPlan(input: MethodologyInput): MethodologyPlan {
 
   if (input.repeatedMeasures) {
     requiredElements.push('Modelar correlação intraindivíduo com modelo misto, GEE ou abordagem equivalente.')
-    assumptionsToVerify.push('Estrutura de correlação das medidas repetidas.')
+    assumptionsToVerify.push('Estrutura de correlação intraindivíduo das medidas repetidas.')
   }
 
   if (input.clustering) {
