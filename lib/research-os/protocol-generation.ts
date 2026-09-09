@@ -61,15 +61,19 @@ function methodologyPrompt(snapshot: ProtocolSnapshot): string {
 
 export function buildProtocolGroundedMethodsPolicy(params: {
   state: ResearchProjectState
-  methodology: MethodologyPlan | null
-  sampleSize: SampleSizePlan | null
+  methodology?: MethodologyPlan | null
+  sampleSize?: SampleSizePlan | null
   protocolLock: ProtocolLockRecord
 }): ProtocolGenerationPolicy {
   const frozen = params.protocolLock.snapshot
+  // The generation route historically receives only project_state. When the full
+  // methodology/sample-size objects are not supplied, preserve the frozen copies
+  // for those branches of the comparison while still comparing every critical
+  // field mirrored in ResearchProjectState (design, outcomes, analysis, n, etc.).
   const current = buildProtocolSnapshot({
     state: params.state,
-    methodology: params.methodology,
-    sampleSize: params.sampleSize,
+    methodology: params.methodology === undefined ? frozen.methodology : params.methodology,
+    sampleSize: params.sampleSize === undefined ? frozen.sampleSize : params.sampleSize,
     version: frozen.version,
     frozenAt: frozen.frozenAt,
   })
