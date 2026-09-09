@@ -30,7 +30,9 @@ export function buildGenerationEvidencePolicy(params: {
     }
   }
 
-  const map = sanitizeEvidenceMapAgainstCurrentReferences(params.evidenceMap, params.currentReferenceIds ?? [])
+  const map = params.currentReferenceIds === undefined
+    ? params.evidenceMap
+    : sanitizeEvidenceMapAgainstCurrentReferences(params.evidenceMap, params.currentReferenceIds)
   const decision = evaluateEvidenceGate(section, map)
 
   if (!map || !decision.allowed) {
@@ -67,10 +69,11 @@ export function sanitizeEvidenceMapAgainstCurrentReferences(
   currentReferenceIds: string[],
 ): EvidenceMapResult | null | undefined {
   if (!map) return map
-  if (currentReferenceIds.length === 0) return map
   const validIds = new Set(currentReferenceIds)
   const links = map.links.filter(link => validIds.has(link.referenceId))
   const warnings = [...map.warnings]
-  if (links.length !== map.links.length) warnings.push('O Evidence Map continha vínculos para referências que não existem mais no trabalho; eles foram ignorados para esta geração.')
+  if (links.length !== map.links.length) {
+    warnings.push('O Evidence Map continha vínculos para referências que não existem mais no trabalho; eles foram ignorados para esta geração.')
+  }
   return { ...map, links, warnings }
 }
