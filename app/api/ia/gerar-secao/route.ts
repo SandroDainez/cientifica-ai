@@ -7,21 +7,22 @@ import { streamText, callAI } from '@/lib/ai/stream'
 import { HUMANIZADOR_SYSTEM, buildHumanizadorPrompt } from '@/lib/ai/humanizar'
 import { posProcessarTextoGerado } from '@/lib/ai/pos-processar'
 import { garantirReferenciasReais, filtrarRefsCitaveis } from '@/lib/referencias/auto-import'
-
-export const maxDuration = 300
 import { extrairTextoSecao } from '@/lib/ai/utils'
 import { formatarReferencia } from '@/lib/referencias/formatar'
 import { buscarRefsExternas, enriquecerAbstractsFaltantes } from '@/lib/referencias/buscar-externo'
 import { ehReferenciaUtilizavel, ehFonteFraca } from '@/lib/referencias/qualidade'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
+import { buildGenerationEvidencePolicy } from '@/lib/research-os/generation-evidence'
+import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
+import type { ResearchProjectState } from '@/lib/research-os/types'
 import type { Trabalho, Referencia } from '@/types'
 
-/** Transmite uma string já pronta com efeito de digitação (chunks pequenos). */
+export const maxDuration = 300
+
 function streamStringComEfeito(texto: string): Response {
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
-      // Emite em blocos de ~24 caracteres para dar sensação de digitação fluida
       const tamanho = 24
       for (let i = 0; i < texto.length; i += tamanho) {
         controller.enqueue(encoder.encode(texto.slice(i, i + tamanho)))
@@ -43,12 +44,11 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  // Rate limiting: 8 gerações por minuto por usuário
   const rl = await checkRateLimit(supabase, user.id, 'gerar-secao')
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Muitas gerações em sequência. Aguarde um momento antes de tentar novamente.' },
-      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } }
+      { status: 429, headers: { 'X-RateLimit-Reset': rl.resetAt.toISOString() } },
     )
   }
 
@@ -57,10 +57,9 @@ export async function POST(request: Request) {
     chaveSecao: string
     instrucoes_usuario?: string
     respostas_usuario?: Record<string, string>
-    outlineAprovado?: string   // esqueleto aprovado pelo usuário (Fase 2) — a prosa o respeita
+    outlineAprovado?: string
   }
 
-  // Carrega trabalho e valida ownership
   const { data: trabalhoData } = await supabase
     .from('trabalhos')
     .select('*')
@@ -70,13 +69,16 @@ export async function POST(request: Request) {
 
   if (!trabalhoData) return NextResponse.json({ error: 'Trabalho não encontrado' }, { status: 404 })
   const trabalho = trabalhoData as Trabalho
-  const dados_projeto = ((trabalho.dados_trabalho as Record<string, unknown>)?.dados_projeto as import('@/types').DadosProjeto | undefined) ?? null
+  const dadosTrabalho = (trabalho.dados_trabalho as Record<string, unknown>) ?? {}
+  const dados_projeto = (dadosTrabalho.dados_projeto as import('@/types').DadosProjeto | undefined) ?? null
+  const researchOs = (dadosTrabalho.research_os as Record<string, unknown>) ?? null
+  const researchProjectState = (researchOs?.project_state as ResearchProjectState | undefined) ?? null
+  const evidenceMap = (researchOs?.evidence_map as EvidenceMapResult | undefined) ?? null
 
   const fluxo = getFluxo(trabalho.tipo_trabalho)
   const fase = fluxo?.fases.find(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
   if (!fase) return NextResponse.json({ error: 'Seção não encontrada' }, { status: 404 })
 
-  // Carrega referências bibliográficas do trabalho
   const { data: referenciasData } = await supabase
     .from('referencias')
     .select('*')
@@ -84,11 +86,8 @@ export async function POST(request: Request) {
     .order('created_at')
   let referencias = (referenciasData ?? []) as Referencia[]
 
-  // ── Fast-path: seção "Referências" não usa IA — compila direto do banco ──────
   if (chaveSecao === 'referencias') {
     const formato = trabalho.formato_citacao ?? 'abnt'
-
-    // Upsert da seção antes de retornar
     const faseIndex = fluxo!.fases.findIndex(f => f.chave_secao === 'referencias')
     await supabase.from('secoes_trabalho').upsert({
       trabalho_id: trabalhoId,
@@ -100,7 +99,6 @@ export async function POST(request: Request) {
       metadados: {},
     }, { onConflict: 'trabalho_id,chave_secao' })
 
-    // Se não tem referências suficientes, importa antes de montar a lista
     if (referencias.length < 10) {
       try {
         const area = trabalho.area_conhecimento?.trim() ?? ''
@@ -112,24 +110,36 @@ export async function POST(request: Request) {
           const vistosTitulos = new Set<string>(referencias.map(r => r.titulo.toLowerCase().slice(0, 80)))
           const anoAtual = new Date().getFullYear()
           const novas = resultados.flat().filter(ref => {
-            if (!ref.titulo) return false
-            // Mesmos filtros do auto-import: rejeita ref sem autor real / não-original
-            // e fora da faixa de ano (1950..ano atual) — defesa em profundidade.
-            if (!ehReferenciaUtilizavel(ref)) return false
+            if (!ref.titulo || !ehReferenciaUtilizavel(ref)) return false
             if (!ref.ano || ref.ano < 1950 || ref.ano > anoAtual) return false
             const tk = ref.titulo.toLowerCase().slice(0, 80)
             if (vistosTitulos.has(tk)) return false
             vistosTitulos.add(tk)
-            if (ref.doi) { if (vistosDois.has(ref.doi)) return false; vistosDois.add(ref.doi) }
+            if (ref.doi) {
+              if (vistosDois.has(ref.doi)) return false
+              vistosDois.add(ref.doi)
+            }
             return true
           })
-            // Curadoria: fonte fraca (newsletter/preprint/1 página) por último.
             .sort((a, b) => Number(ehFonteFraca(a)) - Number(ehFonteFraca(b)))
             .slice(0, 20)
+
           if (novas.length > 0) {
             const rows = novas.map(ref => {
-              const parcial = { id: '', trabalho_id: trabalhoId, dados_extras: {}, confiabilidade: 'alta' as const, created_at: '', referencia_formatada_abnt: '', referencia_formatada_vancouver: '', referencia_formatada_apa: '', ...ref } as Referencia
-              return { trabalho_id: trabalhoId, tipo: ref.tipo, titulo: ref.titulo, autores: ref.autores ?? [], ano: ref.ano, journal: ref.journal, volume: ref.volume, numero: ref.numero, paginas: ref.paginas, doi: ref.doi, pmid: ref.pmid, editora: ref.editora, isbn: ref.isbn, dados_extras: {}, fonte_tipo: ref.fonte_tipo, confiabilidade: 'alta', referencia_formatada_abnt: formatarReferencia(parcial, 'abnt'), referencia_formatada_vancouver: formatarReferencia(parcial, 'vancouver'), referencia_formatada_apa: formatarReferencia(parcial, 'apa') }
+              const parcial = {
+                id: '', trabalho_id: trabalhoId, dados_extras: {}, confiabilidade: 'alta' as const,
+                created_at: '', referencia_formatada_abnt: '', referencia_formatada_vancouver: '',
+                referencia_formatada_apa: '', ...ref,
+              } as Referencia
+              return {
+                trabalho_id: trabalhoId, tipo: ref.tipo, titulo: ref.titulo, autores: ref.autores ?? [],
+                ano: ref.ano, journal: ref.journal, volume: ref.volume, numero: ref.numero, paginas: ref.paginas,
+                doi: ref.doi, pmid: ref.pmid, editora: ref.editora, isbn: ref.isbn, dados_extras: {},
+                fonte_tipo: ref.fonte_tipo, confiabilidade: 'alta',
+                referencia_formatada_abnt: formatarReferencia(parcial, 'abnt'),
+                referencia_formatada_vancouver: formatarReferencia(parcial, 'vancouver'),
+                referencia_formatada_apa: formatarReferencia(parcial, 'apa'),
+              }
             })
             const { data: salvas } = await supabase.from('referencias').insert(rows).select()
             if (salvas?.length) referencias = [...referencias, ...(salvas as Referencia[])]
@@ -140,47 +150,48 @@ export async function POST(request: Request) {
 
     if (referencias.length === 0) {
       const aviso = '> ⚠️ Não foi possível encontrar referências para este trabalho nas bases PubMed e CrossRef. Acesse o painel de Referências para adicionar suas fontes manualmente e clique em "Gerar" novamente.'
-      const stream = new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(aviso)); c.close() } })
-      await supabase.from('secoes_trabalho').update({ conteudo: aviso, status: 'gerado' }).eq('trabalho_id', trabalhoId).eq('chave_secao', 'referencias')
-      return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+      await supabase.from('secoes_trabalho').update({ conteudo: aviso, status: 'gerado' })
+        .eq('trabalho_id', trabalhoId).eq('chave_secao', 'referencias')
+      return streamStringComEfeito(aviso)
     }
 
-    // Ordena conforme formato (somente referências de qualidade)
     const { ordenarReferencias } = await import('@/lib/referencias/formatar')
     const refsOrdenadas = ordenarReferencias(filtrarRefsCitaveis(referencias), formato)
-
-    // Formata cada referência
     const linhas = refsOrdenadas.map((ref, i) =>
-      formatarReferencia(ref, formato, formato === 'vancouver' ? i + 1 : undefined)
+      formatarReferencia(ref, formato, formato === 'vancouver' ? i + 1 : undefined),
     )
-
-    // Monta o texto final
-    const cabecalho = formato === 'vancouver'
-      ? '## Referências\n\n'
-      : '## REFERÊNCIAS\n\n'
-
+    const cabecalho = formato === 'vancouver' ? '## Referências\n\n' : '## REFERÊNCIAS\n\n'
     const corpo = formato === 'vancouver'
       ? linhas.map((l, i) => `${i + 1}. ${l.replace(/^\d+\.\s*/, '')}`).join('\n\n')
       : linhas.join('\n\n')
-
     const textoFinal = cabecalho + corpo
 
-    // Salva e transmite
     await supabase.from('secoes_trabalho').update({ conteudo: textoFinal, status: 'gerado' })
       .eq('trabalho_id', trabalhoId).eq('chave_secao', 'referencias')
-
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(textoFinal))
-        controller.close()
-      },
-    })
-    return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+    return streamStringComEfeito(textoFinal)
   }
 
-  // ── Auto-importação de referências reais (módulo compartilhado) ────────────
-  // Garante ~40 referências REAIS (CrossRef + PubMed) antes de gerar a seção.
-  // Filtra refs sem autor/ano para citações limpas. Nunca inventa.
+  // Research OS só governa projetos que já possuem project_state. Trabalhos legados
+  // continuam exatamente no fluxo anterior.
+  const evidencePolicy = buildGenerationEvidencePolicy({
+    sectionKey: chaveSecao,
+    researchProjectState,
+    evidenceMap,
+    currentReferenceIds: referencias.map(r => r.id),
+  })
+
+  if (evidencePolicy.researchOsActive && !evidencePolicy.decision.allowed) {
+    return NextResponse.json({
+      error: `Research OS bloqueou a geração de "${fase.nome}" até a base de evidência ser auditada. ${evidencePolicy.decision.reasons.join(' ')}`,
+      code: 'EVIDENCE_GATE_BLOCKED',
+      evidenceGate: evidencePolicy.decision,
+      action: {
+        label: 'Abrir Research OS / Evidence Map',
+        href: `/trabalhos/${trabalhoId}/research-os`,
+      },
+    }, { status: 409 })
+  }
+
   const refsResult = await garantirReferenciasReais({
     supabase,
     trabalhoId,
@@ -194,9 +205,6 @@ export async function POST(request: Request) {
   referencias = refsResult.referencias
   const guardrail = refsResult.guardrail
 
-  // ── Backfill de abstracts (BLOCO A→C) ──────────────────────────────────────
-  // Refs antigas não têm abstract; sem ele a geração não consegue "ler a fonte".
-  // Busca os que faltam (PubMed em lote + DOIs), persiste e usa já nesta geração.
   try {
     const novosAbstracts = await enriquecerAbstractsFaltantes(
       referencias.map(r => ({ id: r.id, doi: r.doi, pmid: r.pmid, abstract: r.abstract })),
@@ -213,8 +221,6 @@ export async function POST(request: Request) {
     console.error('[gerar-secao] backfill de abstracts falhou (segue sem):', e)
   }
 
-
-  // Carrega conteúdo das seções anteriores para contexto
   const { data: secoesAnteriores } = await supabase
     .from('secoes_trabalho')
     .select('nome_secao, conteudo')
@@ -229,23 +235,21 @@ export async function POST(request: Request) {
     })
     .join('\n\n') ?? ''
 
-  const systemPromptEspecializado = getSystemPromptEspecializado(
-    trabalho.tipo_trabalho,
-    chaveSecao
-  )
+  const systemPromptEspecializado = getSystemPromptEspecializado(trabalho.tipo_trabalho, chaveSecao)
   const systemPromptBase = systemPromptEspecializado ?? buildSystemPrompt(
     trabalho.tipo_trabalho,
     trabalho.nivel_experiencia,
     trabalho.formato_citacao,
     trabalho.area_conhecimento ?? undefined,
   )
-  // Guardrail de referências validadas (passo 8 do briefing): força a IA a usar
-  // somente as referências reais validadas e a nunca inventar fontes.
-  const systemPrompt = guardrail + '\n\n' + systemPromptBase
 
-  // Só cita referências de qualidade (com autor e ano) — evita "(s.d.)" e títulos-como-autor
+  const systemPrompt = [
+    guardrail,
+    evidencePolicy.promptGuardrail,
+    systemPromptBase,
+  ].filter(Boolean).join('\n\n')
+
   const refsCitaveis = filtrarRefsCitaveis(referencias)
-
   const userPrompt = buildGerarSecaoPrompt(fase, {
     titulo: trabalho.titulo,
     area: trabalho.area_conhecimento ?? undefined,
@@ -259,7 +263,6 @@ export async function POST(request: Request) {
     outlineAprovado,
   })
 
-  // Garante que a seção existe na tabela (upsert)
   const faseIndex = fluxo!.fases.findIndex(f => f.chave_secao === chaveSecao || f.id === chaveSecao)
   await supabase.from('secoes_trabalho').upsert({
     trabalho_id: trabalhoId,
@@ -268,45 +271,39 @@ export async function POST(request: Request) {
     ordem: faseIndex,
     status: 'gerando',
     sugestoes_ia: [],
-    metadados: {},
+    metadados: {
+      evidence_gate: evidencePolicy.researchOsActive ? evidencePolicy.decision : undefined,
+    },
   }, { onConflict: 'trabalho_id,chave_secao' })
 
-  // ── Seções que passam pela 2ª passagem de humanização ─────────────────────
-  // Seções textuais substanciais → gera rascunho → humaniza → streama.
-  // Seções estruturais (checklist, cronograma, orçamento) → streaming direto.
-  // NOTA: 'objetivos' e seções estruturadas NÃO entram aqui — precisam manter
-  // a estrutura rígida de lista, que a humanização (prosa/burstiness) quebraria.
   const SECOES_HUMANIZAR = new Set([
     'introducao', 'revisao_literatura', 'referencial_teorico',
     'metodologia', 'metodos_delineamento', 'metodos_coleta',
     'resultados', 'discussao', 'conclusao', 'resumo',
-    'desenvolvimento', 'consideracoes_finais',
-    'justificativa', 'problema', 'tema',
-    'sintese', 'metanalise', 'discussao_grade',
-    'apresentacao_caso', 'investigacao_diagnostica',
-    'conduta_tratamento', 'evolucao_desfecho',
-    'aspectos_eticos', 'consentimento_paciente',
-    'perspectivas', 'formacao', 'resultados_esperados',
-    'limitacoes', 'tema_originalidade', 'revisao_estado_arte',
+    'desenvolvimento', 'consideracoes_finais', 'justificativa', 'problema', 'tema',
+    'sintese', 'metanalise', 'discussao_grade', 'apresentacao_caso', 'investigacao_diagnostica',
+    'conduta_tratamento', 'evolucao_desfecho', 'aspectos_eticos', 'consentimento_paciente',
+    'perspectivas', 'formacao', 'resultados_esperados', 'limitacoes', 'tema_originalidade',
+    'revisao_estado_arte',
   ])
 
   const deveHumanizar = SECOES_HUMANIZAR.has(chaveSecao)
   const minPalavrasHumanizar = fase.min_palavras ?? 0
   const formato = trabalho.formato_citacao
 
-  // ── Persistência server-side do conteúdo gerado ────────────────────────────
-  // A seção foi marcada como 'gerando' acima. SEM isto, o texto gerado vivia só
-  // no navegador e dependia do autosave (30s) do cliente — que era CANCELADO ao
-  // navegar, deixando a seção presa em 'gerando' e o texto perdido (bug "a
-  // metodologia não está salvando"). Gravamos o conteúdo e voltamos o status para
-  // 'gerado' imediatamente, igual ao fast-path de Referências.
-  // A seção "resumo" é JSON estruturado com rota (/gerar-resumo) e proteção
-  // próprias (lib/resumo/proteger.ts) — NUNCA a sobrescrevemos com texto puro.
   const persistirSecaoGerada = async (texto: string) => {
     if (chaveSecao === 'resumo' || !texto?.trim()) return
     const { error } = await supabase
       .from('secoes_trabalho')
-      .update({ conteudo: texto, conteudo_ia: texto, status: 'gerado' })
+      .update({
+        conteudo: texto,
+        conteudo_ia: texto,
+        status: 'gerado',
+        metadados: {
+          evidence_gate: evidencePolicy.researchOsActive ? evidencePolicy.decision : undefined,
+          generated_with_research_os: evidencePolicy.researchOsActive,
+        },
+      })
       .eq('trabalho_id', trabalhoId)
       .eq('chave_secao', chaveSecao)
     if (error) console.error('[gerar-secao] falha ao persistir conteúdo gerado:', error)
@@ -315,10 +312,8 @@ export async function POST(request: Request) {
   if (deveHumanizar && minPalavrasHumanizar >= 80) {
     const maxTokensDraft = Math.max(12000, (fase.max_palavras ?? 2000) * 3)
     try {
-      // Passagem 1: rascunho técnico com as referências reais
       const rascunho = await callAI(systemPrompt, userPrompt, false, maxTokensDraft)
       if (rascunho && rascunho.trim().split(/\s+/).length >= 50) {
-        // Passagem 2: humaniza (preservando citações verbatim)
         const maxTokensHuman = Math.max(12000, rascunho.split(/\s+/).length * 3)
         let humanizado = rascunho
         try {
@@ -327,8 +322,6 @@ export async function POST(request: Request) {
         } catch (e) {
           console.error('[gerar-secao] Humanização falhou — usa rascunho:', e)
         }
-        // Camada final padronizada (mesma do projeto): corrige código R, valida
-        // citações contra refs reais, remove travessões e placeholders residuais.
         const validado = posProcessarTextoGerado(humanizado, referencias, formato)
         await persistirSecaoGerada(validado)
         return streamStringComEfeito(validado)
@@ -338,7 +331,6 @@ export async function POST(request: Request) {
     }
   }
 
-  // Seções estruturadas / fallback: gera direto, valida citações, transmite
   try {
     const textoUnico = await callAI(systemPrompt, userPrompt, false, Math.max(6000, (fase.max_palavras ?? 1500) * 2))
     if (textoUnico && textoUnico.trim().length > 20) {
@@ -350,6 +342,7 @@ export async function POST(request: Request) {
     console.error('[gerar-secao] Falha no single-pass — streaming direto:', err)
   }
 
-  // Último recurso: streaming direto da IA (sem validação pós)
+  // Último recurso legado. Em projetos Research OS, o Evidence Gate já foi avaliado
+  // antes de chegar aqui e o mesmo systemPrompt contém o guardrail de evidência.
   return streamText(systemPrompt, userPrompt, false)
 }
