@@ -9,6 +9,7 @@ import type { ProtocolLockRecord } from '@/lib/research-os/protocol-lock'
 import type { ExecutionAnalysisRecord } from '@/lib/research-os/execution-analysis-lock'
 import type { ResultFactRegistry } from '@/lib/research-os/result-fact-lock'
 import { buildClaimLedger } from '@/lib/research-os/claim-ledger'
+import { evaluateSubmissionReadiness } from '@/lib/research-os/submission-readiness'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
 import { EvidencePanel } from './EvidencePanel'
 import { MethodologyPanel } from './MethodologyPanel'
@@ -17,6 +18,7 @@ import { ProtocolLockPanel } from './ProtocolLockPanel'
 import { ExecutionAnalysisPanel } from './ExecutionAnalysisPanel'
 import { ResultFactsPanel } from './ResultFactsPanel'
 import { ClaimLedgerPanel } from './ClaimLedgerPanel'
+import { SubmissionReadinessPanel } from './SubmissionReadinessPanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -45,14 +47,23 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const initialProtocolLock = (researchOs.protocol_lock as ProtocolLockRecord | undefined) ?? null
   const initialExecutionAnalysis = (researchOs.execution_analysis as ExecutionAnalysisRecord | undefined) ?? null
   const initialResultFactRegistry = (researchOs.result_fact_registry as ResultFactRegistry | undefined) ?? null
+  const ethicsVerifiedRoutes = Array.isArray(researchOs.ethics_verified_routes)
+    ? researchOs.ethics_verified_routes.filter((route): route is string => typeof route === 'string')
+    : []
 
-  const { data: manuscriptSections } = await supabase
-    .from('secoes_trabalho')
-    .select('chave_secao, nome_secao, conteudo, status')
-    .eq('trabalho_id', trabalho.id)
-    .in('chave_secao', ['discussao', 'discussao_grade', 'conclusao', 'consideracoes_finais'])
-    .in('status', ['gerado', 'editado', 'aprovado'])
-    .order('ordem')
+  const [{ data: manuscriptSections }, { count: referenceCount }] = await Promise.all([
+    supabase
+      .from('secoes_trabalho')
+      .select('chave_secao, nome_secao, conteudo, status')
+      .eq('trabalho_id', trabalho.id)
+      .in('chave_secao', ['discussao', 'discussao_grade', 'conclusao', 'consideracoes_finais'])
+      .in('status', ['gerado', 'editado', 'aprovado'])
+      .order('ordem'),
+    supabase
+      .from('referencias')
+      .select('*', { count: 'exact', head: true })
+      .eq('trabalho_id', trabalho.id),
+  ])
 
   const ledger = buildClaimLedger({
     sections: (manuscriptSections ?? []).map(section => ({
@@ -62,6 +73,18 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
     })),
     researchProjectState: initialState,
     evidenceMap: initialEvidenceMap,
+  })
+
+  const submissionReadiness = evaluateSubmissionReadiness({
+    state: initialState,
+    protocolLock: initialProtocolLock,
+    executionAnalysis: initialExecutionAnalysis,
+    resultFactRegistry: initialResultFactRegistry,
+    evidenceMap: initialEvidenceMap,
+    claimLedger: ledger,
+    referenceCount: referenceCount ?? 0,
+    manuscriptSectionsPresent: (manuscriptSections ?? []).map(section => section.chave_secao),
+    ethicsVerifiedRoutes,
   })
 
   return (
@@ -94,6 +117,7 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
         />
         <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
         <ClaimLedgerPanel ledger={ledger} />
+        <SubmissionReadinessPanel result={submissionReadiness} />
       </div>
     </div>
   )
