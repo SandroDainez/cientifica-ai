@@ -37,6 +37,11 @@ function asSampleSizePlan(value: unknown): SampleSizePlan | null {
   return typeof v.status === 'string' ? value as SampleSizePlan : null
 }
 
+function protocolLockFromState(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return undefined
+  return (value as Record<string, unknown>)._protocol_lock
+}
+
 export function buildGenerationEvidencePolicy(params: {
   sectionKey: string
   researchProjectState: unknown
@@ -59,8 +64,9 @@ export function buildGenerationEvidencePolicy(params: {
 
   if (isMethodologySection(params.sectionKey)) {
     const methodologyState = asResearchProjectState(params.researchProjectState)
+    const protocolLock = params.protocolLock ?? protocolLockFromState(params.researchProjectState)
 
-    if (isProtocolLockRecord(params.protocolLock)) {
+    if (isProtocolLockRecord(protocolLock)) {
       if (!methodologyState) {
         return {
           researchOsActive: true,
@@ -75,9 +81,9 @@ export function buildGenerationEvidencePolicy(params: {
 
       const protocolPolicy = buildProtocolGroundedMethodsPolicy({
         state: methodologyState,
-        methodology: asMethodologyPlan(params.methodologyPlan),
-        sampleSize: asSampleSizePlan(params.sampleSizePlan),
-        protocolLock: params.protocolLock,
+        methodology: params.methodologyPlan === undefined ? undefined : asMethodologyPlan(params.methodologyPlan),
+        sampleSize: params.sampleSizePlan === undefined ? undefined : asSampleSizePlan(params.sampleSizePlan),
+        protocolLock,
       })
 
       return {
