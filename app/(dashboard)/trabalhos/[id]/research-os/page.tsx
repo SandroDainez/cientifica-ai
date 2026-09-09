@@ -8,6 +8,8 @@ import type { SampleSizeInput, SampleSizePlan } from '@/lib/research-os/sample-s
 import type { ProtocolLockRecord } from '@/lib/research-os/protocol-lock'
 import type { ExecutionAnalysisRecord } from '@/lib/research-os/execution-analysis-lock'
 import type { ResultFactRegistry } from '@/lib/research-os/result-fact-lock'
+import type { RegulatoryEvidenceRegistry } from '@/lib/research-os/regulatory-evidence'
+import { verifiedRegulatoryRoutes } from '@/lib/research-os/regulatory-evidence'
 import { buildClaimLedger } from '@/lib/research-os/claim-ledger'
 import { evaluateSubmissionReadiness } from '@/lib/research-os/submission-readiness'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
@@ -18,6 +20,7 @@ import { ProtocolLockPanel } from './ProtocolLockPanel'
 import { ExecutionAnalysisPanel } from './ExecutionAnalysisPanel'
 import { ResultFactsPanel } from './ResultFactsPanel'
 import { ClaimLedgerPanel } from './ClaimLedgerPanel'
+import { RegulatoryEvidencePanel } from './RegulatoryEvidencePanel'
 import { SubmissionReadinessPanel } from './SubmissionReadinessPanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -47,8 +50,9 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const initialProtocolLock = (researchOs.protocol_lock as ProtocolLockRecord | undefined) ?? null
   const initialExecutionAnalysis = (researchOs.execution_analysis as ExecutionAnalysisRecord | undefined) ?? null
   const initialResultFactRegistry = (researchOs.result_fact_registry as ResultFactRegistry | undefined) ?? null
-  const ethicsVerifiedRoutes = Array.isArray(researchOs.ethics_verified_routes)
-    ? researchOs.ethics_verified_routes.filter((route): route is string => typeof route === 'string')
+  const initialRegulatoryEvidence = (researchOs.regulatory_evidence as RegulatoryEvidenceRegistry | undefined) ?? null
+  const ethicsVerifiedRoutes = initialState
+    ? verifiedRegulatoryRoutes(initialRegulatoryEvidence, initialState)
     : []
 
   const [{ data: manuscriptSections }, { count: referenceCount }] = await Promise.all([
@@ -117,6 +121,11 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
         />
         <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
         <ClaimLedgerPanel ledger={ledger} />
+        <RegulatoryEvidencePanel
+          trabalhoId={trabalho.id}
+          state={initialState}
+          initialRegistry={initialRegulatoryEvidence}
+        />
         <SubmissionReadinessPanel result={submissionReadiness} />
       </div>
     </div>
