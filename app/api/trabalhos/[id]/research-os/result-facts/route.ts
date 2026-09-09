@@ -29,6 +29,9 @@ function sanitizeFacts(value: unknown): ResultFactInput[] {
   if (!Array.isArray(value)) return []
   return sanitizeResultFacts(value.filter(item => item && typeof item === 'object').map(item => {
     const v = item as Record<string, unknown>
+    const provenance = ['pre_especificado', 'desvio_documentado', 'exploratorio'].includes(String(v.provenance))
+      ? String(v.provenance) as ResultFactInput['provenance']
+      : undefined
     return {
       id: typeof v.id === 'string' ? v.id.slice(0, 50) : undefined,
       kind: ['primario', 'secundario', 'descritivo', 'baseline', 'evento_adverso', 'sensibilidade', 'fluxo', 'outro'].includes(String(v.kind))
@@ -36,8 +39,15 @@ function sanitizeFacts(value: unknown): ResultFactInput[] {
         : 'outro',
       text: typeof v.text === 'string' ? v.text.slice(0, 5000) : '',
       sourceNote: typeof v.sourceNote === 'string' ? v.sourceNote.slice(0, 2000) : undefined,
+      provenance,
     }
-  })).map(fact => ({ id: fact.id, kind: fact.kind, text: fact.text, sourceNote: fact.sourceNote }))
+  })).map(fact => ({
+    id: fact.id,
+    kind: fact.kind,
+    text: fact.text,
+    sourceNote: fact.sourceNote,
+    provenance: fact.provenance,
+  }))
 }
 
 export async function POST(
