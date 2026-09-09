@@ -75,10 +75,11 @@ function fingerprint(value: unknown): string {
 }
 
 export function extractResultNumericTokens(text: string): string[] {
-  // Captura valores mesmo quando aparecem imediatamente após rótulos estatísticos,
-  // por exemplo IC95%, p0,05 ou R2. O que evitamos é apenas iniciar no meio de
-  // outro token numérico já em curso.
-  const matches = text.match(/(?<!\d)(?:\d+(?:[.,]\d+)?)(?:\s*%|\b)/gu) ?? []
+  // IC95% / CI95% representa o nível nominal do intervalo, não um resultado
+  // percentual independente. Removemos somente esse '%' antes da tokenização
+  // para que IC95% e IC 95% sejam semanticamente equivalentes a token "95".
+  const normalizedText = text.replace(/\b(IC|CI)\s*(\d+(?:[.,]\d+)?)\s*%/giu, '$1$2')
+  const matches = normalizedText.match(/(?<!\d)(?:\d+(?:[.,]\d+)?)(?:\s*%|\b)/gu) ?? []
   return [...new Set(matches.map(token => token.replace(/\s+/g, '').replace(',', '.').toLowerCase()))]
 }
 
