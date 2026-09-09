@@ -13,6 +13,7 @@ import { buscarRefsExternas, enriquecerAbstractsFaltantes } from '@/lib/referenc
 import { ehReferenciaUtilizavel, ehFonteFraca } from '@/lib/referencias/qualidade'
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildGenerationEvidencePolicy } from '@/lib/research-os/generation-evidence'
+import { selectSafeScientificRewrite, semanticLockMetadata } from '@/lib/research-os/safe-scientific-rewrite'
 import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 import type { ResearchProjectState } from '@/lib/research-os/types'
 import type { Trabalho, Referencia } from '@/types'
@@ -171,8 +172,6 @@ export async function POST(request: Request) {
     return streamStringComEfeito(textoFinal)
   }
 
-  // Research OS só governa projetos que já possuem project_state. Trabalhos legados
-  // continuam exatamente no fluxo anterior.
   const evidencePolicy = buildGenerationEvidencePolicy({
     sectionKey: chaveSecao,
     researchProjectState,
@@ -291,7 +290,7 @@ export async function POST(request: Request) {
   const minPalavrasHumanizar = fase.min_palavras ?? 0
   const formato = trabalho.formato_citacao
 
-  const persistirSecaoGerada = async (texto: string) => {
+  const persistirSecaoGerada = async (texto: string, semanticLock?: ReturnType<typeof semanticLockMetadata>) => {
     if (chaveSecao === 'resumo' || !texto?.trim()) return
     const { error } = await supabase
       .from('secoes_trabalho')
@@ -302,6 +301,7 @@ export async function POST(request: Request) {
         metadados: {
           evidence_gate: evidencePolicy.researchOsActive ? evidencePolicy.decision : undefined,
           generated_with_research_os: evidencePolicy.researchOsActive,
+          semantic_lock: semanticLock,
         },
       })
       .eq('trabalho_id', trabalhoId)
@@ -315,15 +315,21 @@ export async function POST(request: Request) {
       const rascunho = await callAI(systemPrompt, userPrompt, false, maxTokensDraft)
       if (rascunho && rascunho.trim().split(/\s+/).length >= 50) {
         const maxTokensHuman = Math.max(12000, rascunho.split(/\s+/).length * 3)
-        let humanizado = rascunho
+        let candidato: string | null = null
         try {
           const out = await callAI(HUMANIZADOR_SYSTEM, buildHumanizadorPrompt(rascunho), false, maxTokensHuman)
-          if (out && out.trim().split(/\s+/).length >= 40) humanizado = out
+          if (out && out.trim().split(/\s+/).length >= 40) candidato = out
         } catch (e) {
-          console.error('[gerar-secao] Humanização falhou — usa rascunho:', e)
+          console.error('[gerar-secao] Revisão linguística falhou — usa rascunho:', e)
         }
-        const validado = posProcessarTextoGerado(humanizado, referencias, formato)
-        await persistirSecaoGerada(validado)
+
+        const safe = selectSafeScientificRewrite(rascunho, candidato)
+        if (!safe.usedRewrite && candidato) {
+          console.warn('[gerar-secao] Semantic Lock rejeitou revisão; rascunho preservado:', safe.semanticLock.reasons)
+        }
+
+        const validado = posProcessarTextoGerado(safe.selectedText, referencias, formato)
+        await persistirSecaoGerada(validado, semanticLockMetadata(safe))
         return streamStringComEfeito(validado)
       }
     } catch (err) {
@@ -342,7 +348,5 @@ export async function POST(request: Request) {
     console.error('[gerar-secao] Falha no single-pass — streaming direto:', err)
   }
 
-  // Último recurso legado. Em projetos Research OS, o Evidence Gate já foi avaliado
-  // antes de chegar aqui e o mesmo systemPrompt contém o guardrail de evidência.
   return streamText(systemPrompt, userPrompt, false)
 }
