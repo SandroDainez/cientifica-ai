@@ -1,4 +1,5 @@
 import type { ExecutionAnalysisRecord } from './execution-analysis-lock'
+import type { FindingProvenance } from './discussion-provenance'
 
 export type ResultFactKind =
   | 'primario'
@@ -15,6 +16,7 @@ export interface ResultFactInput {
   kind: ResultFactKind
   text: string
   sourceNote?: string
+  provenance?: FindingProvenance
 }
 
 export interface ApprovedResultFact {
@@ -22,6 +24,7 @@ export interface ApprovedResultFact {
   kind: ResultFactKind
   text: string
   sourceNote?: string
+  provenance?: FindingProvenance
   numericTokens: string[]
 }
 
@@ -52,6 +55,7 @@ export interface GeneratedResultsValidation {
 const RESULT_FACT_KINDS = new Set<ResultFactKind>([
   'primario', 'secundario', 'descritivo', 'baseline', 'evento_adverso', 'sensibilidade', 'fluxo', 'outro',
 ])
+const FINDING_PROVENANCE = new Set<FindingProvenance>(['pre_especificado', 'desvio_documentado', 'exploratorio'])
 
 function stable(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -75,9 +79,6 @@ function fingerprint(value: unknown): string {
 }
 
 export function extractResultNumericTokens(text: string): string[] {
-  // IC95% / CI95% representa o nível nominal do intervalo, não um resultado
-  // percentual independente. Removemos somente esse '%' antes da tokenização
-  // para que IC95% e IC 95% sejam semanticamente equivalentes a token "95".
   const normalizedText = text.replace(/\b(IC|CI)\s*(\d+(?:[.,]\d+)?)\s*%/giu, '$1$2')
   const matches = normalizedText.match(/(?<!\d)(?:\d+(?:[.,]\d+)?)(?:\s*%|\b)/gu) ?? []
   return [...new Set(matches.map(token => token.replace(/\s+/g, '').replace(',', '.').toLowerCase()))]
@@ -98,6 +99,7 @@ export function sanitizeResultFacts(inputs: ResultFactInput[]): ApprovedResultFa
       kind,
       text,
       sourceNote: raw.sourceNote?.trim() || undefined,
+      provenance: raw.provenance && FINDING_PROVENANCE.has(raw.provenance) ? raw.provenance : undefined,
       numericTokens: extractResultNumericTokens(text),
     })
   }
@@ -117,13 +119,14 @@ export function evaluateResultFactReadiness(params: {
   }
 
   if (params.existingRegistry?.status === 'congelado') {
-    return { status: 'congelado', canFreeze: false, blockers: [], warnings: ['O registro de fatos de resultado já está congelado.'], }
+    return { status: 'congelado', canFreeze: false, blockers: [], warnings: ['O registro de fatos de resultado já está congelado.'] }
   }
 
   const facts = sanitizeResultFacts(params.facts as ResultFactInput[])
   if (facts.length === 0) blockers.push('Registre ao menos um fato de resultado aprovado antes de gerar a seção Resultados.')
   if (!facts.some(fact => fact.kind === 'primario')) warnings.push('Nenhum fato foi marcado como resultado primário; confirme se isso é intencional.')
   if (facts.some(fact => fact.numericTokens.length === 0)) warnings.push('Há fatos sem valores numéricos; eles podem ser válidos, mas devem permanecer puramente descritivos.')
+  if (facts.some(fact => !fact.provenance)) warnings.push('Há achados sem proveniência; Resultados ainda pode ser congelado, mas a Discussão ficará bloqueada até classificá-los como pré-especificados, desvios documentados ou exploratórios.')
 
   return {
     status: blockers.length ? 'parcial' : 'pronto_para_congelar',

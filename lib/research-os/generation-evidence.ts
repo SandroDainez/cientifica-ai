@@ -1,5 +1,6 @@
 import type { EvidenceMapResult } from './evidence-engine'
 import { evaluateEvidenceGate, type EvidenceGateDecision, type EvidenceGateSection } from './evidence-gate'
+import { evaluateDiscussionProvenance } from './discussion-provenance'
 import type { ExecutionAnalysisRecord } from './execution-analysis-lock'
 import { evaluateMethodologyGate, isMethodologySection } from './methodology-gate'
 import type { MethodologyPlan } from './methodology-engine'
@@ -66,6 +67,30 @@ function protocolLockFromState(value: unknown): unknown {
   return stateBridge(value, '_protocol_lock')
 }
 
+function buildEvidencePrompt(map: EvidenceMapResult): string {
+  const confirmedDirect = map.links.filter(link => link.supportStatus === 'confirmado' && link.directness === 'direta')
+  const claimsById = new Map(map.claims.map(claim => [claim.id, claim]))
+  const allowedClaims = confirmedDirect
+    .map(link => {
+      const claim = claimsById.get(link.claimId)
+      if (!claim) return null
+      return `- [${claim.id}] ${claim.text} | referência_id=${link.referenceId} | suporte=${link.supportStatus} | directness=${link.directness}`
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  return [
+    '## RESEARCH OS — EVIDENCE GATE',
+    'Este projeto usa um mapa de evidência auditado. Para afirmações factuais centrais nesta seção:',
+    '1. Use como base prioritária apenas os claims confirmados e diretamente sustentados abaixo.',
+    '2. Não transforme associação em causalidade, não aumente magnitude de efeito e não invente números.',
+    '3. Se precisar de uma afirmação central que não esteja coberta, formule-a como incerteza/lacuna ou omita-a.',
+    '4. Não use uma referência para sustentar claim diferente daquele ao qual ela foi vinculada sem nova verificação.',
+    '',
+    allowedClaims || '- Nenhum claim confirmado disponível.',
+  ].join('\n')
+}
+
 export function buildGenerationEvidencePolicy(params: {
   sectionKey: string
   researchProjectState: unknown
@@ -92,25 +117,13 @@ export function buildGenerationEvidencePolicy(params: {
     const execution = asExecutionRecord(params.executionAnalysis ?? stateBridge(params.researchProjectState, '_execution_analysis'))
     const registry = asResultFactRegistry(params.resultFactRegistry ?? stateBridge(params.researchProjectState, '_result_fact_registry'))
     if (!execution) {
-      return {
-        researchOsActive: true,
-        decision: { allowed: false, level: 'bloquear', reasons: ['Congele o Execution / Analysis Lock antes de gerar Resultados.'] },
-        promptGuardrail: '',
-      }
+      return { researchOsActive: true, decision: { allowed: false, level: 'bloquear', reasons: ['Congele o Execution / Analysis Lock antes de gerar Resultados.'] }, promptGuardrail: '' }
     }
     if (!registry) {
-      return {
-        researchOsActive: true,
-        decision: { allowed: false, level: 'bloquear', reasons: ['Aprove e congele os fatos de resultado antes de gerar a seção Resultados.'] },
-        promptGuardrail: '',
-      }
+      return { researchOsActive: true, decision: { allowed: false, level: 'bloquear', reasons: ['Aprove e congele os fatos de resultado antes de gerar a seção Resultados.'] }, promptGuardrail: '' }
     }
     if (registry.executionFingerprint !== execution.fingerprint) {
-      return {
-        researchOsActive: true,
-        decision: { allowed: false, level: 'bloquear', reasons: ['Os fatos aprovados pertencem a outra versão da execução/análise. Reconcilie o Result Fact Lock.'] },
-        promptGuardrail: '',
-      }
+      return { researchOsActive: true, decision: { allowed: false, level: 'bloquear', reasons: ['Os fatos aprovados pertencem a outra versão da execução/análise. Reconcilie o Result Fact Lock.'] }, promptGuardrail: '' }
     }
     return {
       researchOsActive: true,
@@ -127,11 +140,7 @@ export function buildGenerationEvidencePolicy(params: {
       if (!methodologyState) {
         return {
           researchOsActive: true,
-          decision: {
-            allowed: false,
-            level: 'bloquear',
-            reasons: ['O estado científico atual está inválido e não pode ser comparado ao protocolo congelado.'],
-          },
+          decision: { allowed: false, level: 'bloquear', reasons: ['O estado científico atual está inválido e não pode ser comparado ao protocolo congelado.'] },
           promptGuardrail: '',
         }
       }
@@ -145,22 +154,14 @@ export function buildGenerationEvidencePolicy(params: {
 
       return {
         researchOsActive: true,
-        decision: {
-          allowed: protocolPolicy.allowed,
-          level: protocolPolicy.level,
-          reasons: protocolPolicy.reasons,
-        },
+        decision: { allowed: protocolPolicy.allowed, level: protocolPolicy.level, reasons: protocolPolicy.reasons },
         promptGuardrail: protocolPolicy.promptGuardrail,
       }
     }
 
     const methodologyDecision = methodologyState
       ? evaluateMethodologyGate(params.sectionKey, methodologyState)
-      : {
-          allowed: false,
-          level: 'bloquear' as const,
-          reasons: ['O estado metodológico do Research OS está incompleto ou desatualizado. Reconstrua o plano metodológico antes de gerar Métodos.'],
-        }
+      : { allowed: false, level: 'bloquear' as const, reasons: ['O estado metodológico do Research OS está incompleto ou desatualizado. Reconstrua o plano metodológico antes de gerar Métodos.'] }
 
     const promptGuardrail = methodologyDecision.allowed && methodologyState
       ? [
@@ -175,45 +176,41 @@ export function buildGenerationEvidencePolicy(params: {
         ].join('\n')
       : ''
 
-    return {
-      researchOsActive: true,
-      decision: methodologyDecision,
-      promptGuardrail,
-    }
+    return { researchOsActive: true, decision: methodologyDecision, promptGuardrail }
   }
 
   const map = params.currentReferenceIds === undefined
     ? params.evidenceMap
     : sanitizeEvidenceMapAgainstCurrentReferences(params.evidenceMap, params.currentReferenceIds)
-  const decision = evaluateEvidenceGate(section, map)
+  const evidenceDecision = evaluateEvidenceGate(section, map)
 
-  if (!map || !decision.allowed) {
-    return { researchOsActive: true, decision, promptGuardrail: '' }
+  if (!map || !evidenceDecision.allowed) {
+    return { researchOsActive: true, decision: evidenceDecision, promptGuardrail: '' }
   }
 
-  const confirmedDirect = map.links.filter(link => link.supportStatus === 'confirmado' && link.directness === 'direta')
-  const claimsById = new Map(map.claims.map(claim => [claim.id, claim]))
-  const allowedClaims = confirmedDirect
-    .map(link => {
-      const claim = claimsById.get(link.claimId)
-      if (!claim) return null
-      return `- [${claim.id}] ${claim.text} | referência_id=${link.referenceId} | suporte=${link.supportStatus} | directness=${link.directness}`
-    })
-    .filter(Boolean)
-    .join('\n')
+  if (params.sectionKey === 'discussao') {
+    const execution = asExecutionRecord(params.executionAnalysis ?? stateBridge(params.researchProjectState, '_execution_analysis'))
+    const registry = asResultFactRegistry(params.resultFactRegistry ?? stateBridge(params.researchProjectState, '_result_fact_registry'))
+    const provenance = evaluateDiscussionProvenance({ executionRecord: execution, resultRegistry: registry })
+    if (!provenance.allowed) {
+      return {
+        researchOsActive: true,
+        decision: { allowed: false, level: 'bloquear', reasons: provenance.reasons },
+        promptGuardrail: '',
+      }
+    }
+    return {
+      researchOsActive: true,
+      decision: {
+        allowed: true,
+        level: provenance.warnings.length ? 'alertar' : 'liberar',
+        reasons: ['Discussão liberada com Evidence Gate e proveniência dos achados auditados.', ...provenance.warnings],
+      },
+      promptGuardrail: [buildEvidencePrompt(map), provenance.promptGuardrail].join('\n\n'),
+    }
+  }
 
-  const promptGuardrail = [
-    '## RESEARCH OS — EVIDENCE GATE',
-    'Este projeto usa um mapa de evidência auditado. Para afirmações factuais centrais nesta seção:',
-    '1. Use como base prioritária apenas os claims confirmados e diretamente sustentados abaixo.',
-    '2. Não transforme associação em causalidade, não aumente magnitude de efeito e não invente números.',
-    '3. Se precisar de uma afirmação central que não esteja coberta, formule-a como incerteza/lacuna ou omita-a.',
-    '4. Não use uma referência para sustentar claim diferente daquele ao qual ela foi vinculada sem nova verificação.',
-    '',
-    allowedClaims || '- Nenhum claim confirmado disponível.',
-  ].join('\n')
-
-  return { researchOsActive: true, decision, promptGuardrail }
+  return { researchOsActive: true, decision: evidenceDecision, promptGuardrail: buildEvidencePrompt(map) }
 }
 
 export function sanitizeEvidenceMapAgainstCurrentReferences(
