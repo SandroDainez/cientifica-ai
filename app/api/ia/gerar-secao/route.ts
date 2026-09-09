@@ -14,6 +14,12 @@ import { ehReferenciaUtilizavel, ehFonteFraca } from '@/lib/referencias/qualidad
 import { checkRateLimit } from '@/lib/auth/rate-limit'
 import { buildGenerationEvidencePolicy } from '@/lib/research-os/generation-evidence'
 import { selectSafeScientificRewrite, semanticLockMetadata } from '@/lib/research-os/safe-scientific-rewrite'
+import {
+  enforceGeneratedResults,
+  isResultsSection,
+  resultsEnforcementMetadata,
+  type ResultsGenerationEnforcement,
+} from '@/lib/research-os/results-generation-enforcement'
 import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 import type { ResearchProjectState } from '@/lib/research-os/types'
 import type { Trabalho, Referencia } from '@/types'
@@ -290,7 +296,11 @@ export async function POST(request: Request) {
   const minPalavrasHumanizar = fase.min_palavras ?? 0
   const formato = trabalho.formato_citacao
 
-  const persistirSecaoGerada = async (texto: string, semanticLock?: ReturnType<typeof semanticLockMetadata>) => {
+  const persistirSecaoGerada = async (
+    texto: string,
+    semanticLock?: ReturnType<typeof semanticLockMetadata>,
+    resultsEnforcement?: ResultsGenerationEnforcement,
+  ) => {
     if (chaveSecao === 'resumo' || !texto?.trim()) return
     const { error } = await supabase
       .from('secoes_trabalho')
@@ -302,12 +312,29 @@ export async function POST(request: Request) {
           evidence_gate: evidencePolicy.researchOsActive ? evidencePolicy.decision : undefined,
           generated_with_research_os: evidencePolicy.researchOsActive,
           semantic_lock: semanticLock,
+          result_fact_lock: resultsEnforcement ? resultsEnforcementMetadata(resultsEnforcement) : undefined,
         },
       })
       .eq('trabalho_id', trabalhoId)
       .eq('chave_secao', chaveSecao)
     if (error) console.error('[gerar-secao] falha ao persistir conteúdo gerado:', error)
   }
+
+  const validarResultadosAntesDePersistir = (texto: string) => enforceGeneratedResults({
+    sectionKey: chaveSecao,
+    text: texto,
+    researchProjectState,
+  })
+
+  const respostaBloqueioResultados = (enforcement: ResultsGenerationEnforcement) => NextResponse.json({
+    error: `Research OS rejeitou a redação de Resultados porque ela introduziu conteúdo numérico não aprovado. ${(enforcement.validation?.reasons ?? []).join(' ')}`,
+    code: 'RESULT_FACT_LOCK_VIOLATION',
+    resultFactValidation: enforcement.validation,
+    action: {
+      label: 'Abrir Research OS / Result Fact Lock',
+      href: `/trabalhos/${trabalhoId}/research-os`,
+    },
+  }, { status: 409 })
 
   if (deveHumanizar && minPalavrasHumanizar >= 80) {
     const maxTokensDraft = Math.max(12000, (fase.max_palavras ?? 2000) * 3)
@@ -329,7 +356,12 @@ export async function POST(request: Request) {
         }
 
         const validado = posProcessarTextoGerado(safe.selectedText, referencias, formato)
-        await persistirSecaoGerada(validado, semanticLockMetadata(safe))
+        const resultsEnforcement = validarResultadosAntesDePersistir(validado)
+        if (!resultsEnforcement.allowed) {
+          console.warn('[gerar-secao] Result Fact Lock rejeitou saída de duas passagens:', resultsEnforcement.validation?.reasons)
+          return respostaBloqueioResultados(resultsEnforcement)
+        }
+        await persistirSecaoGerada(validado, semanticLockMetadata(safe), resultsEnforcement)
         return streamStringComEfeito(validado)
       }
     } catch (err) {
@@ -341,11 +373,27 @@ export async function POST(request: Request) {
     const textoUnico = await callAI(systemPrompt, userPrompt, false, Math.max(6000, (fase.max_palavras ?? 1500) * 2))
     if (textoUnico && textoUnico.trim().length > 20) {
       const validado = posProcessarTextoGerado(textoUnico, referencias, formato)
-      await persistirSecaoGerada(validado)
+      const resultsEnforcement = validarResultadosAntesDePersistir(validado)
+      if (!resultsEnforcement.allowed) {
+        console.warn('[gerar-secao] Result Fact Lock rejeitou saída single-pass:', resultsEnforcement.validation?.reasons)
+        return respostaBloqueioResultados(resultsEnforcement)
+      }
+      await persistirSecaoGerada(validado, undefined, resultsEnforcement)
       return streamStringComEfeito(validado)
     }
   } catch (err) {
     console.error('[gerar-secao] Falha no single-pass — streaming direto:', err)
+  }
+
+  if (isResultsSection(chaveSecao)) {
+    return NextResponse.json({
+      error: 'A geração validável de Resultados falhou. Por segurança, o Research OS não usa streaming direto nessa seção porque a saída não poderia ser auditada antes de chegar ao usuário.',
+      code: 'RESULTS_GENERATION_FAILED_CLOSED',
+      action: {
+        label: 'Tentar novamente após revisar Result Fact Lock',
+        href: `/trabalhos/${trabalhoId}/research-os`,
+      },
+    }, { status: 502 })
   }
 
   return streamText(systemPrompt, userPrompt, false)
