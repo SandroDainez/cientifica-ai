@@ -12,6 +12,21 @@ function unique(values: string[]): string[] {
   return [...new Set(values.map(v => v.trim()).filter(Boolean))]
 }
 
+function canonicalDirectionTerms(text: string): string[] {
+  const lower = text.toLowerCase()
+  const families: Array<[string, RegExp]> = [
+    ['aumento', /\b(?:aument\w*|eleva\w*|increment\w*)\b/iu],
+    ['reducao', /\b(?:reduz\w*|reduç\w*|diminu\w*)\b/iu],
+    ['maior', /\b(?:maior|superior)\b/iu],
+    ['menor', /\b(?:menor|inferior)\b/iu],
+    ['associacao', /\b(?:associad\w*|associaç\w*)\b/iu],
+    ['causalidade', /\b(?:caus\w*)\b/iu],
+    ['predicao', /\b(?:predi\w*|prognostic\w*)\b/iu],
+    ['negacao', /\b(?:não|nao|sem)\b/iu],
+  ]
+  return families.filter(([, pattern]) => pattern.test(lower)).map(([name]) => name)
+}
+
 export function extractProtectedScientificTokens(text: string): {
   numbers: string[]
   citations: string[]
@@ -30,10 +45,9 @@ export function extractProtectedScientificTokens(text: string): {
     [...text.matchAll(/\b(?:p\s*[<=>]\s*0?[.,]\d+|IC\s*95%|CI\s*95%|RR|OR|HR|NNT|NNH|beta|β|r\s*=|R²|AUC)\b/gi)].map(m => m[0]),
   )
 
-  const directionTerms = unique(
-    [...text.matchAll(/\b(?:aument(?:a|ou|aram|o)|reduz(?:iu|iram|ida|ido|em)|maior|menor|superior|inferior|associad[oa]s?|caus(?:a|ou|al)|predi(?:z|tor)|não|sem)\b/gi)]
-      .map(m => m[0].toLowerCase()),
-  )
+  // O lock compara famílias semânticas, não flexões superficiais. Assim,
+  // "associada" -> "associação" é permitido, mas "associação" -> "causou" não é.
+  const directionTerms = canonicalDirectionTerms(text)
 
   return { numbers, citations, statistical, directionTerms }
 }
@@ -45,7 +59,7 @@ function protectedManifest(text: string): string {
     `- números/percentuais: ${p.numbers.length ? p.numbers.join(' | ') : '(nenhum)'}`,
     `- citações: ${p.citations.length ? p.citations.join(' | ') : '(nenhuma)'}`,
     `- marcadores estatísticos: ${p.statistical.length ? p.statistical.join(' | ') : '(nenhum)'}`,
-    `- termos de direção/causalidade/polaridade presentes: ${p.directionTerms.length ? p.directionTerms.join(' | ') : '(nenhum)'}`,
+    `- famílias de direção/causalidade/polaridade: ${p.directionTerms.length ? p.directionTerms.join(' | ') : '(nenhuma)'}`,
   ].join('\n')
 }
 
