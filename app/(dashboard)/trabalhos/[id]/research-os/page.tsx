@@ -8,6 +8,7 @@ import type { SampleSizeInput, SampleSizePlan } from '@/lib/research-os/sample-s
 import type { ProtocolLockRecord } from '@/lib/research-os/protocol-lock'
 import type { ExecutionAnalysisRecord } from '@/lib/research-os/execution-analysis-lock'
 import type { ResultFactRegistry } from '@/lib/research-os/result-fact-lock'
+import { buildClaimLedger } from '@/lib/research-os/claim-ledger'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
 import { EvidencePanel } from './EvidencePanel'
 import { MethodologyPanel } from './MethodologyPanel'
@@ -15,6 +16,7 @@ import { SampleSizePanel } from './SampleSizePanel'
 import { ProtocolLockPanel } from './ProtocolLockPanel'
 import { ExecutionAnalysisPanel } from './ExecutionAnalysisPanel'
 import { ResultFactsPanel } from './ResultFactsPanel'
+import { ClaimLedgerPanel } from './ClaimLedgerPanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -43,6 +45,24 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const initialProtocolLock = (researchOs.protocol_lock as ProtocolLockRecord | undefined) ?? null
   const initialExecutionAnalysis = (researchOs.execution_analysis as ExecutionAnalysisRecord | undefined) ?? null
   const initialResultFactRegistry = (researchOs.result_fact_registry as ResultFactRegistry | undefined) ?? null
+
+  const { data: manuscriptSections } = await supabase
+    .from('secoes_trabalho')
+    .select('chave_secao, nome_secao, conteudo, status')
+    .eq('trabalho_id', trabalho.id)
+    .in('chave_secao', ['discussao', 'discussao_grade', 'conclusao', 'consideracoes_finais'])
+    .in('status', ['gerado', 'editado', 'aprovado'])
+    .order('ordem')
+
+  const ledger = buildClaimLedger({
+    sections: (manuscriptSections ?? []).map(section => ({
+      sectionKey: section.chave_secao,
+      sectionName: section.nome_secao,
+      text: section.conteudo ?? '',
+    })),
+    researchProjectState: initialState,
+    evidenceMap: initialEvidenceMap,
+  })
 
   return (
     <div>
@@ -73,6 +93,7 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
           initialRegistry={initialResultFactRegistry}
         />
         <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
+        <ClaimLedgerPanel ledger={ledger} />
       </div>
     </div>
   )
