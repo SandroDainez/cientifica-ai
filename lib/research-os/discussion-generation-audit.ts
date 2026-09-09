@@ -21,7 +21,7 @@ const OBSERVATIONAL_DESIGNS = new Set([
 ])
 
 const EXPLORATORY_MARKERS = /\b(explorat[oó]ri[oa]s?|gerador(?:a)?s? de hip[oó]tese|gera(?:m|ndo)? hip[oó]tese|post[ -]?hoc|an[aá]lise adicional)\b/iu
-const CONFIRMATORY_MARKERS = /\b(confirm(?:a|am|ou|amos|ado|ados)|comprov(?:a|am|ou|amos|ado|ados)|demonstr(?:a|am|ou|amos|ado|ados)|evidenci(?:a|am|ou|amos|ado|ados) de forma definitiva|estabelec(?:e|em|eu|emos|ido|idos))\b/iu
+const CONFIRMATORY_MARKERS = /\b(confirm(?:a|am|ou|aram|amos|ado|ados)|comprov(?:a|am|ou|aram|amos|ado|ados)|demonstr(?:a|am|ou|aram|amos|ado|ados)|evidenci(?:a|am|ou|aram|amos|ado|ados)(?: de forma definitiva)?|estabelec(?:e|em|eu|eram|emos|ido|idos))\b/iu
 const DEVIATION_MARKERS = /\b(desvio|n[aã]o planej(?:ad[oa]s?)?|p[oó]s[- ]protocolo|amendment|emenda|altera[cç][aã]o do protocolo|mudan[cç]a do protocolo)\b/iu
 const CAUSAL_MARKERS = /\b(caus(?:a|am|ou|aram|ado|ados)|provoc(?:a|am|ou|aram|ado|ados)|determin(?:a|am|ou|aram|ado|ados)|leva(?:m|va|ram)? a|result(?:a|am|ou|aram) em)\b/iu
 
