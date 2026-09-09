@@ -27,7 +27,19 @@ jobs:
         run: npm ci
 
       - name: Regression tests
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee regression-test.log
+
+      - name: Upload regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-test-log
+          path: regression-test.log
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: TypeScript check
         run: npx tsc --noEmit
