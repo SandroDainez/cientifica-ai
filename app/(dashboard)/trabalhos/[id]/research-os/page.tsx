@@ -7,12 +7,14 @@ import type { MethodologyInput, MethodologyPlan } from '@/lib/research-os/method
 import type { SampleSizeInput, SampleSizePlan } from '@/lib/research-os/sample-size-engine'
 import type { ProtocolLockRecord } from '@/lib/research-os/protocol-lock'
 import type { ExecutionAnalysisRecord } from '@/lib/research-os/execution-analysis-lock'
+import type { ResultFactRegistry } from '@/lib/research-os/result-fact-lock'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
 import { EvidencePanel } from './EvidencePanel'
 import { MethodologyPanel } from './MethodologyPanel'
 import { SampleSizePanel } from './SampleSizePanel'
 import { ProtocolLockPanel } from './ProtocolLockPanel'
 import { ExecutionAnalysisPanel } from './ExecutionAnalysisPanel'
+import { ResultFactsPanel } from './ResultFactsPanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -40,6 +42,7 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const initialSampleSizePlan = (researchOs.sample_size_plan as SampleSizePlan | undefined) ?? null
   const initialProtocolLock = (researchOs.protocol_lock as ProtocolLockRecord | undefined) ?? null
   const initialExecutionAnalysis = (researchOs.execution_analysis as ExecutionAnalysisRecord | undefined) ?? null
+  const initialResultFactRegistry = (researchOs.result_fact_registry as ResultFactRegistry | undefined) ?? null
 
   return (
     <div>
@@ -63,6 +66,11 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
           trabalhoId={trabalho.id}
           protocolLock={initialProtocolLock}
           initialRecord={initialExecutionAnalysis}
+        />
+        <ResultFactsPanel
+          trabalhoId={trabalho.id}
+          executionRecord={initialExecutionAnalysis}
+          initialRegistry={initialResultFactRegistry}
         />
         <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
       </div>

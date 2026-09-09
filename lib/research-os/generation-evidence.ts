@@ -1,8 +1,10 @@
 import type { EvidenceMapResult } from './evidence-engine'
 import { evaluateEvidenceGate, type EvidenceGateDecision, type EvidenceGateSection } from './evidence-gate'
+import type { ExecutionAnalysisRecord } from './execution-analysis-lock'
 import { evaluateMethodologyGate, isMethodologySection } from './methodology-gate'
 import type { MethodologyPlan } from './methodology-engine'
 import { buildProtocolGroundedMethodsPolicy, isProtocolLockRecord } from './protocol-generation'
+import { buildResultsGroundingPrompt, type ResultFactRegistry } from './result-fact-lock'
 import type { SampleSizePlan } from './sample-size-engine'
 import type { ResearchProjectState } from './types'
 
@@ -11,6 +13,8 @@ const SECTION_MAP: Record<string, EvidenceGateSection> = {
   discussao: 'discussao',
   conclusao: 'conclusao',
 }
+
+const RESULTS_SECTIONS = new Set(['resultados'])
 
 export interface GenerationEvidencePolicy {
   researchOsActive: boolean
@@ -37,9 +41,29 @@ function asSampleSizePlan(value: unknown): SampleSizePlan | null {
   return typeof v.status === 'string' ? value as SampleSizePlan : null
 }
 
-function protocolLockFromState(value: unknown): unknown {
+function asExecutionRecord(value: unknown): ExecutionAnalysisRecord | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<ExecutionAnalysisRecord>
+  return v.status === 'congelado' && typeof v.fingerprint === 'string' && typeof v.protocolVersion === 'number'
+    ? value as ExecutionAnalysisRecord
+    : null
+}
+
+function asResultFactRegistry(value: unknown): ResultFactRegistry | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<ResultFactRegistry>
+  return v.status === 'congelado' && typeof v.fingerprint === 'string' && Array.isArray(v.facts)
+    ? value as ResultFactRegistry
+    : null
+}
+
+function stateBridge(value: unknown, key: string): unknown {
   if (!value || typeof value !== 'object') return undefined
-  return (value as Record<string, unknown>)._protocol_lock
+  return (value as Record<string, unknown>)[key]
+}
+
+function protocolLockFromState(value: unknown): unknown {
+  return stateBridge(value, '_protocol_lock')
 }
 
 export function buildGenerationEvidencePolicy(params: {
@@ -50,6 +74,8 @@ export function buildGenerationEvidencePolicy(params: {
   methodologyPlan?: unknown
   sampleSizePlan?: unknown
   protocolLock?: unknown
+  executionAnalysis?: unknown
+  resultFactRegistry?: unknown
 }): GenerationEvidencePolicy {
   const researchOsActive = Boolean(params.researchProjectState)
   const section = SECTION_MAP[params.sectionKey] ?? 'outro'
@@ -59,6 +85,37 @@ export function buildGenerationEvidencePolicy(params: {
       researchOsActive: false,
       decision: { allowed: true, level: 'liberar', reasons: ['Projeto legado sem Research OS ativo.'] },
       promptGuardrail: '',
+    }
+  }
+
+  if (RESULTS_SECTIONS.has(params.sectionKey)) {
+    const execution = asExecutionRecord(params.executionAnalysis ?? stateBridge(params.researchProjectState, '_execution_analysis'))
+    const registry = asResultFactRegistry(params.resultFactRegistry ?? stateBridge(params.researchProjectState, '_result_fact_registry'))
+    if (!execution) {
+      return {
+        researchOsActive: true,
+        decision: { allowed: false, level: 'bloquear', reasons: ['Congele o Execution / Analysis Lock antes de gerar Resultados.'] },
+        promptGuardrail: '',
+      }
+    }
+    if (!registry) {
+      return {
+        researchOsActive: true,
+        decision: { allowed: false, level: 'bloquear', reasons: ['Aprove e congele os fatos de resultado antes de gerar a seção Resultados.'] },
+        promptGuardrail: '',
+      }
+    }
+    if (registry.executionFingerprint !== execution.fingerprint) {
+      return {
+        researchOsActive: true,
+        decision: { allowed: false, level: 'bloquear', reasons: ['Os fatos aprovados pertencem a outra versão da execução/análise. Reconcilie o Result Fact Lock.'] },
+        promptGuardrail: '',
+      }
+    }
+    return {
+      researchOsActive: true,
+      decision: { allowed: true, level: 'liberar', reasons: ['Resultados ancorados em fatos aprovados e Execution / Analysis Lock congelado.'] },
+      promptGuardrail: buildResultsGroundingPrompt({ registry, executionRecord: execution }),
     }
   }
 
