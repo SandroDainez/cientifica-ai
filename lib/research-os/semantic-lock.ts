@@ -24,6 +24,24 @@ function diff(a: string[], b: string[]): string[] {
   return a.filter(v => !setB.has(v.toLowerCase()))
 }
 
+function semanticFamilies(text: string): string[] {
+  const normalized = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  const families = new Set<string>()
+  if (/\bassoci\w*/.test(normalized)) families.add('associacao')
+  if (/\bcaus\w*/.test(normalized)) families.add('causalidade')
+  if (/\baument\w*/.test(normalized)) families.add('aumento')
+  if (/\breduz\w*|\breduc\w*/.test(normalized)) families.add('reducao')
+  if (/\bmaior\b|\bsuperior\b/.test(normalized)) families.add('maior')
+  if (/\bmenor\b|\binferior\b/.test(normalized)) families.add('menor')
+  if (/\bnao\b|\bsem\b/.test(normalized)) families.add('negacao')
+  if (/\bpredi\w*/.test(normalized)) families.add('predicao')
+  return [...families]
+}
+
 export function validateScientificRewrite(original: string, rewritten: string): SemanticLockResult {
   const reasons: string[] = []
   const before = extractProtectedScientificTokens(original)
@@ -40,8 +58,12 @@ export function validateScientificRewrite(original: string, rewritten: string): 
   const missingStatistical = diff(before.statistical, after.statistical)
   const addedStatistical = diff(after.statistical, before.statistical)
 
-  const missingDirection = diff(before.directionTerms, after.directionTerms)
-  const addedDirection = diff(after.directionTerms, before.directionTerms)
+  // Compare meaning-level families rather than superficial inflections.
+  // "associada" -> "associação" is equivalent; "associação" -> "causou" is not.
+  const beforeFamilies = semanticFamilies(original)
+  const afterFamilies = semanticFamilies(rewritten)
+  const missingDirection = diff(beforeFamilies, afterFamilies)
+  const addedDirection = diff(afterFamilies, beforeFamilies)
   const changedDirectionTerms = [...missingDirection.map(v => `-${v}`), ...addedDirection.map(v => `+${v}`)]
 
   if (missingNumbers.length) reasons.push(`Números/percentuais removidos: ${missingNumbers.join(', ')}`)

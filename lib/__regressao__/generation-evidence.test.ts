@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildGenerationEvidencePolicy, sanitizeEvidenceMapAgainstCurrentReferences } from '@/lib/research-os/generation-evidence'
+import { createEmptyResearchProjectState } from '@/lib/research-os/types'
 import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 
 function map(overrides: Partial<EvidenceMapResult> = {}): EvidenceMapResult {
@@ -43,13 +44,35 @@ test('Research OS bloqueia introdução sem Evidence Map', () => {
   assert.equal(policy.decision.level, 'bloquear')
 })
 
-test('Research OS libera seção não submetida ao gate estrito', () => {
+test('Research OS bloqueia metodologia sem SAP pronto', () => {
+  const state = createEmptyResearchProjectState('mestrado')
+  state.studyDesign = 'coorte_retrospectiva'
+  state.question.primaryOutcome = 'mortalidade'
   const policy = buildGenerationEvidencePolicy({
     sectionKey: 'metodologia',
-    researchProjectState: { schemaVersion: 2 },
+    researchProjectState: state,
+    evidenceMap: null,
+  })
+  assert.equal(policy.decision.allowed, false)
+  assert.equal(policy.decision.level, 'bloquear')
+})
+
+test('Research OS libera metodologia com SAP pronto e injeta guardrail', () => {
+  const state = createEmptyResearchProjectState('mestrado')
+  state.studyDesign = 'coorte_retrospectiva'
+  state.question.primaryOutcome = 'mortalidade'
+  state.statisticalPlan.primaryAnalysis = 'Regressão multivariável.'
+  state.statisticalPlan.missingDataStrategy = 'Imputação múltipla quando apropriado.'
+  state.statisticalPlan.multiplicityStrategy = 'Separar análises confirmatórias e exploratórias.'
+  state.readiness.statistics = 'pronto'
+  const policy = buildGenerationEvidencePolicy({
+    sectionKey: 'metodologia',
+    researchProjectState: state,
     evidenceMap: null,
   })
   assert.equal(policy.decision.allowed, true)
+  assert.match(policy.promptGuardrail, /METHODOLOGY GATE/)
+  assert.match(policy.promptGuardrail, /Regressão multivariável/)
 })
 
 test('introdução liberada recebe guardrail contendo apenas claims confirmados', () => {
