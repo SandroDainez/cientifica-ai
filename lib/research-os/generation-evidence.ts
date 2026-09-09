@@ -1,5 +1,7 @@
 import type { EvidenceMapResult } from './evidence-engine'
 import { evaluateEvidenceGate, type EvidenceGateDecision, type EvidenceGateSection } from './evidence-gate'
+import { evaluateMethodologyGate, isMethodologySection } from './methodology-gate'
+import type { ResearchProjectState } from './types'
 
 const SECTION_MAP: Record<string, EvidenceGateSection> = {
   introducao: 'introducao',
@@ -11,6 +13,13 @@ export interface GenerationEvidencePolicy {
   researchOsActive: boolean
   decision: EvidenceGateDecision
   promptGuardrail: string
+}
+
+function asResearchProjectState(value: unknown): ResearchProjectState | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<ResearchProjectState>
+  if (v.schemaVersion !== 2 || !v.readiness || !v.statisticalPlan || !v.question || typeof v.studyDesign !== 'string') return null
+  return value as ResearchProjectState
 }
 
 export function buildGenerationEvidencePolicy(params: {
@@ -27,6 +36,36 @@ export function buildGenerationEvidencePolicy(params: {
       researchOsActive: false,
       decision: { allowed: true, level: 'liberar', reasons: ['Projeto legado sem Research OS ativo.'] },
       promptGuardrail: '',
+    }
+  }
+
+  if (isMethodologySection(params.sectionKey)) {
+    const methodologyState = asResearchProjectState(params.researchProjectState)
+    const methodologyDecision = methodologyState
+      ? evaluateMethodologyGate(params.sectionKey, methodologyState)
+      : {
+          allowed: false,
+          level: 'bloquear' as const,
+          reasons: ['O estado metodológico do Research OS está incompleto ou desatualizado. Reconstrua o plano metodológico antes de gerar Métodos.'],
+        }
+
+    const promptGuardrail = methodologyDecision.allowed && methodologyState
+      ? [
+          '## RESEARCH OS — METHODOLOGY GATE',
+          'A seção de Métodos deve refletir o plano metodológico estruturado e não inventar decisões novas.',
+          `- desenho: ${methodologyState.studyDesign}`,
+          `- desfecho primário: ${methodologyState.question.primaryOutcome ?? '(não definido)'}`,
+          `- análise primária: ${methodologyState.statisticalPlan.primaryAnalysis ?? '(não definida)'}`,
+          `- dados ausentes: ${methodologyState.statisticalPlan.missingDataStrategy ?? '(não definido)'}`,
+          `- multiplicidade: ${methodologyState.statisticalPlan.multiplicityStrategy ?? '(não definida)'}`,
+          'Se algum detalhe necessário não estiver estruturado, sinalize a pendência; não complete por suposição.',
+        ].join('\n')
+      : ''
+
+    return {
+      researchOsActive: true,
+      decision: methodologyDecision,
+      promptGuardrail,
     }
   }
 
