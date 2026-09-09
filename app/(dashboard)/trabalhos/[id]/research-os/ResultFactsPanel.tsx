@@ -23,6 +23,12 @@ const kinds: Array<{ value: ResultFactKind; label: string }> = [
   { value: 'outro', label: 'Outro' },
 ]
 
+const provenanceOptions: Array<{ value: NonNullable<ResultFactInput['provenance']>; label: string }> = [
+  { value: 'pre_especificado', label: 'Pré-especificado' },
+  { value: 'desvio_documentado', label: 'Desvio documentado' },
+  { value: 'exploratorio', label: 'Exploratório' },
+]
+
 export function ResultFactsPanel({ trabalhoId, executionRecord, initialRegistry }: Props) {
   const [facts, setFacts] = useState<ResultFactInput[]>(initialRegistry?.facts ?? [{ kind: 'primario', text: '' }])
   const [registry, setRegistry] = useState(initialRegistry)
@@ -59,7 +65,7 @@ export function ResultFactsPanel({ trabalhoId, executionRecord, initialRegistry 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold"><CheckCircle2 className="h-5 w-5" /> Result Fact Lock</h2>
-          <p className="mt-1 text-sm text-muted-foreground">A seção Resultados só poderá usar fatos aprovados aqui. Não informe interpretações; registre fatos observados e valores exatos.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Registre fatos observados e valores exatos. A proveniência informa se o achado era pré-especificado, veio de um desvio documentado ou é exploratório; isso governa a Discussão.</p>
         </div>
         <span className="rounded-full border px-3 py-1 text-xs font-semibold">{frozen ? 'Congelado' : executionReady ? 'Em preparação' : 'Aguardando execução'}</span>
       </div>
@@ -68,9 +74,13 @@ export function ResultFactsPanel({ trabalhoId, executionRecord, initialRegistry 
 
       <div className="space-y-3">
         {facts.map((fact, index) => (
-          <div key={index} className="grid gap-2 rounded-lg border p-3 md:grid-cols-[180px_1fr_auto]">
+          <div key={index} className="grid gap-2 rounded-lg border p-3 md:grid-cols-[180px_190px_1fr_auto]">
             <select disabled={frozen} value={fact.kind} onChange={e => updateFact(index, { kind: e.target.value as ResultFactKind })} className="rounded-md border bg-background p-2 text-sm">
               {kinds.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+            <select disabled={frozen} value={fact.provenance ?? ''} onChange={e => updateFact(index, { provenance: e.target.value ? e.target.value as ResultFactInput['provenance'] : undefined })} className="rounded-md border bg-background p-2 text-sm">
+              <option value="">Proveniência...</option>
+              {provenanceOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
             <textarea disabled={frozen} value={fact.text} onChange={e => updateFact(index, { text: e.target.value })} placeholder="Ex.: Mortalidade em 28 dias: 18/100 (18%). OR ajustado 0,72; IC95% 0,60–0,86; p=0,003." className="min-h-20 rounded-md border bg-background p-2 text-sm" />
             {!frozen && <button type="button" onClick={() => setFacts(current => current.filter((_, i) => i !== index))} className="self-start rounded-md border p-2"><Trash2 className="h-4 w-4" /></button>}
