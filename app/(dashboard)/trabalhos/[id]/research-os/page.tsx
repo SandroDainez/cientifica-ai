@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { Trabalho } from '@/types'
 import type { ResearchProjectState } from '@/lib/research-os/types'
+import type { EvidenceMapResult } from '@/lib/research-os/evidence-engine'
 import { ResearchOsIntakeClient } from './ResearchOsIntakeClient'
+import { EvidencePanel } from './EvidencePanel'
 
 export default async function ResearchOsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -23,6 +25,14 @@ export default async function ResearchOsPage({ params }: { params: Promise<{ id:
   const dadosTrabalho = (trabalho.dados_trabalho as Record<string, unknown>) ?? {}
   const researchOs = (dadosTrabalho.research_os as Record<string, unknown>) ?? {}
   const initialState = (researchOs.project_state as ResearchProjectState | undefined) ?? null
+  const initialEvidenceMap = (researchOs.evidence_map as EvidenceMapResult | undefined) ?? null
 
-  return <ResearchOsIntakeClient trabalho={trabalho} initialState={initialState} />
+  return (
+    <div>
+      <ResearchOsIntakeClient trabalho={trabalho} initialState={initialState} />
+      <div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
+        <EvidencePanel trabalhoId={trabalho.id} initialMap={initialEvidenceMap} />
+      </div>
+    </div>
+  )
 }
